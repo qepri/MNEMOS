@@ -4,7 +4,10 @@ from app.extensions import db, migrate, celery_app
 
 def create_app():
     app = Flask(__name__)
-    
+
+    # Disable Flask's strict slashes to avoid redirect issues with nginx proxy
+    app.url_map.strict_slashes = False
+
     # Configure app from settings
     app.config["SQLALCHEMY_DATABASE_URI"] = settings.DATABASE_URL
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False

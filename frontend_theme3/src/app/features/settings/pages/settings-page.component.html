@@ -1,0 +1,449 @@
+<div class="h-full flex flex-col bg-base text-primary overflow-hidden">
+    <!-- Header -->
+    <header class="flex-none bg-sidebar border-b border-divider z-40">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <a routerLink="/" class="flex items-center gap-2 text-primary hover:text-accent transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                        <span class="font-medium hidden sm:inline">Back to Chat</span>
+                    </a>
+                </div>
+                <h1 class="text-xl font-bold text-primary">Settings</h1>
+                <div class="w-9"></div> <!-- Spacer for balance -->
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto w-full">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+            <!-- Tabs Navigation -->
+            <div class="mb-6 border-b border-divider overflow-x-auto">
+                <nav class="flex gap-6 min-w-max">
+                    <button (click)="switchTab('models')" [class.border-accent]="activeTab() === 'models'"
+                        [class.text-primary]="activeTab() === 'models'"
+                        [class.text-secondary]="activeTab() !== 'models'"
+                        class="px-1 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap hover:text-primary"
+                        [style.border-color]="activeTab() !== 'models' ? 'transparent' : ''">
+                        Installed Models
+                    </button>
+                    <button (click)="switchTab('discover')" [class.border-accent]="activeTab() === 'discover'"
+                        [class.text-primary]="activeTab() === 'discover'"
+                        [class.text-secondary]="activeTab() !== 'discover'"
+                        class="px-1 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap hover:text-primary"
+                        [style.border-color]="activeTab() !== 'discover' ? 'transparent' : ''">
+                        Discover Models
+                    </button>
+                    <button (click)="switchTab('import')" [class.border-accent]="activeTab() === 'import'"
+                        [class.text-primary]="activeTab() === 'import'"
+                        [class.text-secondary]="activeTab() !== 'import'"
+                        class="px-1 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap hover:text-primary"
+                        [style.border-color]="activeTab() !== 'import' ? 'transparent' : ''">
+                        Import GGUF
+                    </button>
+                    <button (click)="switchTab('chat')" [class.border-accent]="activeTab() === 'chat'"
+                        [class.text-primary]="activeTab() === 'chat'" [class.text-secondary]="activeTab() !== 'chat'"
+                        class="px-1 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap hover:text-primary"
+                        [style.border-color]="activeTab() !== 'chat' ? 'transparent' : ''">
+                        Chat Settings
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="space-y-6">
+
+                <!-- Tab: Installed Models -->
+                @if (activeTab() === 'models') {
+                <div class="space-y-6 anime-fade-in">
+                    <!-- Hardware Info -->
+                    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                        <h2 class="text-lg font-semibold mb-4">System Resources</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div class="bg-input rounded-lg p-4 col-span-3">
+                                <div class="text-xs text-secondary mb-1">Models Installed</div>
+                                <div class="text-2xl font-bold text-accent">{{ settingsService.models()?.models?.length
+                                    || 0 }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Active Model -->
+                    <div class="bg-accent-subtle border border-accent rounded-xl p-4">
+                        <div class="flex items-center gap-2 text-accent">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span class="text-sm font-medium">Active Model: <strong>{{ settingsService.currentModel() ||
+                                    'None' }}</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- Models List -->
+                    <div class="bg-panel border border-divider rounded-xl overflow-hidden">
+                        <div class="p-4 sm:p-6 border-b border-divider">
+                            <h2 class="text-lg font-semibold">Your Models</h2>
+                        </div>
+                        <div class="divide-y divide-divider">
+                            @for (model of settingsService.models()?.models; track model.name) {
+                            <div class="p-4 sm:p-6 hover:bg-hover transition-colors">
+                                <div class="flex items-start justify-between gap-4">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <input type="radio" name="model-select"
+                                                [checked]="settingsService.currentModel() === model.name"
+                                                (change)="handleSetCurrentModel(model.name)"
+                                                class="radio radio-sm radio-accent">
+                                            <h3
+                                                class="font-mono text-sm sm:text-base text-primary font-semibold truncate">
+                                                {{ model.name }}
+                                            </h3>
+                                            @if (settingsService.currentModel() === model.name) {
+                                            <span class="badge badge-success">Active</span>
+                                            }
+                                        </div>
+                                        <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-secondary">
+                                            <span>Size: {{ (model.size / 1024 / 1024 / 1024) | number:'1.1-2' }}
+                                                GB</span>
+                                            <span>Modified: {{ model.modified_at | date }}</span>
+                                        </div>
+                                    </div>
+                                    <button (click)="handleDeleteModel(model.name)"
+                                        class="btn-icon text-error hover:bg-error hover:bg-opacity-10 p-2 rounded-lg transition-colors">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            }
+                            @if (!settingsService.models()?.models?.length) {
+                            <div class="p-8 text-center text-secondary">
+                                No models installed. Go to "Discover Models" to find one.
+                            </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                }
+
+                <!-- Tab: Discover Models -->
+                @if (activeTab() === 'discover') {
+                <div class="space-y-6 anime-fade-in">
+                    <!-- Search & Filter -->
+                    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <input type="text" placeholder="Search models..." [(ngModel)]="searchQuery"
+                                (keyup.enter)="searchLibrary()"
+                                class="flex-1 px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm">
+                            <button (click)="searchLibrary()" class="btn-primary">Search</button>
+                        </div>
+                    </div>
+
+                    <!-- Models Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        @for (model of searchResults(); track model.name) {
+                        <div
+                            class="bg-panel border border-divider rounded-xl p-4 sm:p-6 hover:border-accent transition-colors">
+                            <div class="flex items-start justify-between mb-3">
+                                <div>
+                                    <h3 class="font-mono font-semibold text-base mb-1">{{ model.name }}</h3>
+                                    <p class="text-xs text-secondary">{{ model.author }} • {{ model.params }}</p>
+                                </div>
+                                <span class="badge" [class.badge-success]="!model.is_hf_only"
+                                    [class.badge-warning]="model.is_hf_only">
+                                    {{ model.is_hf_only ? 'HF Only' : 'Compatible' }}
+                                </span>
+                            </div>
+                            <p class="text-sm text-secondary mb-4 line-clamp-2">
+                                {{ model.description }}
+                            </p>
+                            <div class="flex items-center justify-between text-xs text-secondary mb-4">
+                                <span>Size: {{ model.size_gb }} GB</span>
+                                <span>Min RAM: {{ model.min_ram_gb }} GB</span>
+                            </div>
+                            <div class="flex gap-2 mb-4 flex-wrap">
+                                @for (tag of model.tags; track tag) {
+                                <span class="px-2 py-1 bg-accent-subtle text-accent rounded text-xs">{{ tag }}</span>
+                                }
+                            </div>
+                            <button (click)="handlePullModel(model.ollama_name || model.name)"
+                                class="w-full px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-dark transition-colors text-sm font-medium">
+                                Pull Model
+                            </button>
+                        </div>
+                        }
+                        @if (searchResults().length === 0) {
+                        <div class="col-span-2 text-center py-10 text-secondary">
+                            Search for models to discover new capabilities.
+                        </div>
+                        }
+                    </div>
+                </div>
+                }
+
+                <!-- Tab: Import -->
+                @if (activeTab() === 'import') {
+                <div class="space-y-6 anime-fade-in">
+                    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                        <h2 class="text-lg font-semibold mb-4">Import GGUF Files</h2>
+                        <p class="text-sm text-secondary mb-6">
+                            Import custom GGUF model files from your local system. Click "Scan" to find .gguf files in
+                            your
+                            <code>ollama_models/import</code> folder.
+                        </p>
+                        <button (click)="scanImports()" class="btn-primary mb-6 flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            Scan for GGUF Files
+                        </button>
+
+                        <div class="space-y-3">
+                            @for (file of importFiles(); track file) {
+                            <div class="bg-input rounded-lg p-4">
+                                <div class="flex items-start justify-between gap-4 mb-3">
+                                    <div class="flex-1">
+                                        <p class="font-mono text-sm mb-1">{{ file }}</p>
+                                        <p class="text-xs text-secondary">Ready to import</p>
+                                    </div>
+                                    <input type="radio" name="import-file" [value]="file"
+                                        (change)="selectedImportFile.set(file)"
+                                        [checked]="selectedImportFile() === file" class="radio radio-sm radio-accent">
+                                </div>
+                                @if (selectedImportFile() === file) {
+                                <div class="flex gap-2">
+                                    <input type="text" placeholder="Model name (e.g., llama3:8b)"
+                                        [(ngModel)]="importModelName"
+                                        class="flex-1 px-3 py-2 bg-panel border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm border">
+                                    <button (click)="handleImportModel()" class="btn-primary text-sm">Import
+                                        Model</button>
+                                </div>
+                                }
+                            </div>
+                            }
+                            @if (importFiles().length === 0) {
+                            <div class="text-center text-secondary py-4">
+                                No .gguf files found. Place them in the import folder and click Scan.
+                            </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                }
+
+                <!-- Tab: Chat Settings -->
+                @if (activeTab() === 'chat' && settingsService.chatPreferences()) {
+                <div class="space-y-6 anime-fade-in">
+
+                    <!-- AI Provider Configuration -->
+                    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                        <h2 class="text-lg font-semibold mb-4">AI Provider</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Provider</label>
+                                <select [(ngModel)]="settingsService.chatPreferences()!.llm_provider"
+                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                    <option value="ollama">Ollama (Local)</option>
+                                    <option value="openai">OpenAI</option>
+                                    <option value="anthropic">Anthropic (Claude)</option>
+                                    <option value="lm_studio">LM Studio</option>
+                                </select>
+                            </div>
+                            @if (settingsService.chatPreferences()!.llm_provider === 'ollama' ||
+                            settingsService.chatPreferences()!.llm_provider === 'lm_studio') {
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Base URL (Optional)</label>
+                                <input type="text" [(ngModel)]="settingsService.chatPreferences()!.local_llm_base_url"
+                                    placeholder="http://localhost:11434"
+                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                            </div>
+                            }
+                            @if (settingsService.chatPreferences()!.llm_provider === 'openai') {
+                            <div>
+                                <label class="block text-sm font-medium mb-2">API Key</label>
+                                <input type="password" [(ngModel)]="settingsService.chatPreferences()!.openai_api_key"
+                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                            </div>
+                            }
+                            @if (settingsService.chatPreferences()!.llm_provider === 'anthropic') {
+                            <div>
+                                <label class="block text-sm font-medium mb-2">API Key</label>
+                                <input type="password"
+                                    [(ngModel)]="settingsService.chatPreferences()!.anthropic_api_key"
+                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                            </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Conversation Context -->
+                    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 class="text-lg font-semibold">Conversation Context</h2>
+                                <p class="text-xs text-secondary mt-1">Include previous messages in conversation</p>
+                            </div>
+                            <input type="checkbox"
+                                [(ngModel)]="settingsService.chatPreferences()!.use_conversation_context"
+                                class="toggle toggle-accent" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Context Window (0-20 messages)</label>
+                            <input type="range" min="0" max="20"
+                                [(ngModel)]="settingsService.chatPreferences()!.max_context_messages"
+                                class="range range-accent range-sm mb-2">
+                            <div class="flex justify-between text-xs text-secondary">
+                                <span>0</span>
+                                <span>10</span>
+                                <span>20</span>
+                            </div>
+                            <div class="text-center text-sm font-bold text-accent">{{
+                                settingsService.chatPreferences()!.max_context_messages }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Document Processing (RAG) -->
+                    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                        <h2 class="text-lg font-semibold mb-4">Document Processing (RAG)</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Whisper Model (Transcription)</label>
+                                <select [(ngModel)]="settingsService.chatPreferences()!.whisper_model"
+                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                    <option value="base">Base (Fast)</option>
+                                    <option value="small">Small (Recommended)</option>
+                                    <option value="medium">Medium (Accurate, GPU required)</option>
+                                    <option value="large-v3">Large v3 (Best, Slow)</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Chunk Size</label>
+                                    <input type="number" [(ngModel)]="settingsService.chatPreferences()!.chunk_size"
+                                        min="128" max="2048"
+                                        class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Chunk Overlap</label>
+                                    <input type="number" [(ngModel)]="settingsService.chatPreferences()!.chunk_overlap"
+                                        min="0" max="512"
+                                        class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Prompts -->
+                    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-lg font-semibold">System Prompts</h2>
+                            <button (click)="openPromptModal()" class="btn-primary text-sm flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 4v16m8-8H4" />
+                                </svg>
+                                New Prompt
+                            </button>
+                        </div>
+                        <div class="space-y-2">
+                            @for (prompt of settingsService.systemPrompts(); track prompt.id) {
+                            <div class="bg-input rounded-lg p-4">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="flex items-start gap-3 flex-1 min-w-0">
+                                        <input type="radio" name="prompt-select" [value]="prompt.id"
+                                            [checked]="settingsService.chatPreferences()!.selected_system_prompt_id === prompt.id"
+                                            (change)="settingsService.chatPreferences()!.selected_system_prompt_id = prompt.id"
+                                            class="radio radio-sm radio-accent mt-1">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <h3 class="text-sm font-semibold truncate">{{ prompt.title }}</h3>
+                                                @if (settingsService.chatPreferences()!.selected_system_prompt_id ===
+                                                prompt.id) {
+                                                <span class="badge badge-success text-xs">Active</span>
+                                                }
+                                                @if (prompt.is_default) {
+                                                <span
+                                                    class="px-2 py-0.5 bg-accent-subtle text-accent rounded text-xs">Default</span>
+                                                }
+                                            </div>
+                                            <p class="text-xs text-secondary line-clamp-2">
+                                                {{ prompt.content }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    @if (!prompt.is_default) {
+                                    <div class="flex gap-1">
+                                        <button (click)="openPromptModal(prompt)" class="btn-icon">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                        </button>
+                                        <button (click)="handleDeletePrompt(prompt.id)"
+                                            class="btn-icon text-error hover:bg-error hover:bg-opacity-10">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    }
+                                </div>
+                            </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Save Button -->
+                    <div class="flex justify-end">
+                        <button (click)="handleSaveChatPreferences()" class="btn-primary px-6">
+                            Save Settings
+                        </button>
+                    </div>
+                </div>
+                }
+
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Modal: New/Edit Prompt -->
+@if (isPromptModalOpen()) {
+<div class="modal modal-open">
+    <div class="modal-box bg-panel border border-divider rounded-2xl p-0 max-w-2xl">
+        <div class="p-4 sm:p-6 border-b border-divider">
+            <h3 class="text-lg font-semibold">{{ editingPromptId() ? 'Edit' : 'New' }} System Prompt</h3>
+        </div>
+        <div class="p-4 sm:p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-2">Prompt Name</label>
+                <input type="text" placeholder="e.g., Code Expert" [(ngModel)]="promptForm().title"
+                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2">System Prompt</label>
+                <textarea rows="6" placeholder="Enter the system prompt..." [(ngModel)]="promptForm().content"
+                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent resize-none"></textarea>
+            </div>
+        </div>
+        <div class="flex gap-2 p-4 sm:p-6 border-t border-divider">
+            <button (click)="closePromptModal()" class="flex-1 btn-secondary">
+                Cancel
+            </button>
+            <button (click)="handleSavePrompt()" class="flex-1 btn-primary">
+                Save Prompt
+            </button>
+        </div>
+    </div>
+    <div class="modal-backdrop" (click)="closePromptModal()"></div>
+</div>
+}

@@ -180,3 +180,17 @@ node_modules/
 
 # Unversioned folder
 unversioned/
+
+# ==========================
+# Frontend / Angular Specific
+# ==========================
+.angular/
+.sass-cache/
+connect.lock
+coverage/
+libpeerconnection.log
+npm-debug.log
+yarn-error.log
+testem.log
+typing_definitions/
+
