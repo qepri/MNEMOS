@@ -212,6 +212,37 @@ export class SettingsService {
     }
   }
 
+  async getOllamaStatus(): Promise<{ status: string; id?: string }> {
+    try {
+      return await firstValueFrom(
+        this.http.get<{ status: string; id?: string }>(ApiEndpoints.SETTINGS_OLLAMA_STATUS)
+      );
+    } catch (error) {
+      console.error('Failed to get Ollama status', error);
+      return { status: 'error' };
+    }
+  }
+
+  // Returns an observable for streaming progress
+  installOllamaService() {
+    return this.http.post(ApiEndpoints.SETTINGS_OLLAMA_INSTALL, {}, {
+      responseType: 'text',
+      observe: 'events',
+      reportProgress: true
+    });
+  }
+
+  async startOllamaService(): Promise<{ status: string; id?: string }> {
+    try {
+      return await firstValueFrom(
+        this.http.post<{ status: string; id?: string }>(ApiEndpoints.SETTINGS_OLLAMA_START, {})
+      );
+    } catch (error) {
+      console.error('Failed to start Ollama service', error);
+      throw error;
+    }
+  }
+
   async getPullStatus(taskId: string): Promise<PullStatusResponse> {
     try {
       return await firstValueFrom(
@@ -219,6 +250,28 @@ export class SettingsService {
       );
     } catch (error) {
       console.error('Failed to get pull status', error);
+      throw error;
+    }
+  }
+
+  async getActivePulls(): Promise<any[]> {
+    try {
+      return await firstValueFrom(
+        this.http.get<any[]>(ApiEndpoints.SETTINGS_PULL_ACTIVE)
+      );
+    } catch (error) {
+      console.error('Failed to get active pulls', error);
+      return [];
+    }
+  }
+
+  async deletePull(taskId: string): Promise<void> {
+    try {
+      await firstValueFrom(
+        this.http.delete(ApiEndpoints.SETTINGS_PULL_DELETE(taskId))
+      );
+    } catch (error) {
+      console.error('Failed to delete pull task', error);
       throw error;
     }
   }

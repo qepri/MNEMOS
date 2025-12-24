@@ -25,6 +25,7 @@ class UserPreferences(db.Model):
     openai_api_key = db.Column(db.String(255), nullable=True)
     anthropic_api_key = db.Column(db.String(255), nullable=True)
     groq_api_key = db.Column(db.String(255), nullable=True)
+    custom_api_key = db.Column(db.String(255), nullable=True)
     transcription_provider = db.Column(db.String(50), default='local', nullable=False)
     local_llm_base_url = db.Column(db.String(255), default="http://host.docker.internal:1234/v1", nullable=True)
 
@@ -45,6 +46,7 @@ class UserPreferences(db.Model):
             'openai_api_key': self.openai_api_key,
             'anthropic_api_key': self.anthropic_api_key,
             "groq_api_key": self.groq_api_key,
+            "custom_api_key": self.custom_api_key,
             "transcription_provider": self.transcription_provider,
             'local_llm_base_url': self.local_llm_base_url,
             'created_at': self.created_at.isoformat(),

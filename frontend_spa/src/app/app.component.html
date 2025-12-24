@@ -89,12 +89,21 @@
             @if (activeTab() === 'chats') {
             <div class="text-xs font-medium text-secondary mb-2 px-2">Conversations</div>
             @for (conv of conversationsService.conversations(); track conv.id) {
-            <button (click)="handleSelectConversation(conv.id); isSidebarOpen.set(false)"
-                class="w-full text-left px-3 py-2 rounded-lg hover:bg-hover transition-colors group"
-                [class.bg-accent-subtle]="chatService.currentConversationId() === conv.id">
-                <div class="text-sm text-primary truncate group-hover:text-accent">{{ conv.title }}</div>
-                <div class="text-xs text-secondary mt-0.5">{{ conv.updated_at | date:'short' }}</div>
-            </button>
+            <div class="group relative">
+                <button (click)="handleSelectConversation(conv.id); isSidebarOpen.set(false)"
+                    class="w-full text-left px-3 py-2 rounded-lg hover:bg-hover transition-colors pr-8"
+                    [class.bg-accent-subtle]="chatService.currentConversationId() === conv.id">
+                    <div class="text-sm text-primary truncate group-hover:text-accent">{{ conv.title }}</div>
+                    <div class="text-xs text-secondary mt-0.5">{{ conv.updated_at | date:'short' }}</div>
+                </button>
+                <button (click)="handleDeleteConversation(conv.id, $event)"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-secondary hover:text-error hover:bg-white/10 rounded-md opacity-0 group-hover:opacity-100 transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
+            </div>
             }
             @if (conversationsService.conversations().length === 0) {
             <div class="px-3 py-4 text-center text-sm text-secondary">
@@ -112,24 +121,34 @@
             </div>
             <div class="space-y-2">
                 @for (doc of documentsService.documents(); track doc.id) {
-                <label class="flex items-start gap-2 p-2 rounded-lg hover:bg-hover cursor-pointer transition-colors">
-                    <input type="checkbox" [checked]="doc.selected" (change)="documentsService.toggleDocument(doc.id)"
-                        class="checkbox checkbox-xs checkbox-accent mt-0.5">
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-1 mb-1">
-                            <svg class="w-3 h-3 text-error flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                <path
-                                    d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
-                            </svg>
-                            <span class="text-xs text-primary font-medium truncate">{{ doc.original_filename
-                                }}</span>
+                <div class="group flex items-center gap-2 p-2 rounded-lg hover:bg-hover transition-colors">
+                    <label class="flex-1 flex items-start gap-2 cursor-pointer min-w-0">
+                        <input type="checkbox" [checked]="doc.selected"
+                            (change)="documentsService.toggleDocument(doc.id)"
+                            class="checkbox checkbox-xs checkbox-accent mt-0.5">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-1 mb-1">
+                                <svg class="w-3 h-3 text-error flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path
+                                        d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
+                                </svg>
+                                <span class="text-xs text-primary font-medium truncate">{{ doc.original_filename
+                                    }}</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs text-secondary">
+                                <span class="badge badge-success text-xs px-1 py-0"
+                                    [class.badge-success]="doc.status === 'completed'">{{ doc.status }}</span>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-2 text-xs text-secondary">
-                            <span class="badge badge-success text-xs px-1 py-0"
-                                [class.badge-success]="doc.status === 'completed'">{{ doc.status }}</span>
-                        </div>
-                    </div>
-                </label>
+                    </label>
+                    <button (click)="handleDeleteDocument(doc.id, $event)"
+                        class="p-1.5 text-secondary hover:text-error hover:bg-white/10 rounded-md opacity-0 group-hover:opacity-100 transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                </div>
                 }
             </div>
             <!-- Add Document Button -->
@@ -286,7 +305,7 @@
             <!-- YouTube Tab -->
             @if (uploadTab() === 'youtube') {
             <div>
-                <input type="text" placeholder="https://youtube.com/watch?v=..."
+                <input type="text" [(ngModel)]="youtubeUrl" placeholder="https://youtube.com/watch?v=..."
                     class="w-full px-3 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent mb-3">
                 <p class="text-xs text-secondary">Enter a YouTube URL to transcribe and analyze the video</p>
             </div>
@@ -309,7 +328,8 @@
                 class="flex-1 px-4 py-2 text-sm text-secondary hover:bg-hover rounded-lg transition-colors">
                 Cancel
             </button>
-            <button (click)="startUpload()" [disabled]="isUploading() || (uploadTab() === 'file' && !selectedFile())"
+            <button (click)="startUpload()"
+                [disabled]="isUploading() || (uploadTab() === 'file' && !selectedFile()) || (uploadTab() === 'youtube' && !youtubeUrl())"
                 class="flex-1 px-4 py-2 text-sm bg-accent text-white rounded-lg hover:bg-accent-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 {{ isUploading() ? 'Uploading...' : 'Upload' }}
             </button>

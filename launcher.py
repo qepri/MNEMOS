@@ -122,6 +122,10 @@ def start_app():
         compose_cmd = "podman-compose"
     
     cmd = f"{compose_cmd} -f {COMPOSE_FILE} up -d"
+    
+    # Set HOST_PROJECT_PATH for volume mounting in sibling containers
+    os.environ["HOST_PROJECT_PATH"] = os.getcwd()
+    
     code, out, err = run_command(cmd)
     
     if code != 0:

@@ -1,6 +1,7 @@
 import { Component, signal, effect, inject, OnInit } from '@angular/core';
 import { RouterOutlet, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ModalService } from './services/modal.service';
 import { DocumentsService } from './services/documents.service';
 import { ConversationsService } from './services/conversations.service';
@@ -9,7 +10,7 @@ import { ChatService } from './services/chat.service';
 @Component({
     selector: 'app-root',
     standalone: true,
-    imports: [RouterOutlet, RouterLink, CommonModule],
+    imports: [RouterOutlet, RouterLink, CommonModule, FormsModule],
     templateUrl: './app.component.html',
     styleUrl: './app.component.css'
 })
@@ -30,6 +31,7 @@ export class AppComponent implements OnInit {
     uploadProgress = signal<number>(0);
     isUploading = signal<boolean>(false);
     selectedFile = signal<File | null>(null);
+    youtubeUrl = signal<string>('');
 
     constructor() {
         // Load saved theme
@@ -85,6 +87,24 @@ export class AppComponent implements OnInit {
         this.documentsService.clearSelection();
     }
 
+    async handleDeleteConversation(id: string, event: Event) {
+        event.stopPropagation();
+        if (!confirm('Are you sure you want to delete this conversation?')) return;
+
+        await this.conversationsService.deleteConversation(id);
+
+        if (this.chatService.currentConversationId() === id) {
+            this.handleNewChat();
+        }
+    }
+
+    async handleDeleteDocument(id: string, event: Event) {
+        event.stopPropagation();
+        if (!confirm('Are you sure you want to delete this document?')) return;
+
+        await this.documentsService.removeDocument(id);
+    }
+
     // Upload Modal Methods
     switchUploadTab(tab: 'file' | 'youtube') {
         this.uploadTab.set(tab);
@@ -113,20 +133,20 @@ export class AppComponent implements OnInit {
 
     async startUpload() {
         if (!this.selectedFile() && this.uploadTab() === 'file') return;
-
-        if (this.uploadTab() === 'youtube') {
-            // TODO: Handle YouTube upload via service
-            return;
-        }
-
-        const file = this.selectedFile();
-        if (!file) return;
+        if (!this.youtubeUrl() && this.uploadTab() === 'youtube') return;
 
         this.isUploading.set(true);
         this.uploadProgress.set(10); // Start progress
 
         try {
-            const success = await this.documentsService.uploadDocument(file);
+            let success = false;
+
+            if (this.uploadTab() === 'youtube') {
+                success = await this.documentsService.uploadYouTubeUrl(this.youtubeUrl());
+            } else if (this.selectedFile()) {
+                success = await this.documentsService.uploadDocument(this.selectedFile()!);
+            }
+
             if (success) {
                 this.uploadProgress.set(100);
                 setTimeout(() => {
@@ -134,6 +154,7 @@ export class AppComponent implements OnInit {
                     this.modalService.closeUpload();
                     this.uploadProgress.set(0);
                     this.selectedFile.set(null);
+                    this.youtubeUrl.set(''); // Reset URL
                 }, 500);
             } else {
                 this.isUploading.set(false);

@@ -85,7 +85,8 @@
             <!-- Message List -->
             <div class="space-y-6">
                 @for (msg of chatService.messages(); track msg.id) {
-                <app-message-bubble [message]="msg"></app-message-bubble>
+                <app-message-bubble [message]="msg" (onEdit)="handleEditMessage(msg, $event)">
+                </app-message-bubble>
                 }
             </div>
 
@@ -138,9 +139,9 @@
                 <!-- Bottom Bar -->
                 <div class="flex items-center justify-between px-3 sm:px-4 pb-3 pt-1 border-t border-divider">
                     <!-- Model Selector -->
-                    <button (click)="modalService.openModelSelection()"
+                    <button (click)="isLlmModalOpen.set(true)"
                         class="flex items-center gap-1.5 px-2 py-1 text-xs text-secondary hover:text-primary hover:bg-hover rounded-md transition-colors group">
-                        <div class="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                        <span class="text-lg">🤖</span>
                         <span>{{ currentModel() }}</span>
                         <svg class="w-3 h-3 opacity-50 group-hover:opacity-100 transition-opacity" fill="none"
                             stroke="currentColor" viewBox="0 0 24 24">
@@ -158,3 +159,5 @@
     </div>
 
 </div>
+
+<app-llm-selection-modal [(isVisible)]="isLlmModalOpen" />

@@ -343,7 +343,9 @@ import json
 from celery.result import AsyncResult
 
 # KISS Persistence for Active Downloads
-DOWNLOADS_FILE = os.path.join(os.getcwd(), 'active_downloads.json')
+# KISS Persistence for Active Downloads
+# Save in 'app' directory which is mounted to host, ensuring persistence across restarts
+DOWNLOADS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'active_downloads.json')
 
 def load_downloads_file():
     if not os.path.exists(DOWNLOADS_FILE):
@@ -457,38 +459,59 @@ def get_active_pulls():
             task_result = AsyncResult(task_id, app=celery_app)
             status = task_result.status
             
-            # If it's done (SUCCESS or FAILURE), mark for removal (or keep for one last status check if needed)
-            # Actually, let's keep them in the list so the UI can see they are done, 
-            # but maybe we should rely on the UI polling to eventually remove them?
-            # 
-            # Better strategy for KISS: 
-            # Return current status. If SUCCESS/FAILURE, the UI will see it and stop polling.
-            # We can remove it from our file if it is SUCCESS/FAILURE to keep the file clean,
-            # BUT if we remove it immediately, the UI might miss the final "Success" message on reload.
-            #
-            # However, the user asked for "active downloads always are displayed". 
-            # If it's finished, it's not active.
-            # So we can remove it if it is done.
+            task_info = info.copy()
+            task_info['status'] = status
             
+            if status == 'SUCCESS':
+                task_info['result'] = task_result.result
+                task_info['progress'] = 100
+                
+                # Check for nested error in result (Ollama sometimes returns success with error json)
+                if task_result.result and 'last_progress' in task_result.result:
+                    try:
+                        lp = json.loads(task_result.result['last_progress'])
+                        if 'error' in lp:
+                            task_info['status'] = 'FAILURE'
+                            task_info['error'] = lp['error']
+                    except:
+                        pass
+                        
+            elif status == 'FAILURE':
+                task_info['error'] = str(task_result.info)
+            elif status == 'PROGRESS':
+                # Populate progress info
+                if task_result.info:
+                    task_info.update(task_result.info)
+                    
+                    # Also parse progress line for error
+                    if 'progress_line' in task_result.info:
+                        try:
+                            pl = json.loads(task_result.info['progress_line'])
+                            if 'error' in pl:
+                                task_info['status'] = 'FAILURE'
+                                task_info['error'] = pl['error']
+                        except:
+                            pass
+
+            active_list.append(task_info)
+
+            # Cleanup logic: Remove if finished AND older than 1 hour
+            # (Users can also manually delete via DELETE /pull/<id>)
             if status in ['SUCCESS', 'FAILURE', 'REVOKED']:
-                # It's done. But if we remove it now, a user reloading the page won't see "Success".
-                # They will just see nothing. which is probably fine for "Active downloads".
-                # If they want to see "History", that's a different feature.
-                ids_to_remove.append(task_id)
-            else:
-                # It is still running or pending
-                active_list.append({
-                    'task_id': task_id,
-                    'model_name': info.get('model_name', 'Unknown'),
-                    'status': status,
-                    'started_at': info.get('started_at')
-                })
+                started_at_str = info.get('started_at')
+                if started_at_str:
+                    try:
+                        started_at = datetime.fromisoformat(started_at_str)
+                        if datetime.utcnow() - started_at > timedelta(hours=1):
+                            ids_to_remove.append(task_id)
+                    except:
+                        pass 
         except Exception as e:
-            # If we allow this to fail, we might lose track. 
-            # Assume it's a zombie if we can't check it?
             logger.error(f"Error checking task {task_id}: {e}")
+            # If we can't check it, maybe it's stale? Keep it for now.
+            active_list.append(info)
     
-    # Clean up finished tasks
+    # Clean up old finished tasks
     if ids_to_remove:
         for tid in ids_to_remove:
              if tid in active_map:
@@ -496,6 +519,21 @@ def get_active_pulls():
         save_downloads_file(active_map)
 
     return jsonify({"active_tasks": active_list})
+
+
+@bp.route('/pull/<task_id>', methods=['DELETE'])
+def delete_pull_task(task_id):
+    """Cancel/Delete a download task."""
+    try:
+        # 1. Remove from our persistent list
+        remove_active_download(task_id)
+        
+        # 2. Revoke the celery task (stop it if running)
+        celery_app.control.revoke(task_id, terminate=True)
+        
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 import os
 import psutil
 import json
@@ -567,11 +605,21 @@ def import_model():
 @bp.route('/current-model', methods=['GET'])
 def get_current_model():
     """Get the currently selected LLM model."""
-    current = model_manager.get_model()
     
-    # Get provider from preferences
+    # KISS: Read directly from DB as source of truth
     prefs = db.session.query(UserPreferences).first()
+    
+    db_model = prefs.selected_llm_model if prefs else None
     provider = prefs.llm_provider if prefs and prefs.llm_provider else settings.LLM_PROVIDER
+    
+    # Sync in-memory manager if DB has a value (ensures LLMClient gets it too)
+    if db_model:
+        if model_manager.get_model() != db_model:
+             # We set the private var directly to avoid triggering another DB write loop
+             from app.services.model_manager import ModelManager
+             ModelManager._current_model = db_model
+    
+    current = db_model or model_manager.get_model()
     
     # Fallback to default if not set
     if not current:
@@ -599,6 +647,22 @@ def set_current_model():
         return jsonify({"error": "Model name required"}), 400
 
     model_manager.set_model(model_name)
+    
+    # Explicitly persist to DB to ensure it survives reload
+    # (ModelManager tries to do this but might fail if context is tricky, so we double down)
+    try:
+        prefs = db.session.query(UserPreferences).first()
+        if not prefs:
+            prefs = UserPreferences()
+            db.session.add(prefs)
+        
+        prefs.selected_llm_model = model_name
+        # Also ensure provider matches if we know it? 
+        # For now just save model.
+        db.session.commit()
+    except Exception as e:
+        print(f"Error persisting model selection: {e}")
+        
     return jsonify({
         "success": True,
         "model": model_name
@@ -634,6 +698,7 @@ def get_chat_settings():
         "openai_api_key": prefs.openai_api_key or "",
         "anthropic_api_key": prefs.anthropic_api_key or "",
         "groq_api_key": prefs.groq_api_key or "",
+        "custom_api_key": prefs.custom_api_key or "",
         "local_llm_base_url": prefs.local_llm_base_url or "http://host.docker.internal:1234/v1",
         "transcription_provider": getattr(prefs, 'transcription_provider', 'local'),
         "selected_llm_model": prefs.selected_llm_model or ""
@@ -694,12 +759,25 @@ def save_chat_settings():
         prefs.local_llm_base_url = data['local_llm_base_url']
     if 'groq_api_key' in data:
         prefs.groq_api_key = data['groq_api_key']
+    if 'custom_api_key' in data:
+        prefs.custom_api_key = data['custom_api_key']
     
     if 'selected_llm_model' in data:
-        prefs.selected_llm_model = data['selected_llm_model']
-        # Also update the ModelManager singleton to reflect immediate change
-        from app.services.model_manager import model_manager
-        model_manager.set_model(data['selected_llm_model'])
+        new_model = data['selected_llm_model']
+        
+        # Prevent overwriting properly set model with empty string if using Ollama
+        # (Frontend might send empty string because the input field is hidden)
+        current_provider = data.get('llm_provider', prefs.llm_provider)
+        should_update = True
+        
+        if current_provider == 'ollama' and not new_model:
+            should_update = False
+            
+        if should_update:
+            prefs.selected_llm_model = new_model
+            # Also update the ModelManager singleton to reflect immediate change
+            from app.services.model_manager import model_manager
+            model_manager.set_model(new_model)
 
     prefs.updated_at = datetime.utcnow()
     db.session.commit()
@@ -757,6 +835,7 @@ def update_system_prompt(prompt_id):
     if not prompt:
         return jsonify({"error": "Prompt not found"}), 404
 
+
     if not prompt.is_editable:
         return jsonify({"error": "Cannot edit default prompt"}), 403
 
@@ -789,3 +868,5 @@ def delete_system_prompt(prompt_id):
     db.session.commit()
 
     return jsonify({"success": True})
+
+

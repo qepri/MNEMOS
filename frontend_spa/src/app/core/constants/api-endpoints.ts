@@ -23,6 +23,12 @@ export const ApiEndpoints = {
   SETTINGS_LIBRARY_SEARCH: '/api/settings/library/search',
   SETTINGS_PULL: '/api/settings/pull',
   SETTINGS_PULL_STATUS: (taskId: string) => `/api/settings/pull/status/${taskId}`,
+  SETTINGS_PULL_DELETE: (taskId: string) => `/api/settings/pull/${taskId}`,
   SETTINGS_PULL_ACTIVE: '/api/settings/pull/active',
   SETTINGS_HARDWARE: '/api/settings/hardware',
+
+  // Ollama Service
+  SETTINGS_OLLAMA_STATUS: '/api/settings/ollama/status',
+  SETTINGS_OLLAMA_INSTALL: '/api/settings/ollama/install',
+  SETTINGS_OLLAMA_START: '/api/settings/ollama/start',
 } as const;

@@ -6,7 +6,8 @@ import { DocumentsService } from '@services/documents.service';
 import { ConversationsService } from '@services/conversations.service';
 import { SettingsService } from '@services/settings.service';
 import { ModalService } from '../../../services/modal.service';
-import { MessageBubbleComponent } from '@components/chat/message-bubble.component';
+import { MessageBubbleComponent } from '../../../components/chat/message-bubble.component';
+import { LlmSelectionModalComponent } from '../../../components/modals';
 
 @Component({
   selector: 'app-chat-page',
@@ -14,7 +15,8 @@ import { MessageBubbleComponent } from '@components/chat/message-bubble.componen
   imports: [
     CommonModule,
     FormsModule,
-    MessageBubbleComponent
+    MessageBubbleComponent,
+    LlmSelectionModalComponent
   ],
   templateUrl: './chat-page.component.html',
   styleUrl: './chat-page.component.css'
@@ -31,6 +33,7 @@ export class ChatPage {
   activeTab = signal<'chats' | 'documents'>('chats');
   conversationSearch = signal<string>('');
   theme = signal<'dark' | 'light'>('dark');
+  isLlmModalOpen = signal<boolean>(false);
 
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef;
 
@@ -51,11 +54,17 @@ export class ChatPage {
   });
 
   currentModel = computed(() => {
-    const model = this.settingsService.currentModel();
-    const provider = this.settingsService.currentProvider();
+    const prefs = this.settingsService.chatPreferences();
+    if (!prefs) return '...';
 
-    if (!model) return '...';
-    return provider ? `${provider} / ${model}` : model;
+    const provider = prefs.llm_provider || 'ollama';
+
+    if (provider === 'ollama') {
+      const model = this.settingsService.currentModel();
+      return `ollama / ${model || '...'}`;
+    }
+
+    return `${provider} / ${prefs.selected_llm_model || '...'}`;
   });
 
   chatTitle = computed(() => {
@@ -138,6 +147,23 @@ export class ChatPage {
   handleNewChat() {
     this.chatService.clearMessages();
     this.chatService.setConversationId(null);
+  }
+
+  // Edit Message Handler
+  handleEditMessage(originalMessage: any, newContent: string) {
+    if (this.chatService.isLoading()) return;
+
+    const messages = this.chatService.messages();
+    const index = messages.findIndex(m => m.id === originalMessage.id);
+
+    if (index !== -1) {
+      // 1. Slice history: keep everything BEFORE this message
+      const keptMessages = messages.slice(0, index);
+      this.chatService.loadMessages(keptMessages);
+
+      // 2. Resend as if it were a new message
+      this.handleSendMessage(newContent);
+    }
   }
 
   // Document Actions
