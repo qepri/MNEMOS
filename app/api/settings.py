@@ -569,19 +569,23 @@ def get_current_model():
     """Get the currently selected LLM model."""
     current = model_manager.get_model()
     
+    # Get provider from preferences
+    prefs = db.session.query(UserPreferences).first()
+    provider = prefs.llm_provider if prefs and prefs.llm_provider else settings.LLM_PROVIDER
+    
     # Fallback to default if not set
     if not current:
          # Try global settings default
-         if settings.LLM_PROVIDER == 'ollama':
+         if provider == 'ollama':
              current = settings.LOCAL_LLM_MODEL
-         elif settings.LLM_PROVIDER == 'openai':
+         elif provider == 'openai':
              current = settings.OPENAI_MODEL
-         elif settings.LLM_PROVIDER == 'anthropic':
+         elif provider == 'anthropic':
              current = settings.ANTHROPIC_MODEL
              
     return jsonify({
         "model": current,
-        "provider": settings.LLM_PROVIDER,
+        "provider": provider,
         "has_model": current is not None
     })
 

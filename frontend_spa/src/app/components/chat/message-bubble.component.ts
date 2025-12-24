@@ -26,8 +26,8 @@ import { SourceModalComponent } from '@shared/components/source-modal/source-mod
         } @else {
         <div [innerHTML]="sanitizedContent" (click)="handleContentClick($event)"></div>
 
-        @if (message().sources && message().sources!.length > 0) {
-          <div class="mt-4 pt-3 border-t border-divider">
+        @if (message().sources && message().sources!.length > 0 && (!message().status || message().status === 'completed')) {
+          <div class="mt-4 pt-3 border-t border-divider" [class.anime-fade-in]="message().status === 'completed'">
             <p class="text-xs font-medium text-secondary mb-2">
               Sources ({{message().sources!.length}})
             </p>

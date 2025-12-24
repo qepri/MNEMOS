@@ -38,5 +38,6 @@ class Message(db.Model):
             'conversation_id': str(self.conversation_id),
             'role': self.role,
             'content': self.content,
+            'sources': self.sources,
             'created_at': self.created_at.isoformat()
         }

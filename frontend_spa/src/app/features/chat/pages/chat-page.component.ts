@@ -51,7 +51,11 @@ export class ChatPage {
   });
 
   currentModel = computed(() => {
-    return this.settingsService.currentModel() || '...';
+    const model = this.settingsService.currentModel();
+    const provider = this.settingsService.currentProvider();
+
+    if (!model) return '...';
+    return provider ? `${provider} / ${model}` : model;
   });
 
   chatTitle = computed(() => {

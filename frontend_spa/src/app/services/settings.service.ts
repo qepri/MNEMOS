@@ -23,6 +23,7 @@ export class SettingsService {
   // State
   models = signal<ModelsResponse | null>(null);
   currentModel = signal<string | null>(null);
+  currentProvider = signal<string | null>(null);
   chatPreferences = signal<ChatPreferences | null>(null);
   systemPrompts = signal<SystemPrompt[]>([]);
   isLoading = signal<boolean>(false);
@@ -48,6 +49,7 @@ export class SettingsService {
         this.http.get<CurrentModelResponse>(ApiEndpoints.SETTINGS_CURRENT_MODEL)
       );
       this.currentModel.set(response.model);
+      this.currentProvider.set(response.provider);
     } catch (error) {
       console.error('Failed to load current model', error);
     }

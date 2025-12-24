@@ -40,7 +40,8 @@ export class AppComponent implements OnInit {
 
         // Apply theme effect
         effect(() => {
-            document.documentElement.setAttribute('data-theme', this.theme());
+            const themeName = this.theme() === 'dark' ? 'mnemos-dark' : 'mnemos-light';
+            document.documentElement.setAttribute('data-theme', themeName);
             localStorage.setItem('theme', this.theme());
         });
     }

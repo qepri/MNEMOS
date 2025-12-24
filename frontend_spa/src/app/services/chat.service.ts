@@ -63,15 +63,16 @@ export class ChatService {
       role: 'assistant',
       content: '', // Start empty
       sources,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      status: 'generating'
     };
 
     // Add empty message first
     this.messages.update(msgs => [...msgs, assistantMessage]);
 
     // Simulate streaming
-    const chunkSize = 10; // Faster chunks
-    const delay = 5; // Faster delay
+    const chunkSize = 15; // Slightly faster chunks for "smoother" feel
+    const delay = 5; // Low delay
 
     for (let i = 0; i < content.length; i += chunkSize) {
       const chunk = content.slice(i, i + chunkSize);
@@ -86,6 +87,15 @@ export class ChatService {
 
       await new Promise(resolve => setTimeout(resolve, delay));
     }
+
+    // Mark as completed to reveal sources
+    this.messages.update(msgs =>
+      msgs.map(msg =>
+        msg.id === id
+          ? { ...msg, status: 'completed' }
+          : msg
+      )
+    );
   }
 
   clearMessages() {

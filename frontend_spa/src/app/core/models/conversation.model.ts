@@ -12,6 +12,7 @@ export interface Message {
   content: string;
   sources?: MessageSource[];
   created_at: string;
+  status?: 'generating' | 'completed' | 'error';
 }
 
 export interface MessageSource {
