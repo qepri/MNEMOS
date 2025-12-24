@@ -144,26 +144,35 @@ Descarga y procesamiento de videos de YouTube:
 ## Instalación y Configuración
 
 ### Requisitos Previos
-- Windows 10/11 (para el lanzador automático)
-- Docker o Podman Desktop
-- GPU con soporte NVIDIA (opcional, para aceleración local)
-- 8GB+ RAM recomendados
+- **Sistema Operativo**: Windows 10/11
+- **Hardware**:
+    - CPU: Compatible con versiones modernas de AVX
+    - GPU (Opcional): NVIDIA con soporte CUDA para aceleración
+    - RAM: 8GB mínimo (16GB recomendado)
+- **Software**:
+    - Ninguno pre-instalado (el instalador gestionará Podman/Docker)
+    - Opcional: Docker Desktop ya instalado
 
-### Instalación Rápida (Windows)
-Para una instalación automatizada que configura WSL2 y los contenedores:
+### Instalación Rápida "One-Click"
+Hemos simplificado el proceso al máximo. Simplemente:
 
-```bash
-python launcher.py
-```
+1. Ejecuta el archivo `installer.bat` (doble clic).
+2. El script detectará si tienes Docker o Podman. **Si no tienes ninguno, instalará Podman automáticamente.**
+3. Detectará automáticamente tu tarjeta gráfica y te preguntará si quieres usarla.
+4. Listo. La aplicación se iniciará.
 
-Este script verificará los requisitos, instalará Podman si es necesario y desplegará la aplicación.
+El instalador se encarga de todo:
+- Descarga e instalación de Podman (si es necesario)
+- Configuración de WSL2 (si es necesario)
+- Detección de hardware (CPU vs GPU)
+- Despliegue de contenedores
 
-### Configuración Manual del Entorno
+### Configuración Manual (Docker Compose)
 
 1. Clonar el repositorio:
 ```bash
 git clone <repository-url>
-cd rag_app
+cd mnemos
 ```
 
 2. Copiar y configurar variables de entorno:
