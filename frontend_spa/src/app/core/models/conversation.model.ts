@@ -16,8 +16,10 @@ export interface Message {
 
 export interface MessageSource {
   document: string;
-  chunk: string;
+  text: string;
   score: number;
+  location?: string;
+  metadata?: any;
 }
 
 export interface ConversationDetail {

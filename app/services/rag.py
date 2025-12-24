@@ -88,7 +88,6 @@ class RAGService:
                 location = f"[Page {chunk.page_number}]"
 
 
-
             # Format metadata if available
             meta_str = ""
             if doc.metadata_:

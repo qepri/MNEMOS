@@ -7,7 +7,7 @@ import { Document } from '@core/models';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="flex items-center gap-3 p-3 hover:bg-base-200 rounded-lg transition-colors group">
+    <div class="flex items-center gap-3 p-3 hover:bg-hover rounded-lg transition-colors group">
       <input
         type="checkbox"
         [checked]="document().selected || false"
@@ -44,7 +44,14 @@ import { Document } from '@core/models';
         </svg>
       </button>
     </div>
-  `
+  `,
+  styles: [`
+    :host { display: block; }
+    .group { transition: all 0.2s; }
+    .group:hover { background-color: var(--color-hover); }
+    input:checked ~ div { opacity: 1; }
+    input:not(:checked) ~ div { opacity: 0.7; }
+  `]
 })
 export class DocumentItemComponent {
   document = input.required<Document>();

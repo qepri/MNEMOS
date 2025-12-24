@@ -36,8 +36,13 @@ import { SourceModalComponent } from '@shared/components/source-modal/source-mod
                 <div
                   class="text-xs bg-panel p-3 rounded-lg border border-divider cursor-pointer hover:bg-hover transition-colors"
                   (click)="openSourceModal(source)">
-                  <div class="font-semibold text-primary mb-1">{{ source.document }}</div>
-                  <div class="text-secondary line-clamp-2">{{ source.chunk }}</div>
+                  <div class="font-semibold text-primary mb-1 flex items-center justify-between">
+                    <span class="truncate pr-2">{{ source.document }}</span>
+                    @if (source.location) {
+                       <span class="opacity-70 font-normal shrink-0">{{ source.location }}</span>
+                    }
+                  </div>
+                  <div class="text-secondary line-clamp-2">{{ source.text }}</div>
                   <div class="text-secondary opacity-70 mt-1">Score: {{ formatScore(source.score) }}</div>
                 </div>
               }
@@ -61,7 +66,56 @@ import { SourceModalComponent } from '@shared/components/source-modal/source-mod
   (close)="closeSourceModal()">
 </app-source-modal>
   `,
-  styles: []
+  styles: [`
+    .message-user { max-width: 70%; margin-left: auto; }
+    .message-assistant { max-width: 100%; }
+    .message-bubble { border-radius: 16px; padding: 12px 16px; }
+    .message-user .message-bubble { background-color: var(--color-accent); color: var(--color-accent-content); }
+    .message-assistant .message-content { color: var(--color-base-content); line-height: 1.7; }
+
+    /* Deep selectors for dynamic content */
+    :host ::ng-deep .message-content * { color: inherit; }
+    
+    :host ::ng-deep .message-content pre {
+      background-color: var(--color-panel);
+      border: 1px solid var(--color-divider);
+      border-radius: 8px;
+      padding: 12px;
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+
+    :host ::ng-deep .message-content code {
+      background-color: var(--color-input);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.875em;
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    :host ::ng-deep .message-content pre code { background: none; padding: 0; }
+
+    :host ::ng-deep .message-content ul,
+    :host ::ng-deep .message-content ol { margin-left: 20px; margin-top: 8px; margin-bottom: 8px; }
+
+    :host ::ng-deep .message-content li { margin-bottom: 4px; }
+
+    /* Citations */
+    :host ::ng-deep .citation {
+      color: var(--color-accent);
+      cursor: pointer;
+      font-weight: 500;
+      text-decoration: underline;
+      text-decoration-style: dotted;
+      transition: all 0.2s;
+    }
+
+    :host ::ng-deep .citation:hover {
+      color: var(--color-accent-dark);
+      background-color: var(--color-accent-subtle);
+      border-radius: 4px;
+    }
+  `]
 })
 export class MessageBubbleComponent {
   private sanitizer = inject(DomSanitizer);

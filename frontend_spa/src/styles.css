@@ -21,21 +21,20 @@
 
 [data-theme="mnemos-dark"],
 :root {
-    /* DaisyUI-style variables */
-    --color-base-100: #0d0d0d;
-    --color-base-200: #171717;
-    --color-base-300: #1f1f1f;
-    --color-base-content: #ffffff;
-
-    /* Legacy variables */
-    --color-primary: #ffffff;
-    --color-secondary: #a0a0a0;
+    /* Color Palette */
     --color-base: #0d0d0d;
+    --color-base-subtle: #171717;
+    /* was base-200/sidebar */
     --color-sidebar: #171717;
     --color-panel: #1f1f1f;
+    /* was base-300 */
     --color-input: #2a2a2a;
     --color-hover: #2d2d2d;
     --color-divider: #2d2d2d;
+
+    --color-base-content: #ffffff;
+    --color-primary: #ffffff;
+    --color-secondary: #a0a0a0;
 
     --color-accent: #3b82f6;
     --color-accent-content: #ffffff;
@@ -54,21 +53,18 @@
 }
 
 [data-theme="mnemos-light"] {
-    /* DaisyUI-style variables */
-    --color-base-100: #ffffff;
-    --color-base-200: #f7f7f8;
-    --color-base-300: #f4f4f4;
-    --color-base-content: #000000;
-
-    /* Legacy variables */
-    --color-primary: #000000;
-    --color-secondary: #4a4a4a;
+    /* Color Palette */
     --color-base: #ffffff;
+    --color-base-subtle: #f7f7f8;
     --color-sidebar: #f7f7f8;
     --color-panel: #ffffff;
     --color-input: #f4f4f4;
     --color-hover: #ececed;
     --color-divider: #e5e5e5;
+
+    --color-base-content: #000000;
+    --color-primary: #000000;
+    --color-secondary: #4a4a4a;
 
     --color-accent: #3b82f6;
     --color-accent-content: #ffffff;
@@ -120,80 +116,16 @@ textarea,
 select,
 button {
     font-family: inherit;
-    color: var(--color-primary);
+    color: var(--color-base-content);
+}
+
+textarea {
+    color: var(--color-base-content) !important;
 }
 
 ::placeholder {
     color: var(--color-secondary);
     opacity: 1;
-}
-
-/* ============================================
-   UTILITY CLASSES
-   ============================================ */
-
-.bg-base {
-    background-color: var(--color-base);
-}
-
-.bg-base-subtle {
-    background-color: var(--color-base-subtle);
-}
-
-.bg-sidebar {
-    background-color: var(--color-sidebar);
-}
-
-.bg-panel {
-    background-color: var(--color-panel);
-}
-
-.bg-input {
-    background-color: var(--color-input);
-}
-
-.bg-hover {
-    background-color: var(--color-hover);
-}
-
-.text-primary {
-    color: var(--color-primary);
-}
-
-.text-secondary {
-    color: var(--color-secondary);
-}
-
-.border-divider {
-    border-color: var(--color-divider);
-}
-
-.bg-accent {
-    background-color: var(--color-accent);
-}
-
-.bg-accent-dark {
-    background-color: var(--color-accent-dark);
-}
-
-.bg-accent-subtle {
-    background-color: var(--color-accent-subtle);
-}
-
-.text-accent {
-    color: var(--color-accent);
-}
-
-.bg-success {
-    background-color: var(--color-success);
-}
-
-.bg-warning {
-    background-color: var(--color-warning);
-}
-
-.bg-error {
-    background-color: var(--color-error);
 }
 
 /* ============================================
@@ -223,164 +155,7 @@ button {
     scrollbar-color: var(--color-divider) transparent;
 }
 
-/* ============================================
-   MESSAGE STYLES
-   ============================================ */
-
-.message-user {
-    max-width: 70%;
-    margin-left: auto;
-}
-
-.message-assistant {
-    max-width: 100%;
-}
-
-.message-bubble {
-    border-radius: 16px;
-    padding: 12px 16px;
-}
-
-.message-user .message-bubble {
-    background-color: var(--color-accent);
-    color: var(--color-accent-content);
-}
-
-.message-assistant .message-content {
-    color: var(--color-base-content);
-    line-height: 1.7;
-}
-
-.message-assistant .message-content * {
-    color: inherit;
-}
-
-/* Thought Process Styling */
-.thought-process {
-    background-color: var(--color-panel);
-    border: 1px solid var(--color-divider);
-    border-radius: 12px;
-    padding: 12px;
-    margin-bottom: 16px;
-}
-
-.thought-process summary {
-    cursor: pointer;
-    font-size: 0.875rem;
-    color: var(--color-secondary);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px;
-    border-radius: 6px;
-    transition: all 0.2s;
-}
-
-.thought-process summary:hover {
-    color: var(--color-primary);
-    background-color: var(--color-hover);
-}
-
-.thought-process summary::marker,
-.thought-process summary::-webkit-details-marker {
-    display: none;
-}
-
-.thought-process-icon {
-    width: 16px;
-    height: 16px;
-    color: var(--color-accent);
-    flex-shrink: 0;
-}
-
-.thought-process-content {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid var(--color-divider);
-    font-size: 0.875rem;
-    color: var(--color-secondary);
-    line-height: 1.6;
-}
-
-/* Code Blocks */
-.message-content pre {
-    background-color: var(--color-panel);
-    border: 1px solid var(--color-divider);
-    border-radius: 8px;
-    padding: 12px;
-    overflow-x: auto;
-    margin: 12px 0;
-}
-
-.message-content code {
-    background-color: var(--color-input);
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 0.875em;
-    font-family: 'Courier New', Courier, monospace;
-}
-
-.message-content pre code {
-    background: none;
-    padding: 0;
-}
-
-/* Links */
-.message-content a {
-    color: var(--color-accent);
-    text-decoration: underline;
-    transition: opacity 0.2s;
-}
-
-.message-content a:hover {
-    opacity: 0.8;
-}
-
-/* Lists */
-.message-content ul,
-.message-content ol {
-    margin-left: 20px;
-    margin-top: 8px;
-    margin-bottom: 8px;
-}
-
-.message-content li {
-    margin-bottom: 4px;
-}
-
-/* Source Citations */
-.source-citation {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 2px 8px;
-    background-color: var(--color-accent-subtle);
-    color: var(--color-accent);
-    border-radius: 6px;
-    font-size: 0.75rem;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.source-citation:hover {
-    background-color: var(--color-accent);
-    color: white;
-}
-
-.citation {
-    color: var(--color-accent);
-    cursor: pointer;
-    font-weight: 500;
-    text-decoration: underline;
-    text-decoration-style: dotted;
-    transition: all 0.2s;
-}
-
-.citation:hover {
-    color: var(--color-accent-dark);
-    background-color: var(--color-accent-subtle);
-    border-radius: 4px;
-}
+/* Message styles moved to message-bubble.component.ts */
 
 /* ============================================
    BUTTON STYLES
@@ -570,59 +345,6 @@ button {
 }
 
 /* ============================================
-   TOAST NOTIFICATIONS
-   ============================================ */
-
-.toast-container {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 9999;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    pointer-events: none;
-}
-
-.toast {
-    pointer-events: all;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background-color: var(--color-panel);
-    border: 1px solid var(--color-divider);
-    border-radius: 12px;
-    box-shadow: var(--shadow-lg);
-    min-width: 300px;
-    animation: slideInRight 0.3s ease-out;
-}
-
-@keyframes slideInRight {
-    from {
-        transform: translateX(400px);
-        opacity: 0;
-    }
-
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-.toast.success {
-    border-left: 3px solid var(--color-success);
-}
-
-.toast.error {
-    border-left: 3px solid var(--color-error);
-}
-
-.toast.warning {
-    border-left: 3px solid var(--color-warning);
-}
-
-/* ============================================
    BADGE STYLES
    ============================================ */
 
@@ -667,23 +389,47 @@ textarea:focus-visible {
 }
 
 /* ============================================
-   DOCUMENT ITEMS
+   LOADING ANIMATION
    ============================================ */
 
-.document-item {
-    transition: all 0.2s;
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    background-color: var(--color-panel);
+    border-radius: 12px;
+    border-bottom-left-radius: 4px;
+    width: fit-content;
 }
 
-.document-item:hover {
-    background-color: var(--color-hover);
+.typing-dot {
+    width: 6px;
+    height: 6px;
+    background-color: var(--color-secondary);
+    border-radius: 50%;
+    animation: typing 1.4s infinite ease-in-out both;
 }
 
-.document-item input[type="checkbox"]:checked~div {
-    opacity: 1;
+.typing-dot:nth-child(1) {
+    animation-delay: -0.32s;
 }
 
-.document-item input[type="checkbox"]:not(:checked)~div {
-    opacity: 0.7;
+.typing-dot:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+@keyframes typing {
+
+    0%,
+    80%,
+    100% {
+        transform: scale(0);
+    }
+
+    40% {
+        transform: scale(1);
+    }
 }
 
 /* Checkbox styling */

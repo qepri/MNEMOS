@@ -9,7 +9,7 @@ import { Conversation } from '@core/models';
   template: `
     <div
       (click)="select.emit(conversation().id)"
-      class="flex items-center gap-3 p-3 hover:bg-base-200 rounded-lg transition-colors group cursor-pointer"
+      class="flex items-center gap-3 p-3 hover:bg-hover rounded-lg transition-colors group cursor-pointer"
       [class.bg-primary/10]="isActive()"
     >
       <div class="flex-1 min-w-0">

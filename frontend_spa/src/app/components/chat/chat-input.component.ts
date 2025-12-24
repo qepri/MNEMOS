@@ -7,7 +7,7 @@ import { FormsModule } from '@angular/forms';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="p-4 bg-base-100 border-t border-base-200">
+    <div class="p-4 bg-base border-t border-divider">
       <form (ngSubmit)="handleSubmit()" class="relative">
         <div class="join w-full shadow-sm">
           <input
