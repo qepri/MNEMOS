@@ -5,6 +5,11 @@ MNEMOS es un sistema de indexación semántica con memoria persistente y capacid
 
 ## Características Principales
 
+### Experiencia de Usuario Mejorada
+- **Citas Persistentes**: Referencias interactivas a fuentes que se mantienen al recargar
+- **Gestión de Modelos**: Descarga automática de modelos GGUF y gestión de modelos locales
+- **Lanzador Automático**: Script `launcher.py` para configuración "one-click" en Windows
+
 ### Procesamiento Multimodal
 - **PDFs**: Extracción de texto y segmentación por páginas
 - **Audio/Video**: Transcripción automática usando Whisper de OpenAI
@@ -19,6 +24,7 @@ MNEMOS es un sistema de indexación semántica con memoria persistente y capacid
 
 ### Modelos de IA Flexibles
 Soporte para múltiples proveedores de LLM:
+- **Groq** (Inferencia ultra-rápida LPU)
 - **OpenAI** (GPT-4, GPT-3.5, etc.)
 - **Anthropic** (Claude Sonnet, Claude Opus)
 - **LM Studio** (modelos locales)
@@ -138,11 +144,21 @@ Descarga y procesamiento de videos de YouTube:
 ## Instalación y Configuración
 
 ### Requisitos Previos
-- Docker y Docker Compose
-- GPU con soporte NVIDIA (opcional, para Ollama con GPU)
+- Windows 10/11 (para el lanzador automático)
+- Docker o Podman Desktop
+- GPU con soporte NVIDIA (opcional, para aceleración local)
 - 8GB+ RAM recomendados
 
-### Configuración del Entorno
+### Instalación Rápida (Windows)
+Para una instalación automatizada que configura WSL2 y los contenedores:
+
+```bash
+python launcher.py
+```
+
+Este script verificará los requisitos, instalará Podman si es necesario y desplegará la aplicación.
+
+### Configuración Manual del Entorno
 
 1. Clonar el repositorio:
 ```bash
@@ -161,6 +177,10 @@ cp .env.example .env
 # Proveedor de LLM (openai, anthropic, lm_studio, ollama)
 LLM_PROVIDER=lm_studio
 
+# Groq (Inferencia Rápida)
+GROQ_API_KEY=tu-clave-api
+GROQ_MODEL=llama-3.3-70b-versatile
+
 # OpenAI (si se usa)
 OPENAI_API_KEY=tu-clave-api
 OPENAI_MODEL=gpt-4o-mini
@@ -171,12 +191,14 @@ ANTHROPIC_MODEL=claude-sonnet-4-20250514
 
 # LM Studio / Local
 LOCAL_LLM_BASE_URL=http://host.docker.internal:1234/v1
-LOCAL_LLM_MODEL=local-model
+LOCAL_LLM_MODEL: local-model
 
 # Configuración de Embeddings
 EMBEDDING_PROVIDER=local
-EMBEDDING_MODEL=all-MiniLM-L6-v2
-EMBEDDING_DIMENSION=384
+EMBEDDING_MODEL=bge-m3
+EMBEDDING_DIMENSION=1024
+EMBEDDING_DEVICE=cuda
+EMBEDDING_BATCH_SIZE=0 # Auto
 
 # Configuración de Whisper
 WHISPER_MODEL=base
@@ -337,6 +359,15 @@ Opciones disponibles: `tiny`, `base`, `small`, `medium`, `large-v3`
 ```env
 WHISPER_MODEL=medium
 WHISPER_DEVICE=cuda  # Usar GPU si está disponible
+```
+
+### Optimización de Embeddings
+
+El sistema ajusta automáticamente el tamaño del lote según la VRAM disponible. Configurable en [config/settings.py](config/settings.py):
+
+```python
+EMBEDDING_BATCH_SIZE: int = 0  # 0 = auto-detectar
+EMBEDDING_USE_FP16: bool = True # Usar precisión media (más rápido)
 ```
 
 ### Configurar Búsqueda Híbrida
