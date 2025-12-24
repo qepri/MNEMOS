@@ -18,6 +18,8 @@ def detect_file_type(filename):
     ext = filename.rsplit('.', 1)[1].lower()
     if ext == 'pdf':
         return 'pdf'
+    if ext == 'epub':
+        return 'epub'
     if ext in ['mp3', 'wav', 'm4a', 'opus']:
         return 'audio'
     if ext in ['mp4', 'webm', 'mov']:

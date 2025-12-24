@@ -87,12 +87,26 @@ class RAGService:
             elif chunk.page_number:
                 location = f"[Page {chunk.page_number}]"
 
-            context_parts.append(f"--- {doc.original_filename} {location} ---\n{chunk.content}")
+
+            # Format metadata if available
+            meta_str = ""
+            if doc.metadata_:
+                 # Filter or format specific keys if needed, or just dump relevant ones
+                 # Prioritize title, author, description, date
+                 meta_parts = []
+                 for key in ['title', 'author', 'description', 'language', 'duration']:
+                     if key in doc.metadata_:
+                         meta_parts.append(f"{key.capitalize()}: {doc.metadata_[key]}")
+                 if meta_parts:
+                     meta_str = f"Metadata: [{', '.join(meta_parts)}]\n"
+
+            context_parts.append(f"--- {doc.original_filename} {location} ---\n{meta_str}{chunk.content}")
             sources.append({
                 "document": doc.original_filename,
                 "chunk_id": str(chunk.id),
                 "location": location,
-                "text": chunk.content
+                "text": chunk.content,
+                "metadata": doc.metadata_
             })
 
         if not chunks:
@@ -125,7 +139,7 @@ class RAGService:
         if not system_prompt:
             system_prompt = """You are a helpful assistant that answers questions based ONLY on the provided context.
         If the information is not in the context, say so.
-        Always cite the sources using the filename and timestamp/page number when relevant.
+        Always cite the sources using the strict format: [Source: filename] when relevant.
         Provide detailed and comprehensive answers. Use markdown (bold, lists, headers) to structure your response."""
 
         # 5. Build final user prompt with all context

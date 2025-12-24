@@ -11,6 +11,7 @@ class LLMClient:
         self.provider = settings.LLM_PROVIDER
         openai_key = settings.OPENAI_API_KEY
         anthropic_key = settings.ANTHROPIC_API_KEY
+        groq_key = settings.GROQ_API_KEY
         local_base_url = settings.LOCAL_LLM_BASE_URL
         local_model = settings.LOCAL_LLM_MODEL
         
@@ -25,6 +26,8 @@ class LLMClient:
                         openai_key = prefs.openai_api_key
                     if prefs.anthropic_api_key:
                         anthropic_key = prefs.anthropic_api_key
+                    if prefs.groq_api_key:
+                        groq_key = prefs.groq_api_key
                     if prefs.local_llm_base_url:
                         local_base_url = prefs.local_llm_base_url
                     # Note: Local Model Name is usually handled by ModelManager selection, 
@@ -40,6 +43,13 @@ class LLMClient:
         elif self.provider == LLMProvider.ANTHROPIC:
             self.client = Anthropic(api_key=anthropic_key)
             self.model = settings.ANTHROPIC_MODEL
+
+        elif self.provider == LLMProvider.GROQ:
+            self.client = OpenAI(
+                base_url="https://api.groq.com/openai/v1",
+                api_key=groq_key or "gsk_..." # Placeholder if empty, will fail gracefully
+            )
+            self.model = settings.GROQ_MODEL
             
         elif self.provider == LLMProvider.OLLAMA:
             self.client = OpenAI(

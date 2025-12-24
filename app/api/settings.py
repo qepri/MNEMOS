@@ -569,19 +569,23 @@ def get_current_model():
     """Get the currently selected LLM model."""
     current = model_manager.get_model()
     
+    # Get provider from preferences
+    prefs = db.session.query(UserPreferences).first()
+    provider = prefs.llm_provider if prefs and prefs.llm_provider else settings.LLM_PROVIDER
+    
     # Fallback to default if not set
     if not current:
          # Try global settings default
-         if settings.LLM_PROVIDER == 'ollama':
+         if provider == 'ollama':
              current = settings.LOCAL_LLM_MODEL
-         elif settings.LLM_PROVIDER == 'openai':
+         elif provider == 'openai':
              current = settings.OPENAI_MODEL
-         elif settings.LLM_PROVIDER == 'anthropic':
+         elif provider == 'anthropic':
              current = settings.ANTHROPIC_MODEL
              
     return jsonify({
         "model": current,
-        "provider": settings.LLM_PROVIDER,
+        "provider": provider,
         "has_model": current is not None
     })
 
@@ -629,7 +633,10 @@ def get_chat_settings():
         "llm_provider": prefs.llm_provider or "lm_studio",
         "openai_api_key": prefs.openai_api_key or "",
         "anthropic_api_key": prefs.anthropic_api_key or "",
-        "local_llm_base_url": prefs.local_llm_base_url or "http://host.docker.internal:1234/v1"
+        "groq_api_key": prefs.groq_api_key or "",
+        "local_llm_base_url": prefs.local_llm_base_url or "http://host.docker.internal:1234/v1",
+        "transcription_provider": getattr(prefs, 'transcription_provider', 'local'),
+        "selected_llm_model": prefs.selected_llm_model or ""
     })
 
 
@@ -663,9 +670,17 @@ def save_chat_settings():
     if 'chunk_overlap' in data:
         prefs.chunk_overlap = max(0, min(500, int(data['chunk_overlap'])))
 
+    if 'transcription_provider' in data:
+        prefs.transcription_provider = data['transcription_provider']
+
     if 'whisper_model' in data:
         model = data['whisper_model']
-        if model in ['tiny', 'base', 'small', 'medium', 'large', 'large-v3']:
+        # Expanded validation for local + groq models
+        valid_models = [
+            'tiny', 'base', 'small', 'medium', 'large', 'large-v3', 
+            'whisper-large-v3', 'whisper-large-v3-turbo'
+        ]
+        if model in valid_models:
             prefs.whisper_model = model
 
     # LLM Config
@@ -677,6 +692,14 @@ def save_chat_settings():
         prefs.anthropic_api_key = data['anthropic_api_key']
     if 'local_llm_base_url' in data:
         prefs.local_llm_base_url = data['local_llm_base_url']
+    if 'groq_api_key' in data:
+        prefs.groq_api_key = data['groq_api_key']
+    
+    if 'selected_llm_model' in data:
+        prefs.selected_llm_model = data['selected_llm_model']
+        # Also update the ModelManager singleton to reflect immediate change
+        from app.services.model_manager import model_manager
+        model_manager.set_model(data['selected_llm_model'])
 
     prefs.updated_at = datetime.utcnow()
     db.session.commit()

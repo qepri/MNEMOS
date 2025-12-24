@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings
 class LLMProvider(str, Enum):
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
+    GROQ = "groq"
     LM_STUDIO = "lm_studio"
     OLLAMA = "ollama"
 
@@ -28,6 +29,10 @@ class Settings(BaseSettings):
     # Anthropic
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_MODEL: str = "claude-sonnet-4-20250514"
+    
+    # Groq
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.3-70b-versatile" # Default strong model from updated docs
     
     # LM Studio / Ollama (OpenAI-compatible)
     LOCAL_LLM_BASE_URL: str = "http://host.docker.internal:1234/v1"

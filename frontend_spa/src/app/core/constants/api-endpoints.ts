@@ -1,0 +1,28 @@
+export const ApiEndpoints = {
+  // Chat
+  CHAT: '/api/chat',
+
+  // Documents
+  DOCUMENTS: '/api/documents',
+  DOCUMENTS_UPLOAD: '/api/documents/upload',
+  DOCUMENT_STATUS: (id: string) => `/api/documents/${id}/status`,
+  DOCUMENT_DELETE: (id: string) => `/api/documents/${id}`,
+
+  // Conversations
+  CONVERSATIONS: '/api/conversations',
+  CONVERSATION_DETAIL: (id: string) => `/api/conversations/${id}`,
+  CONVERSATION_DELETE: (id: string) => `/api/conversations/${id}`,
+
+  // Settings
+  SETTINGS_MODELS: '/api/settings/models',
+  SETTINGS_CURRENT_MODEL: '/api/settings/current-model',
+  SETTINGS_CHAT: '/api/settings/chat',
+  SETTINGS_PROMPTS: '/api/settings/prompts',
+  SETTINGS_PROMPT_DELETE: (id: string) => `/api/settings/prompts/${id}`,
+  SETTINGS_PROMPT_UPDATE: (id: string) => `/api/settings/prompts/${id}`,
+  SETTINGS_LIBRARY_SEARCH: '/api/settings/library/search',
+  SETTINGS_PULL: '/api/settings/pull',
+  SETTINGS_PULL_STATUS: (taskId: string) => `/api/settings/pull/status/${taskId}`,
+  SETTINGS_PULL_ACTIVE: '/api/settings/pull/active',
+  SETTINGS_HARDWARE: '/api/settings/hardware',
+} as const;

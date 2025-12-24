@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  app:
+    environment:
+      - EMBEDDING_DEVICE=cpu
+    deploy:
+      resources:
+        reservations:
+          devices: []
+
+  worker:
+    environment:
+      - EMBEDDING_DEVICE=cpu
+    deploy:
+      resources:
+        reservations:
+          devices: []
+
+  ollama:
+    # Remove GPU reservation
+    deploy:
+      resources:
+        reservations:
+          devices: []
+    # Disable GPU layers
+    environment:
+      - OLLAMA_GPU_LAYERS=0
+      - CUDA_VISIBLE_DEVICES=

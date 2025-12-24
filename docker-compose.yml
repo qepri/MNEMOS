@@ -1,6 +1,6 @@
 services:
   frontend:
-    build: ./frontend_theme3
+    build: ./frontend_spa
     ports:
       - "4200:80"
     depends_on:

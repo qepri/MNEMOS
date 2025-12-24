@@ -4,6 +4,7 @@ from app.models.chunk import Chunk
 from app.services.transcription import TranscriptionService
 from app.services.pdf_processor import PDFProcessor
 from app.services.chunker import ChunkerService
+from app.services.epub_processor import EpubProcessor
 from app.services.embedder import EmbedderService
 from app.services.youtube import YouTubeService
 from config.settings import settings
@@ -48,7 +49,12 @@ def process_document_task(self, document_id: str):
                      info = yt_service.download_audio(doc.youtube_url)
                      doc.file_path = info["filename"] # Update with actual filename on disk
                      doc.original_filename = info["title"]
-                     doc.metadata_ = {"duration": info["duration"]}
+                     doc.metadata_ = {
+                         "duration": info["duration"],
+                         "author": info["author"],
+                         "description": info["description"][:1000] if info["description"] else "", # Truncate description
+                         "title": info["title"]  # Redundant but useful for RAG context standardized keys
+                     }
                      logger.info(f"YouTube download complete: {doc.file_path}")
                 
                 # Now treat as audio
@@ -75,10 +81,42 @@ def process_document_task(self, document_id: str):
                 full_path = os.path.join(settings.UPLOAD_FOLDER, doc.file_path)
                 processor = PDFProcessor()
                 logger.info(f"Extracting text from PDF: {full_path}")
-                pages = processor.extract_text(full_path)
+                pages, metadata = processor.extract_text(full_path)
                 
+                # Update Metadata
+                if metadata:
+                    logger.info(f"Found metadata: {metadata}")
+                    current_meta = doc.metadata_ or {}
+                    current_meta.update(metadata)
+                    doc.metadata_ = current_meta
+
                 chunker = ChunkerService()
                 logger.info(f"Chunking {len(pages)} pages of text")
+                
+                for page in pages:
+                    sub_chunks = chunker.chunk_text(page["text"])
+                    for i, sub in enumerate(sub_chunks):
+                        text_chunks.append({
+                            "text": sub,
+                            "page": page["page"],
+                            "chunk_index": i
+                        })
+
+            elif doc.file_type == 'epub':
+                full_path = os.path.join(settings.UPLOAD_FOLDER, doc.file_path)
+                processor = EpubProcessor()
+                logger.info(f"Extracting text from EPUB: {full_path}")
+                pages, metadata = processor.process(full_path)
+                
+                # Update Metadata
+                if metadata:
+                    logger.info(f"Found metadata: {metadata}")
+                    current_meta = doc.metadata_ or {}
+                    current_meta.update(metadata)
+                    doc.metadata_ = current_meta
+                
+                chunker = ChunkerService()
+                logger.info(f"Chunking {len(pages)} chapters/sections of text")
                 
                 for page in pages:
                     sub_chunks = chunker.chunk_text(page["text"])

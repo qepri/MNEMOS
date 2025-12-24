@@ -34,9 +34,9 @@ Soporte para múltiples proveedores de LLM:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Frontend (HTMX)                      │
-│  - Gestión de documentos                                │
-│  - Chat conversacional                                  │
+│                    Frontend (SPA)                       │
+│  - Angular Single Page Application                      │
+│  - Gestión de documentos & Chat                         │
 │  - Visualización de fuentes                             │
 └────────────────────┬────────────────────────────────────┘
                      │
@@ -187,11 +187,21 @@ SECRET_KEY=tu-clave-secreta-segura
 ```
 
 ### Despliegue con Docker
-
+ **Opción A: Estándar (Recomendado si tienes GPU NVIDIA)**
 ```bash
 # Construir e iniciar todos los servicios
-docker-compose up -d
+docker-compose up -d --build
+```
 
+**Opción B: CPU / Sin GPU NVIDIA**
+Si tu equipo no tiene una tarjeta gráfica NVIDIA compatible con CUDA, usa esta configuración para evitar errores al iniciar:
+```bash
+# Usar el archivo de configuración adicional para CPU
+docker-compose -f docker-compose.yml -f docker-compose.cpu.yml up -d --build
+```
+
+### Comandos Comunes
+```bash
 # Ver logs
 docker-compose logs -f app
 
@@ -552,6 +562,7 @@ Las contribuciones son bienvenidas. Por favor:
 ## Roadmap
 
 Funcionalidades planeadas:
+- [x] Soporte para EPUB (Incluyendo metadatos)
 - [ ] Soporte para más formatos de documentos (Word, Excel, PowerPoint)
 - [ ] Procesamiento de imágenes con modelos multimodales
 - [ ] Exportación de conversaciones

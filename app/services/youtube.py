@@ -28,6 +28,8 @@ class YouTubeService:
             info = ydl.extract_info(url, download=True)
             title = info.get('title', 'YouTube Video')
             duration = info.get('duration', 0)
+            author = info.get('uploader') or info.get('channel') or 'Unknown'
+            description = info.get('description', '')
             
         # yt-dlp might append extension to filename
         final_path = output_path + ".mp3"
@@ -45,5 +47,7 @@ class YouTubeService:
             "file_path": final_path,
             "filename": os.path.basename(final_path),
             "title": title,
-            "duration": float(duration) if duration else 0.0
+            "duration": float(duration) if duration else 0.0,
+            "author": author,
+            "description": description
         }
