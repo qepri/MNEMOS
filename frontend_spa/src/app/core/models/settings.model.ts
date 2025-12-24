@@ -37,6 +37,7 @@ export interface ChatPreferences {
   local_llm_base_url?: string;
   selected_llm_model?: string;
   transcription_provider?: string;
+  custom_api_key?: string;
 }
 
 export interface SystemPrompt {

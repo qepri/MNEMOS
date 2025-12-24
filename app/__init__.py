@@ -27,12 +27,14 @@ def create_app():
     from app.web import bp as web_bp
     from app.api.conversations import bp as conversations_bp
     from app.api.settings import bp as settings_bp
+    from app.api.ollama_manage import bp as ollama_manage_bp # Changed: Import ollama_manage_bp
     
     app.register_blueprint(documents_bp)
     app.register_blueprint(chat_bp)
     app.register_blueprint(web_bp)
     app.register_blueprint(conversations_bp)
-    app.register_blueprint(settings_bp)
+    app.register_blueprint(settings_bp, url_prefix='/api/settings') # Changed: Added url_prefix
+    app.register_blueprint(ollama_manage_bp, url_prefix='/api/settings/ollama') # Changed: Register ollama_manage_bp
     
     from sqlalchemy import text
     from sqlalchemy.exc import SQLAlchemyError

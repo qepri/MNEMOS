@@ -286,7 +286,7 @@
             <!-- YouTube Tab -->
             @if (uploadTab() === 'youtube') {
             <div>
-                <input type="text" placeholder="https://youtube.com/watch?v=..."
+                <input type="text" [(ngModel)]="youtubeUrl" placeholder="https://youtube.com/watch?v=..."
                     class="w-full px-3 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent mb-3">
                 <p class="text-xs text-secondary">Enter a YouTube URL to transcribe and analyze the video</p>
             </div>
@@ -309,7 +309,8 @@
                 class="flex-1 px-4 py-2 text-sm text-secondary hover:bg-hover rounded-lg transition-colors">
                 Cancel
             </button>
-            <button (click)="startUpload()" [disabled]="isUploading() || (uploadTab() === 'file' && !selectedFile())"
+            <button (click)="startUpload()"
+                [disabled]="isUploading() || (uploadTab() === 'file' && !selectedFile()) || (uploadTab() === 'youtube' && !youtubeUrl())"
                 class="flex-1 px-4 py-2 text-sm bg-accent text-white rounded-lg hover:bg-accent-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 {{ isUploading() ? 'Uploading...' : 'Upload' }}
             </button>
