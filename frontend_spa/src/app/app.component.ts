@@ -87,6 +87,24 @@ export class AppComponent implements OnInit {
         this.documentsService.clearSelection();
     }
 
+    async handleDeleteConversation(id: string, event: Event) {
+        event.stopPropagation();
+        if (!confirm('Are you sure you want to delete this conversation?')) return;
+
+        await this.conversationsService.deleteConversation(id);
+
+        if (this.chatService.currentConversationId() === id) {
+            this.handleNewChat();
+        }
+    }
+
+    async handleDeleteDocument(id: string, event: Event) {
+        event.stopPropagation();
+        if (!confirm('Are you sure you want to delete this document?')) return;
+
+        await this.documentsService.removeDocument(id);
+    }
+
     // Upload Modal Methods
     switchUploadTab(tab: 'file' | 'youtube') {
         this.uploadTab.set(tab);

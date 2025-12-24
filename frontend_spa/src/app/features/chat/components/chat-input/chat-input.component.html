@@ -31,10 +31,10 @@
 
         <!-- Bottom Bar (Model Selector & Disclaimer) -->
         <div class="flex items-center justify-between px-3 sm:px-4 pb-3 pt-1 border-t border-divider">
-            <button (click)="modalService.openModelSelection()"
+            <button (click)="openModelSelection()"
                 class="flex items-center gap-1.5 px-2 py-1 text-xs text-secondary hover:text-primary hover:bg-hover rounded-md transition-colors group">
-                <div class="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                <span>llama3:8b</span>
+                <span class="text-lg">🤖</span>
+                <span>{{ currentModelDisplay() }}</span>
                 <svg class="w-3 h-3 opacity-50 group-hover:opacity-100 transition-opacity" fill="none"
                     stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -46,3 +46,5 @@
         </div>
     </div>
 </div>
+
+<app-llm-selection-modal [(isVisible)]="isLlmModalOpen" />

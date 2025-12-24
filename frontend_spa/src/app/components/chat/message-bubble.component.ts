@@ -1,129 +1,153 @@
-import { Component, input, signal, inject } from '@angular/core';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { Component, input, signal, inject, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Message, MessageSource } from '@core/models';
 import { SourceModalComponent } from '@shared/components/source-modal/source-modal.component';
+import { MarkdownDisplayComponent } from '../markdown/markdown-display.component';
 
 @Component({
   selector: 'app-message-bubble',
   standalone: true,
-  imports: [CommonModule, SourceModalComponent],
+  imports: [CommonModule, FormsModule, SourceModalComponent, MarkdownDisplayComponent],
   template: `
-<div class="flex flex-col gap-1 w-full max-w-3xl mx-auto anime-fade-in"
-    [class.message-user]="message().role === 'user'"
-    [class.message-assistant]="message().role === 'assistant'"
-    [class.items-end]="message().role === 'user'"
-    [class.items-start]="message().role === 'assistant'">
+    <div class="flex flex-col gap-1 w-full max-w-3xl mx-auto anime-fade-in group"
+      [class.message-user]="message().role === 'user'"
+      [class.message-assistant]="message().role === 'assistant'"
+      [class.items-end]="message().role === 'user'"
+      [class.items-start]="message().role === 'assistant'">
 
-    <!-- Content -->
-    <div [class]="message().role === 'user'
-          ? 'bg-accent text-white px-4 py-3 rounded-2xl rounded-tr-sm message-bubble'
-          : 'message-content'"
-         [style.color]="message().role === 'assistant' ? 'var(--color-base-content, #ffffff)' : 'inherit'">
-
+      <!-- Content -->
+      <div [class]="message().role === 'user' 
+        ? 'bg-accent text-white px-4 py-3 rounded-2xl rounded-tr-sm message-bubble relative' 
+        : 'message-content w-full'"
+        [style.color]="message().role === 'assistant' ? 'var(--color-base-content, #ffffff)' : 'inherit'">
+        
         @if (message().role === 'user') {
-        <p>{{ message().content }}</p>
-        } @else {
-        <div [innerHTML]="sanitizedContent" (click)="handleContentClick($event)"></div>
-
-        @if (message().sources && message().sources!.length > 0 && (!message().status || message().status === 'completed')) {
-          <div class="mt-4 pt-3 border-t border-divider" [class.anime-fade-in]="message().status === 'completed'">
-            <p class="text-xs font-medium text-secondary mb-2">
-              Sources ({{message().sources!.length}})
-            </p>
-            <div class="space-y-2">
-              @for (source of message().sources; track source.document) {
-                <div
-                  class="text-xs bg-panel p-3 rounded-lg border border-divider cursor-pointer hover:bg-hover transition-colors"
-                  (click)="openSourceModal(source)">
-                  <div class="font-semibold text-primary mb-1 flex items-center justify-between">
-                    <span class="truncate pr-2">{{ source.document }}</span>
-                    @if (source.location) {
-                       <span class="opacity-70 font-normal shrink-0">{{ source.location }}</span>
-                    }
-                  </div>
-                  <div class="text-secondary line-clamp-2">{{ source.text }}</div>
-                  <div class="text-secondary opacity-70 mt-1">Score: {{ formatScore(source.score) }}</div>
-                </div>
-              }
+          @if (isEditing()) {
+            <div class="flex flex-col gap-2 min-w-[300px]">
+              <textarea 
+                [(ngModel)]="editContent" 
+                rows="3"
+                class="w-full bg-white/10 text-white placeholder-white/50 border border-white/20 rounded-lg p-2 focus:outline-none focus:ring-1 focus:ring-white/50 text-sm resize-none">
+              </textarea>
+              <div class="flex justify-end gap-2">
+                <button (click)="cancelEdit()" class="px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-white/10 rounded-lg transition-colors">
+                  Cancel
+                </button>
+                <button (click)="submitEdit()" class="px-3 py-1.5 text-xs font-medium bg-white text-accent hover:bg-white/90 rounded-lg transition-colors">
+                  Send
+                </button>
+              </div>
             </div>
-          </div>
-        }
+          } @else {
+            <p class="whitespace-pre-wrap">{{ message().content }}</p>
+          }
+        } @else {
+          <!-- Helper Component for Markdown Rendering -->
+          <app-markdown-display 
+            [content]="message().content" 
+            (citationClick)="handleCitation($event)">
+          </app-markdown-display>
+
+          @if (message().sources && message().sources!.length > 0 && (!message().status || message().status === 'completed')) {
+            <div class="mt-4 pt-3 border-t border-divider" [class.anime-fade-in]="message().status === 'completed'">
+              <p class="text-xs font-medium text-secondary mb-2">
+                Sources ({{ message().sources!.length }})
+              </p>
+              <div class="space-y-2">
+                @for (source of message().sources; track source.document) {
+                  <div 
+                    class="text-xs bg-panel p-3 rounded-lg border border-divider cursor-pointer hover:bg-hover transition-colors"
+                    (click)="openSourceModal(source)">
+                    <div class="font-semibold text-primary mb-1 flex items-center justify-between">
+                      <span class="truncate pr-2">{{ source.document }}</span>
+                      @if (source.location) {
+                        <span class="opacity-70 font-normal shrink-0">{{ source.location }}</span>
+                      }
+                    </div>
+                    <div class="text-secondary line-clamp-2">{{ source.text }}</div>
+                    <div class="text-secondary opacity-70 mt-1">Score: {{ formatScore(source.score) }}</div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
         }
 
+      </div>
+
+      <!-- Actions & Timestamp Row -->
+      <div class="flex items-center gap-2 px-1" [class.flex-row-reverse]="message().role === 'user'">
+        <!-- Timestamp -->
+        <span class="text-[10px] text-secondary opacity-50">
+          {{ formatTime(message().created_at) }}
+        </span>
+
+        <!-- Actions (Icons) -->
+        <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          @if (message().role === 'user' && !isEditing()) {
+            <button (click)="toggleEdit()" class="p-1 text-secondary hover:text-primary hover:bg-hover rounded transition-colors" title="Edit">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+            </button>
+          }
+          
+          @if (!isEditing()) {
+             <button (click)="copyMessage()" class="p-1 text-secondary hover:text-primary hover:bg-hover rounded transition-colors" title="Copy">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            </button>
+          }
+        </div>
+      </div>
     </div>
 
-    <!-- Timestamp -->
-    <span class="text-[10px] text-secondary opacity-50 px-1">
-        {{ formatTime(message().created_at) }}
-    </span>
-</div>
-
-<!-- Source Modal -->
-<app-source-modal
-  [isOpen]="isModalOpen()"
-  [source]="selectedSource()"
-  (close)="closeSourceModal()">
-</app-source-modal>
+    <!-- Source Modal -->
+    <app-source-modal
+      [isOpen]="isModalOpen()"
+      [source]="selectedSource()"
+      (close)="closeSourceModal()">
+    </app-source-modal>
   `,
   styles: [`
-    .message-user { max-width: 70%; margin-left: auto; }
+    .message-user { max-width: 85%; margin-left: auto; }
     .message-assistant { max-width: 100%; }
     .message-bubble { border-radius: 16px; padding: 12px 16px; }
-    .message-user .message-bubble { background-color: var(--color-accent); color: var(--color-accent-content); }
-    .message-assistant .message-content { color: var(--color-base-content); line-height: 1.7; }
-
-    /* Deep selectors for dynamic content */
-    :host ::ng-deep .message-content * { color: inherit; }
+    /* User bubble specific override for edit mode */
+    .message-user.message-bubble { background-color: var(--color-accent); color: var(--color-accent-content); }
     
-    :host ::ng-deep .message-content pre {
-      background-color: var(--color-panel);
-      border: 1px solid var(--color-divider);
-      border-radius: 8px;
-      padding: 12px;
-      overflow-x: auto;
-      margin: 12px 0;
-    }
-
-    :host ::ng-deep .message-content code {
-      background-color: var(--color-input);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 0.875em;
-      font-family: 'Courier New', Courier, monospace;
-    }
-
-    :host ::ng-deep .message-content pre code { background: none; padding: 0; }
-
-    :host ::ng-deep .message-content ul,
-    :host ::ng-deep .message-content ol { margin-left: 20px; margin-top: 8px; margin-bottom: 8px; }
-
-    :host ::ng-deep .message-content li { margin-bottom: 4px; }
-
-    /* Citations */
-    :host ::ng-deep .citation {
-      color: var(--color-accent);
-      cursor: pointer;
-      font-weight: 500;
-      text-decoration: underline;
-      text-decoration-style: dotted;
-      transition: all 0.2s;
-    }
-
-    :host ::ng-deep .citation:hover {
-      color: var(--color-accent-dark);
-      background-color: var(--color-accent-subtle);
-      border-radius: 4px;
-    }
+    .message-assistant.message-content { color: var(--color-base-content); line-height: 1.7; }
   `]
 })
 export class MessageBubbleComponent {
-  private sanitizer = inject(DomSanitizer);
   message = input.required<Message>();
+  onEdit = output<string>(); // Emits new content
+
+  // State
+  isEditing = signal(false);
+  editContent = signal('');
 
   // Modal state
   isModalOpen = signal(false);
   selectedSource = signal<MessageSource | null>(null);
+
+  toggleEdit() {
+    this.editContent.set(this.message().content);
+    this.isEditing.set(true);
+  }
+
+  cancelEdit() {
+    this.isEditing.set(false);
+  }
+
+  submitEdit() {
+    if (this.editContent().trim() && this.editContent() !== this.message().content) {
+      this.onEdit.emit(this.editContent());
+    }
+    this.isEditing.set(false);
+  }
+
+  copyMessage() {
+    navigator.clipboard.writeText(this.message().content);
+  }
 
   openSourceModal(source: MessageSource) {
     this.selectedSource.set(source);
@@ -147,59 +171,18 @@ export class MessageBubbleComponent {
     return `${(score * 100).toFixed(1)}%`;
   }
 
-  handleContentClick(event: MouseEvent) {
-    const target = event.target as HTMLElement;
-    const citation = target.closest('.citation');
+  handleCitation(sourceName: string) {
+    if (this.message().sources) {
+      // Try exact match first, then partial
+      const source = this.message().sources?.find(s =>
+        s.document === sourceName ||
+        s.document.includes(sourceName) ||
+        sourceName.includes(s.document)
+      );
 
-    if (citation) {
-      const sourceName = citation.getAttribute('data-source');
-      if (sourceName && this.message().sources) {
-        // Try exact match first, then partial
-        const source = this.message().sources?.find(s =>
-          s.document === sourceName ||
-          s.document.includes(sourceName) ||
-          sourceName.includes(s.document)
-        );
-
-        if (source) {
-          this.openSourceModal(source);
-          event.stopPropagation();
-        }
+      if (source) {
+        this.openSourceModal(source);
       }
     }
-  }
-
-  get sanitizedContent(): SafeHtml {
-    return this.sanitizer.bypassSecurityTrustHtml(this.safeHtml());
-  }
-
-  safeHtml(): string {
-    // Simple markdown-like rendering
-    const content = this.message().content;
-
-    // First, handle list items (lines starting with *)
-    let html = content
-      .split('\n')
-      .map(line => {
-        // Check if line starts with * (list item)
-        if (line.trim().startsWith('* ')) {
-          return line.replace(/^\s*\*\s/, '<li>') + '</li>';
-        }
-        return line;
-      })
-      .join('\n');
-
-    // Wrap consecutive list items in <ul>
-    html = html.replace(/((?:<li>.*?<\/li>\n?)+)/g, '<ul class="list-disc ml-5 my-2 space-y-1">$1</ul>');
-
-    // Then handle inline formatting (bold must come before italic to avoid conflicts)
-    html = html
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*([^*\n]+?)\*/g, '<em>$1</em>')
-      .replace(/`(.*?)`/g, '<code class="bg-input px-1 py-0.5 rounded text-xs">$1</code>')
-      .replace(/\[Source:\s*(.*?)\]/g, '<span class="citation" data-source="$1">[Source: $1]</span>')
-      .replace(/\n/g, '<br>');
-
-    return html;
   }
 }
