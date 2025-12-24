@@ -31,7 +31,9 @@ Soporte para múltiples proveedores de LLM:
 - **Ollama** (modelos locales dockerizados)
 
 ### Interfaz y APIs
-- **Interfaz Web**: UI moderna con HTMX para actualizaciones en tiempo real
+- **Interfaz Web Moderna**: Single Page Application (SPA) construida con **Angular 19**.
+- **Diseño Responsivo**: Experiencia de usuario fluida en escritorio y móviles.
+- **Micro-interacciones**: Feedback visual inmediato y animaciones suaves.
 - **API REST**: Endpoints completos para integración
 - **MCP Server**: Servidor Model Context Protocol para integración con Claude Desktop
 - **Sistema de Conversaciones**: Gestión de historial de chat con contexto
@@ -40,8 +42,8 @@ Soporte para múltiples proveedores de LLM:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Frontend (SPA)                       │
-│  - Angular Single Page Application                      │
+│                    Frontend (Angular SPA)               │
+│  - Puerto 4200 (Dev) / 80 (Prod)                        │
 │  - Gestión de documentos & Chat                         │
 │  - Visualización de fuentes                             │
 └────────────────────┬────────────────────────────────────┘
@@ -258,7 +260,7 @@ El sistema despliega los siguientes contenedores:
 
 ### Interfaz Web
 
-Acceder a [http://localhost:5000](http://localhost:5000)
+Acceder a [http://localhost:4200](http://localhost:4200) (o el puerto configurado).
 
 #### Subir Documentos
 1. Ir a la sección "Documents"
@@ -433,8 +435,14 @@ rag_app/
 │   │   └── processing.py        # Tareas Celery
 │   ├── mcp_server/
 │   │   └── server.py            # Servidor MCP
-│   ├── templates/               # Plantillas HTML
-│   └── static/                  # Archivos estáticos
+│   └── static/                  # Archivos estáticos API
+├── frontend_spa/            # Código fuente Angular
+│   ├── src/
+│   │   ├── app/             # Componentes y Lógica
+│   │   └── assets/          # Imágenes y recursos
+│   ├── angular.json
+│   └── package.json
+├── config/
 ├── config/
 │   └── settings.py              # Configuración centralizada
 ├── media/                       # Archivos multimedia de ejemplo
@@ -473,8 +481,10 @@ rag_app/
 - **tiktoken**: Tokenización
 
 ### Frontend
-- **HTMX**: Interactividad sin JavaScript complejo
-- **TailwindCSS**: Estilos (implícito en templates)
+- **Angular 19**: Framework SPA moderno y robusto.
+- **TailwindCSS**: Diseño utilitario para estilos rápidos y consistentes.
+- **RxJS**: Gestión reactiva de datos y eventos.
+- **Markdown-to-HTML**: Renderizado seguro de respuestas del chat.
 
 ## Troubleshooting
 
