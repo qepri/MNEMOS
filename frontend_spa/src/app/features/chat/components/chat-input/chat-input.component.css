@@ -1,0 +1,4 @@
+/* Styles handled by Tailwind */
+textarea {
+    color: var(--color-primary);
+}

@@ -1,0 +1,462 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="drawer lg:drawer-open">
+    <input id="my-drawer-2" type="checkbox" class="drawer-toggle" />
+
+    <!-- Page Content -->
+    <div class="drawer-content flex flex-col h-screen">
+
+        <!-- Navbar (Mobile Only / Header) -->
+        <div class="w-full navbar bg-base-100 border-b border-base-200 lg:hidden">
+            <div class="flex-none">
+                <label for="my-drawer-2" class="btn btn-square btn-ghost drawer-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        class="inline-block w-6 h-6 stroke-current">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </label>
+            </div>
+            <div class="flex-1 px-2 mx-2 text-xl font-bold">MNEMOS Daemon</div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <main class="flex-1 flex flex-col relative overflow-hidden bg-base-100 p-0">
+            <!-- Header with Dark Mode Toggle -->
+            <header class="p-4 border-b border-base-200 bg-base-100 flex justify-between items-center z-10">
+                <div class="flex flex-col">
+                    <h1 class="text-xl font-bold flex items-center gap-2 tracking-tight">
+                        <span id="chat-title" class="text-primary font-mono tracking-tighter"> //
+                            NEW_CONVERSATION</span>
+                    </h1>
+                    <p class="text-[10px] uppercase tracking-widest text-base-content/60 font-mono"
+                        id="selected-docs-label">
+                        NO_DOCS_SELECTED
+                    </p>
+                    <p class="text-[10px] uppercase tracking-widest font-mono mt-0.5" id="active-model-label">
+                        <span class="text-base-content/40">MODEL:</span>
+                        <span id="active-model-name" class="text-success">...</span>
+                    </p>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <!-- New Chat Button -->
+                    <button class="btn btn-sm btn-ghost hover:bg-base-200" onclick="window.location.reload()"
+                        title="New Chat">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                            stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        <span class="hidden sm:inline">Nuevo Chat</span>
+                    </button>
+
+                    <!-- Theme Controller -->
+                    <label class="swap swap-rotate btn btn-sm btn-circle btn-ghost">
+                        <input type="checkbox" id="theme-toggle" />
+                        <!-- sun icon -->
+                        <svg class="swap-on fill-current w-5 h-5" xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24">
+                            <path
+                                d="M5.64,17l-.71.71a1,1,0,0,0,0,1.41,1,1,0,0,0,1.41,0l.71-.71A1,1,0,0,0,5.64,17ZM5,12a1,1,0,0,0-1-1H3a1,1,0,0,0,0,2H4A1,1,0,0,0,5,12Zm7-7a1,1,0,0,0,1-1V3a1,1,0,0,0-2,0V4A1,1,0,0,0,12,5ZM5.64,7.05a1,1,0,0,0,.7.29,1,1,0,0,0,.71-.29,1,1,0,0,0,0-1.41l-.71-.71A1,1,0,0,0,4.93,4.93,1,1,0,0,0,5.64,7.05Zm12.02,12.72a1,1,0,0,0,.7.29,1,1,0,0,0,.71-.29,1,1,0,0,0,0-1.41l-.71-.71A1,1,0,0,0,17.66,17.66,1,1,0,0,0,17.66,19.77ZM12,20a1,1,0,0,0-1,1v1a1,1,0,0,0,2,0V21A1,1,0,0,0,12,20Zm7-8a1,1,0,0,0-1-1H17a1,1,0,0,0,0,2h1A1,1,0,0,0,19,12Zm-2.61-6.38a1,1,0,0,0-1.41,0,1,1,0,0,0,0,1.41l.71.71a1,1,0,0,0,1.41-1.41ZM12,7a5,5,0,1,1-5,5A5,5,0,0,1,12,7Zm0-2a7,7,0,1,0,7,7A7,7,0,0,0,12,5Z" />
+                        </svg>
+                        <!-- moon icon -->
+                        <svg class="swap-off fill-current w-5 h-5" xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24">
+                            <path
+                                d="M21.64,13a1,1,0,0,0-1.05-.14,8.05,8.05,0,0,1-3.37.73A8.15,8.15,0,0,1,9.08,5.49a8.59,8.59,0,0,1,.25-2A1,1,0,0,0,8,2.36,10.14,10.14,0,1,0,21.64,13Zm-9.5,6.69A8.14,8.14,0,0,1,7.08,5.22v.27A10.15,10.15,0,0,0,17.22,15.63a9.79,9.79,0,0,0,2.1-.22A8.11,8.11,0,0,1,12.14,19.73Z" />
+                        </svg>
+                    </label>
+                </div>
+            </header>
+
+            <!-- Chat Messages -->
+            <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth">
+                <!-- Welcome Message -->
+                <div class="chat chat-start">
+                    <div class="chat-bubble chat-bubble-primary">
+                        👋 ¡Hola! Soy MNEMOS. Selecciona documentos y empieza a chatear.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="p-4 bg-base-100 border-t border-base-200">
+                <form hx-post="/api/chat" hx-target="#chat-messages" hx-swap="beforeend" hx-indicator="#chat-loading"
+                    hx-on::after-request="this.reset()" class="relative">
+
+                    <input type="hidden" name="conversation_id" id="current-conversation-id">
+                    <input type="hidden" name="document_ids" id="selected-doc-ids">
+
+                    <div class="join w-full shadow-sm">
+                        <input type="text" name="question"
+                            class="input input-bordered join-item w-full focus:outline-none"
+                            placeholder="Escribe tu pregunta aquí..." autocomplete="off" required>
+                        <button type="submit" class="btn btn-primary join-item px-6">
+                            <span class="hidden sm:inline">Enviar</span> 🚀
+                        </button>
+                    </div>
+
+                    <div id="chat-loading"
+                        class="htmx-indicator absolute top-[-10px] left-0 w-full h-1 bg-primary loading-bar rounded-full overflow-hidden">
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <!-- Sidebar Content -->
+    <div class="drawer-side z-20">
+        <label for="my-drawer-2" aria-label="close sidebar" class="drawer-overlay"></label>
+        <ul class="menu p-0 w-80 min-h-full bg-base-100 text-base-content border-r border-base-200 flex flex-col">
+            <!-- Sidebar Header -->
+            <li
+                class="menu-title text-sm font-semibold tracking-wide uppercase text-white/40 p-4 border-b border-base-200 flex flex-row justify-between items-center">
+                <span>MNEMOS Daemon</span>
+                <a href="/settings" class="btn btn-xs btn-ghost" title="Settings">⚙️</a>
+            </li>
+
+            <!-- Tabs -->
+            <div role="tablist" class="flex w-full border-b border-base-200">
+                <a role="tab"
+                    class="flex-1 py-3 text-center text-xs font-mono uppercase cursor-pointer hover:bg-white/5 transition-colors tab-active border-b-2 border-primary"
+                    onclick="switchTab('docs')" id="tab-docs">FILES</a>
+                <a role="tab"
+                    class="flex-1 py-3 text-center text-xs font-mono uppercase cursor-pointer hover:bg-white/5 transition-colors opacity-50 hover:opacity-100"
+                    onclick="switchTab('chats')" id="tab-chats">CHATS</a>
+            </div>
+
+            <!-- Docs Tab Content -->
+            <div id="tab-content-docs" class="flex-1 flex flex-col min-h-0">
+                <div class="p-3 border-b border-base-200 bg-base-100/50">
+                    <form hx-encoding="multipart/form-data" hx-post="/api/documents/upload" hx-target="#document-list"
+                        hx-swap="afterbegin" hx-on::after-request="this.reset()">
+                        <div class="join w-full">
+                            <input type="file" name="file"
+                                class="file-input file-input-bordered file-input-sm w-full join-item file-input-ghost text-xs" />
+                            <button class="btn btn-sm btn-square join-item" type="submit" title="Upload">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                    stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                            </button>
+                        </div>
+                        <input type="text" name="youtube_url" placeholder="Or YouTube URL..."
+                            class="input input-sm input-bordered w-full mt-2 input-ghost focus:bg-base-100 placeholder:text-base-content/30 text-xs" />
+                    </form>
+                </div>
+                <!-- Document List -->
+                <div id="document-list" class="flex-1 overflow-y-auto" hx-get="/api/documents/" hx-trigger="load">
+                    <div class="flex justify-center p-4">
+                        <span class="loading loading-spinner loading-sm opacity-50"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chats Tab Content -->
+            <div id="tab-content-chats" class="flex-1 flex flex-col min-h-0 hidden">
+                <div class="p-3 border-b border-base-200 bg-base-100/50">
+                    <div class="relative">
+                        <input type="text" name="search" placeholder="Search chats..."
+                            class="input input-sm input-bordered w-full pl-8 input-ghost focus:bg-base-100 placeholder:text-base-content/30"
+                            hx-get="/api/conversations/" hx-trigger="keyup changed delay:500ms"
+                            hx-target="#conversation-list">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 absolute left-2.5 top-2.5 opacity-50"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                </div>
+                <!-- Conversation List -->
+                <div id="conversation-list" hx-get="/api/conversations/" hx-trigger="load"
+                    class="flex-1 overflow-y-auto space-y-1 p-2">
+                    <div class="skeleton h-12 w-full opacity-30 mb-2"></div>
+                    <div class="skeleton h-12 w-full opacity-30"></div>
+                </div>
+            </div>
+    </div>
+    </ul>
+</div>
+</div>
+
+<script>
+    // Load Current Active Model on Page Load
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const res = await fetch('/api/settings/current-model');
+            const data = await res.json();
+            const modelDisplay = document.getElementById('active-model-name');
+            const modelLabel = document.getElementById('active-model-label');
+
+            if (data.model) {
+                modelDisplay.textContent = data.model;
+                modelDisplay.className = 'text-success';
+            } else {
+                modelDisplay.textContent = 'None selected';
+                modelDisplay.className = 'text-warning';
+            }
+        } catch (e) {
+            console.error('Failed to load current model:', e);
+            document.getElementById('active-model-name').textContent = 'Error';
+        }
+    });
+
+    // Load Conversation Logic
+    function loadConversation(id) {
+        // Swap chat content
+        htmx.ajax('GET', `/api/conversations/${id}`, { target: '#chat-messages', swap: 'innerHTML' });
+
+        // Update styling for active item
+        document.querySelectorAll('[id^="conv-"]').forEach(el => {
+            el.classList.remove('bg-base-200');
+        });
+        const active = document.getElementById(`conv-${id}`);
+        if (active) active.classList.add('bg-base-200');
+
+        // Switch to chat tab if on mobile or just to be safe
+        // switchTab('chats'); // Optional, depending on UX preference
+    }
+
+    // Tab Switching Logic
+    function switchTab(tab) {
+        const docTab = document.getElementById('tab-docs');
+        const chatTab = document.getElementById('tab-chats');
+        const docContent = document.getElementById('tab-content-docs');
+        const chatContent = document.getElementById('tab-content-chats');
+
+        const setActive = (el, isActive) => {
+            if (isActive) {
+                el.classList.add('tab-active', 'border-b-2', 'border-primary');
+                el.classList.remove('opacity-50', 'hover:opacity-100');
+            } else {
+                el.classList.remove('tab-active', 'border-b-2', 'border-primary');
+                el.classList.add('opacity-50', 'hover:opacity-100');
+            }
+        };
+
+        if (tab === 'docs') {
+            setActive(docTab, true);
+            setActive(chatTab, false);
+            docContent.classList.remove('hidden');
+            chatContent.classList.add('hidden');
+        } else {
+            setActive(docTab, false);
+            setActive(chatTab, true);
+            docContent.classList.add('hidden');
+            chatContent.classList.remove('hidden');
+        }
+    }
+
+    // Theme Toggle Logic
+    const themeToggle = document.getElementById('theme-toggle');
+
+    // Set initial state
+    if (localStorage.getItem('theme') === 'dark') {
+        themeToggle.checked = false; // logic inverted for swap?? swap-off is moon (dark)
+        // Actually swap: on = sun, off = moon. 
+        // Typically checkbox checked = ON state. 
+        // If theme is dark, we want moon visible.
+        // Let's assume unchecked = moon (default off) and checked = sun. 
+        // Wait, standard swap: swap-on (sun) visible when checked. swap-off (moon) when unchecked.
+        // So Dark (Moon) = Unchecked. Light (Sun) = Checked.
+        themeToggle.checked = false;
+    } else {
+        themeToggle.checked = true;
+    }
+
+    themeToggle.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            document.documentElement.setAttribute('data-theme', 'light');
+            localStorage.setItem('theme', 'light');
+        } else {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
+        }
+    });
+
+    // Doc Selection Logic (Reused)
+    document.addEventListener('change', (e) => {
+        if (e.target.matches('.doc-checkbox')) {
+            updateSelectedDocs();
+            saveSelectedDocs();
+        }
+    });
+
+    function updateSelectedDocs() {
+        const checked = document.querySelectorAll('.doc-checkbox:checked');
+        const ids = Array.from(checked).map(cb => cb.value);
+        document.getElementById('selected-doc-ids').value = ids.join(',');
+
+        const names = Array.from(checked).map(cb => cb.dataset.name);
+        const label = document.getElementById('selected-docs-label');
+
+        if (names.length > 0) {
+            label.textContent = `Seleccionados: ${names.length}`;
+            label.title = names.join(', ');
+        } else {
+            label.textContent = 'Sin documentos seleccionados';
+        }
+    }
+
+    function saveSelectedDocs() {
+        const checked = document.querySelectorAll('.doc-checkbox:checked');
+        const ids = Array.from(checked).map(cb => cb.value);
+        localStorage.setItem('selectedDocs', JSON.stringify(ids));
+    }
+
+    // Called by chat history loader to restore context
+    window.restoreDocSelection = function (ids) {
+        if (!ids) return;
+
+        // Uncheck all first
+        document.querySelectorAll('.doc-checkbox').forEach(cb => cb.checked = false);
+
+        // Check reported IDs
+        ids.forEach(id => {
+            const checkbox = document.querySelector(`.doc-checkbox[value="${id}"]`);
+            if (checkbox) checkbox.checked = true;
+        });
+
+        updateSelectedDocs();
+        saveSelectedDocs();
+    };
+
+    function loadSelectedDocs() {
+        const saved = localStorage.getItem('selectedDocs');
+        if (saved) {
+            try {
+                const ids = JSON.parse(saved);
+                // We need to wait for HTMX to load the list first?
+                // Actually, the list loads via HTMX hx-trigger="load".
+                // HTMX events will tell us when it's done.
+            } catch (e) {
+                console.error("Failed to load selections", e);
+            }
+        }
+    }
+
+    // HTMX listener to restore selections after list loads
+    document.body.addEventListener('htmx:afterSwap', function (evt) {
+        if (evt.detail.target.id === 'document-list') {
+            const saved = localStorage.getItem('selectedDocs');
+            if (saved) {
+                try {
+                    const ids = JSON.parse(saved);
+                    ids.forEach(id => {
+                        const checkbox = document.querySelector(`.doc-checkbox[value="${id}"]`);
+                        if (checkbox) checkbox.checked = true;
+                    });
+                    updateSelectedDocs();
+                } catch (e) { }
+            }
+        }
+    });
+
+    // Auto-scroll logic needs to be attached to HTMX events
+    document.body.addEventListener('htmx:afterSwap', function (evt) {
+        if (evt.detail.target.id === 'chat-messages') {
+            const container = document.getElementById('chat-messages');
+            container.scrollTop = container.scrollHeight;
+
+            // Check for context warning
+            const lastMessage = container.lastElementChild;
+            if (lastMessage && lastMessage.dataset.contextWarning) {
+                showToast(lastMessage.dataset.contextWarning, 'warning');
+            }
+        }
+    });
+
+    // ============= TOAST NOTIFICATIONS =============
+
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container') || createToastContainer();
+
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type} shadow-lg mb-2 animate-slideIn max-w-md`;
+
+        let icon = '';
+        if (type === 'success') {
+            icon = '<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+        } else if (type === 'error') {
+            icon = '<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+        } else if (type === 'warning') {
+            icon = '<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>';
+        }
+
+        toast.innerHTML = `
+            ${icon}
+            <span>${message}</span>
+        `;
+
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.classList.add('animate-slideOut');
+            setTimeout(() => toast.remove(), 300);
+        }, 5000);
+    }
+
+    function createToastContainer() {
+        const container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'fixed top-20 right-4 z-50 flex flex-col';
+        document.body.appendChild(container);
+        return container;
+    }
+</script>
+
+<style>
+    .loading-bar {
+        animation: loading 1.5s infinite;
+        transform-origin: 0% 50%;
+    }
+
+    @keyframes loading {
+        0% {
+            transform: scaleX(0);
+        }
+
+        50% {
+            transform: scaleX(0.5);
+        }
+
+        100% {
+            transform: scaleX(1);
+            opacity: 0;
+        }
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+
+    .animate-slideIn {
+        animation: slideIn 0.3s ease-out;
+    }
+
+    .animate-slideOut {
+        animation: slideOut 0.3s ease-in;
+    }
+</style>
+{% endblock %}

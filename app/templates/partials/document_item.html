@@ -1,0 +1,58 @@
+<div class="group border-b border-default transition-colors hover:bg-base-200 {{ 'opacity-50' if document.status == 'processing' }}"
+    id="doc-{{ document.id }}" {% if document.status=='processing' or document.status=='pending' %}
+    hx-get="/api/documents/{{ document.id }}/status" hx-trigger="every 2s" hx-swap="outerHTML" {% endif %}>
+
+    <label class="flex items-start gap-3 p-3 cursor-pointer w-full relative">
+        <!-- Checkbox (Restored) -->
+        <input type="checkbox" class="checkbox checkbox-xs checkbox-primary mt-1 doc-checkbox rounded-sm"
+            value="{{ document.id }}" data-name="{{ document.original_filename }}" {{ 'disabled' if document.status
+            !='completed' }}>
+
+        <!-- Content -->
+        <div class="flex-1 min-w-0 flex flex-col gap-1">
+            <!-- Filename (Wraps correctly) -->
+            <span class="text-sm font-medium text-default leading-tight break-words whitespace-normal">
+                {{ document.original_filename }}
+            </span>
+
+            <!-- Meta & Status -->
+            <div class="flex items-center gap-2 text-xs text-muted font-mono">
+                <span class="opacity-75">
+                    {% if document.file_type == 'pdf' %}PDF
+                    {% elif document.file_type == 'youtube' %}YTB
+                    {% elif document.file_type == 'video' %}VID
+                    {% else %}AUD{% endif %}
+                </span>
+                <span>•</span>
+                <span>{{ document.created_at.strftime('%H:%M') if document.created_at else '' }}</span>
+
+                {% if document.status == 'completed' %}
+                <span class="text-success ml-auto font-semibold">✓ Ready</span>
+                {% elif document.status == 'error' %}
+                <span class="text-error ml-auto font-semibold">✕ Error</span>
+                {% elif document.status == 'processing' %}
+                <span class="text-primary ml-auto font-semibold">{{ document.processing_progress or 0 }}%</span>
+                {% else %}
+                <span class="loading loading-spinner loading-xs ml-auto"></span>
+                {% endif %}
+            </div>
+
+            <!-- Progress Bar (only during processing) -->
+            {% if document.status == 'processing' %}
+            <div class="w-full bg-base-300 rounded-full h-1.5 mt-1">
+                <div class="bg-primary h-1.5 rounded-full transition-all duration-500"
+                     style="width: {{ document.processing_progress or 0 }}%"></div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Delete Button (Absolute for safety or Right aligned in flow) -->
+        <!-- Using absolute positioning for the delete button to not mess with wrapping flow if tight -->
+        <button
+            class="btn btn-ghost btn-xs text-error opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2"
+            hx-delete="/api/documents/{{ document.id }}" hx-target="#doc-{{ document.id }}" hx-swap="outerHTML"
+            hx-confirm="Delete this file?" onclick="event.preventDefault(); htmx.trigger(this, 'click');">
+            ✕
+        </button>
+    </label>
+</div>
