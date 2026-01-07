@@ -50,7 +50,9 @@
               }
             ],
             "styles": [
-              "src/styles.css"
+              "node_modules/ngx-toastr/toastr.css",
+              "src/styles.css",
+              "src/toastr-mnemos.css"
             ]
           },
           "configurations": {
@@ -79,6 +81,9 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "port": 5200
+          },
           "configurations": {
             "production": {
               "buildTarget": "frontend_theme3:build:production"

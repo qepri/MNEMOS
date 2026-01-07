@@ -176,6 +176,31 @@
 
                     <!-- Models Grid -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        @if (isSearching()) {
+                        <!-- Skeleton Loader -->
+                        @for (i of [1,2,3,4,5,6]; track i) {
+                        <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="space-y-2 w-full">
+                                    <div class="h-5 w-3/4 bg-divider rounded pulse"></div>
+                                    <div class="h-3 w-1/2 bg-divider rounded pulse"></div>
+                                </div>
+                                <div class="h-5 w-16 bg-divider rounded-full pulse"></div>
+                            </div>
+                            <div class="space-y-2 mb-4">
+                                <div class="h-3 w-full bg-divider rounded pulse"></div>
+                                <div class="h-3 w-5/6 bg-divider rounded pulse"></div>
+                            </div>
+                            <div class="flex justify-between mb-4">
+                                <div class="h-3 w-16 bg-divider rounded pulse"></div>
+                                <div class="h-3 w-16 bg-divider rounded pulse"></div>
+                            </div>
+                            <div class="flex gap-2">
+                                <div class="h-9 w-full bg-divider rounded-lg pulse"></div>
+                            </div>
+                        </div>
+                        }
+                        } @else {
                         @for (model of searchResults(); track model.name) {
                         <div
                             class="bg-panel border border-divider rounded-xl p-4 sm:p-6 hover:border-accent transition-colors">
@@ -232,6 +257,7 @@
                         <div class="col-span-2 text-center py-10 text-secondary">
                             Search for models to discover new capabilities.
                         </div>
+                        }
                         }
                     </div>
                 </div>

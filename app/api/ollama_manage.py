@@ -13,7 +13,9 @@ CONTAINER_NAME = 'mnemos-ollama'
 
 def get_docker_client():
     try:
-        return docker.DockerClient(base_url='unix://var/run/docker.sock')
+        # Use from_env to support DOCKER_HOST env var (useful for Podman)
+        # Fallback is usually the socket anyway.
+        return docker.from_env()
     except Exception as e:
         print(f"Error connecting to Docker: {e}")
         return None

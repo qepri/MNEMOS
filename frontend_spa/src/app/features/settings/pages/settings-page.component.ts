@@ -32,6 +32,7 @@ export class SettingsPage implements OnInit {
     // Discover State
     searchQuery = signal<string>('');
     searchResults = signal<any[]>([]);
+    isSearching = signal<boolean>(false);
 
     // Download State
     activeDownloads = signal<{ [key: string]: any }>({});
@@ -140,7 +141,6 @@ export class SettingsPage implements OnInit {
             // (Backend code: "if status in ['SUCCESS'...] ids_to_remove.append... else active_list.append")
             // Wait, backend explicitly REMOVES success tasks from the returned list!
             // That's bad for UI.
-
             // Re-reading backend logic:
             // "if status in ['SUCCESS', 'FAILURE', 'REVOKED']: ids_to_remove.append(task_id)"
             // "if status in [...] active_list.append(...)" -> This is in the loop. 
@@ -157,7 +157,11 @@ export class SettingsPage implements OnInit {
         if (tab === 'import') {
             this.scanImports();
         } else if (tab === 'discover') {
-            this.searchLibrary();
+            // Only search if empty to encourage discovery but avoid re-fetch on every tab switch if not needed?
+            // User probably wants to see results if they return.
+            if (this.searchResults().length === 0) {
+                this.searchLibrary();
+            }
         }
     }
 
@@ -173,11 +177,14 @@ export class SettingsPage implements OnInit {
 
     // Discover
     async searchLibrary() {
+        this.isSearching.set(true);
         try {
             const res = await this.settingsService.searchLibrary(this.searchQuery());
             this.searchResults.set(res.models);
         } catch (err) {
             console.error(err);
+        } finally {
+            this.isSearching.set(false);
         }
     }
 

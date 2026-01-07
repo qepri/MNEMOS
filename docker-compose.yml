@@ -2,7 +2,7 @@ services:
   frontend:
     build: ./frontend_spa
     ports:
-      - "4200:80"
+      - "5200:80"
     depends_on:
       - app
 

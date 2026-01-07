@@ -5,6 +5,11 @@ MNEMOS es un sistema de indexación semántica con memoria persistente y capacid
 
 ## Características Principales
 
+### Experiencia de Usuario Mejorada
+- **Citas Persistentes**: Referencias interactivas a fuentes que se mantienen al recargar
+- **Gestión de Modelos**: Descarga automática de modelos GGUF y gestión de modelos locales
+- **Lanzador Automático**: Script `launcher.py` para configuración "one-click" en Windows
+
 ### Procesamiento Multimodal
 - **PDFs**: Extracción de texto y segmentación por páginas
 - **Audio/Video**: Transcripción automática usando Whisper de OpenAI
@@ -19,13 +24,16 @@ MNEMOS es un sistema de indexación semántica con memoria persistente y capacid
 
 ### Modelos de IA Flexibles
 Soporte para múltiples proveedores de LLM:
+- **Groq** (Inferencia ultra-rápida LPU)
 - **OpenAI** (GPT-4, GPT-3.5, etc.)
 - **Anthropic** (Claude Sonnet, Claude Opus)
 - **LM Studio** (modelos locales)
 - **Ollama** (modelos locales dockerizados)
 
 ### Interfaz y APIs
-- **Interfaz Web**: UI moderna con HTMX para actualizaciones en tiempo real
+- **Interfaz Web Moderna**: Single Page Application (SPA) construida con **Angular 19**.
+- **Diseño Responsivo**: Experiencia de usuario fluida en escritorio y móviles.
+- **Micro-interacciones**: Feedback visual inmediato y animaciones suaves.
 - **API REST**: Endpoints completos para integración
 - **MCP Server**: Servidor Model Context Protocol para integración con Claude Desktop
 - **Sistema de Conversaciones**: Gestión de historial de chat con contexto
@@ -34,8 +42,8 @@ Soporte para múltiples proveedores de LLM:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Frontend (SPA)                       │
-│  - Angular Single Page Application                      │
+│                    Frontend (Angular SPA)               │
+│  - Puerto 5200 (Dev) / 80 (Prod)                        │
 │  - Gestión de documentos & Chat                         │
 │  - Visualización de fuentes                             │
 └────────────────────┬────────────────────────────────────┘
@@ -138,16 +146,35 @@ Descarga y procesamiento de videos de YouTube:
 ## Instalación y Configuración
 
 ### Requisitos Previos
-- Docker y Docker Compose
-- GPU con soporte NVIDIA (opcional, para Ollama con GPU)
-- 8GB+ RAM recomendados
+- **Sistema Operativo**: Windows 10/11
+- **Hardware**:
+    - CPU: Compatible con versiones modernas de AVX
+    - GPU (Opcional): NVIDIA con soporte CUDA para aceleración
+    - RAM: 8GB mínimo (16GB recomendado)
+- **Software**:
+    - Ninguno pre-instalado (el instalador gestionará Podman/Docker)
+    - Opcional: Docker Desktop ya instalado
 
-### Configuración del Entorno
+### Instalación Rápida "One-Click"
+Hemos simplificado el proceso al máximo. Simplemente:
+
+1. Ejecuta el archivo `installer.bat` (doble clic).
+2. El script detectará si tienes Docker o Podman. **Si no tienes ninguno, instalará Podman automáticamente.**
+3. Detectará automáticamente tu tarjeta gráfica y te preguntará si quieres usarla.
+4. Listo. La aplicación se iniciará.
+
+El instalador se encarga de todo:
+- Descarga e instalación de Podman (si es necesario)
+- Configuración de WSL2 (si es necesario)
+- Detección de hardware (CPU vs GPU)
+- Despliegue de contenedores
+
+### Configuración Manual (Docker Compose)
 
 1. Clonar el repositorio:
 ```bash
 git clone <repository-url>
-cd rag_app
+cd mnemos
 ```
 
 2. Copiar y configurar variables de entorno:
@@ -161,6 +188,10 @@ cp .env.example .env
 # Proveedor de LLM (openai, anthropic, lm_studio, ollama)
 LLM_PROVIDER=lm_studio
 
+# Groq (Inferencia Rápida)
+GROQ_API_KEY=tu-clave-api
+GROQ_MODEL=llama-3.3-70b-versatile
+
 # OpenAI (si se usa)
 OPENAI_API_KEY=tu-clave-api
 OPENAI_MODEL=gpt-4o-mini
@@ -171,12 +202,14 @@ ANTHROPIC_MODEL=claude-sonnet-4-20250514
 
 # LM Studio / Local
 LOCAL_LLM_BASE_URL=http://host.docker.internal:1234/v1
-LOCAL_LLM_MODEL=local-model
+LOCAL_LLM_MODEL: local-model
 
 # Configuración de Embeddings
 EMBEDDING_PROVIDER=local
-EMBEDDING_MODEL=all-MiniLM-L6-v2
-EMBEDDING_DIMENSION=384
+EMBEDDING_MODEL=bge-m3
+EMBEDDING_DIMENSION=1024
+EMBEDDING_DEVICE=cuda
+EMBEDDING_BATCH_SIZE=0 # Auto
 
 # Configuración de Whisper
 WHISPER_MODEL=base
@@ -227,7 +260,7 @@ El sistema despliega los siguientes contenedores:
 
 ### Interfaz Web
 
-Acceder a [http://localhost:5000](http://localhost:5000)
+Acceder a [http://localhost:5200](http://localhost:5200) (o el puerto configurado).
 
 #### Subir Documentos
 1. Ir a la sección "Documents"
@@ -339,6 +372,15 @@ WHISPER_MODEL=medium
 WHISPER_DEVICE=cuda  # Usar GPU si está disponible
 ```
 
+### Optimización de Embeddings
+
+El sistema ajusta automáticamente el tamaño del lote según la VRAM disponible. Configurable en [config/settings.py](config/settings.py):
+
+```python
+EMBEDDING_BATCH_SIZE: int = 0  # 0 = auto-detectar
+EMBEDDING_USE_FP16: bool = True # Usar precisión media (más rápido)
+```
+
 ### Configurar Búsqueda Híbrida
 
 Ajustar pesos en [app/services/rag.py](app/services/rag.py:41):
@@ -393,8 +435,14 @@ rag_app/
 │   │   └── processing.py        # Tareas Celery
 │   ├── mcp_server/
 │   │   └── server.py            # Servidor MCP
-│   ├── templates/               # Plantillas HTML
-│   └── static/                  # Archivos estáticos
+│   └── static/                  # Archivos estáticos API
+├── frontend_spa/            # Código fuente Angular
+│   ├── src/
+│   │   ├── app/             # Componentes y Lógica
+│   │   └── assets/          # Imágenes y recursos
+│   ├── angular.json
+│   └── package.json
+├── config/
 ├── config/
 │   └── settings.py              # Configuración centralizada
 ├── media/                       # Archivos multimedia de ejemplo
@@ -433,8 +481,10 @@ rag_app/
 - **tiktoken**: Tokenización
 
 ### Frontend
-- **HTMX**: Interactividad sin JavaScript complejo
-- **TailwindCSS**: Estilos (implícito en templates)
+- **Angular 19**: Framework SPA moderno y robusto.
+- **TailwindCSS**: Diseño utilitario para estilos rápidos y consistentes.
+- **RxJS**: Gestión reactiva de datos y eventos.
+- **Markdown-to-HTML**: Renderizado seguro de respuestas del chat.
 
 ## Troubleshooting
 
