@@ -13,6 +13,7 @@ export interface Message {
   sources?: MessageSource[];
   created_at: string;
   status?: 'generating' | 'completed' | 'error';
+  search_queries?: string[];
 }
 
 export interface MessageSource {

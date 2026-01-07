@@ -51,6 +51,20 @@ import { ApiEndpoints } from '@core/constants/api-endpoints';
             (citationClick)="handleCitation($event)">
           </app-markdown-display>
 
+          @if (message().search_queries && message().search_queries!.length > 0) {
+            <div class="mt-4 pt-3 border-t border-divider">
+              <p class="text-xs font-medium text-secondary mb-2 flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>
+                Web Search Queries used:
+              </p>
+              <div class="flex flex-wrap gap-2">
+                @for (query of message().search_queries; track query) {
+                  <span class="badge badge-ghost badge-sm text-xs font-normal h-auto py-1 text-left whitespace-normal text-secondary">{{ query }}</span>
+                }
+              </div>
+            </div>
+          }
+
           @if (message().sources && message().sources!.length > 0 && (!message().status || message().status === 'completed')) {
             <div class="mt-4 pt-3 border-t border-divider" [class.anime-fade-in]="message().status === 'completed'">
               <p class="text-xs font-medium text-secondary mb-2">

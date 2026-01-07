@@ -34,6 +34,7 @@ export class ChatPage {
   conversationSearch = signal<string>('');
   theme = signal<'dark' | 'light'>('dark');
   isLlmModalOpen = signal<boolean>(false);
+  isWebSearchEnabled = signal<boolean>(false);
 
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef;
 
@@ -105,7 +106,8 @@ export class ChatPage {
       await this.chatService.sendMessage({
         question,
         document_ids: documentIds,
-        conversation_id: conversationId || undefined
+        conversation_id: conversationId || undefined,
+        web_search: this.isWebSearchEnabled()
       });
 
       // Note: sendMessage() already adds the assistant message via streaming

@@ -12,6 +12,31 @@ class RAGService:
         self.embedder = EmbedderService()
         self.llm = get_llm_client()
     
+    
+    def _generate_search_queries(self, question: str, history: List) -> List[str]:
+        """Generates optimized search queries based on user question and history."""
+        system_prompt = """You are an expert Search Query Generator.
+Your task is to generate 1 to 2 optimized web search queries to find the answer to the user's question.
+If the request is simple, generate only 1 query.
+If complex, generate maximum 2 specific queries.
+IMPORTANT: Ignore any context related to 'Mnemos', 'assistant', or internal system names unless explicitly relevant. Focus purely on the user's topic.
+Output ONLY the queries, one per line. Do not include numbering or bullets."""
+        
+        # Build prompt context
+        prompt = f"User Question: {question}\n\n"
+        if history:
+             prompt += "Conversation Context:\n" + "\n".join([f"{m.role}: {m.content}" for m in history[-3:]]) + "\n\n"
+        
+        prompt += "Generate search queries:"
+
+        try:
+            response = self.llm.chat(system=system_prompt, messages=[{"role": "user", "content": prompt}])
+            queries = [q.strip() for q in response.split('\n') if q.strip()]
+            return queries[:2] # Limit to 2 max
+        except Exception as e:
+            print(f"Query generation failed: {e}")
+            return [question] # Fallback to original question
+
     def search_similar_chunks(
         self, 
         query: str, 
@@ -57,7 +82,8 @@ class RAGService:
         document_ids: List[str] = None,
         top_k: int = 5,
         conversation_history: List = None,
-        system_prompt: str = None
+        system_prompt: str = None,
+        web_search: bool = False
     ) -> Dict:
         """Executes full RAG flow with optional conversation context.
 
@@ -72,7 +98,10 @@ class RAGService:
             Dict with 'answer', 'sources', and 'context_warning' keys
         """
         # 1. Search relevant chunks
-        chunks = self.search_similar_chunks(question, document_ids, top_k)
+        # 1. Search relevant chunks ONLY if documents are selected
+        chunks = []
+        if document_ids and len(document_ids) > 0:
+            chunks = self.search_similar_chunks(question, document_ids, top_k)
 
         # 2. Build RAG context
         context_parts = []
@@ -115,14 +144,41 @@ class RAGService:
                 "metadata": doc.metadata_
             })
 
-        if not chunks:
+        rag_context = "\n\n".join(context_parts)
+
+        if web_search:
+            from app.services.web_search import WebSearchService
+            search_service = WebSearchService()
+            
+            # Agentic Step: Generate optimized queries
+            search_queries = self._generate_search_queries(question, conversation_history)
+            
+            all_web_context = []
+            for q in search_queries:
+                print(f"Executing Web Search: {q}")
+                web_results = search_service.search(q)
+                if web_results["context"]:
+                    all_web_context.append(f"Query: {q}\n{web_results['context']}")
+                    sources.extend(web_results["sources"])
+            
+            # Append web content
+            if all_web_context:
+                rag_context += "\n\n=== WEB SEARCH RESULTS ===\n" + "\n\n".join(all_web_context)
+                
+                # Update system prompt hint if no custom one provided
+                if not system_prompt:
+                    system_prompt = """You are a helpful assistant. Use the provided Document Context and Web Search Results to answer the user's question.
+If the information is not in the context, say so.
+Always cite the sources using the format: [Source: filename] or [Web Source: Title].
+Provide detailed and comprehensive answers."""
+
+        # Check if we have ANY context (chunks or web)
+        if not rag_context:
              return {
-                 "answer": "No relevant documents found for this query.",
+                 "answer": "No relevant documents or web results found for this query.",
                  "sources": [],
                  "context_warning": None
              }
-
-        rag_context = "\n\n".join(context_parts)
 
         # 3. Build conversation history context (if provided)
         conversation_context = ""
@@ -154,7 +210,7 @@ class RAGService:
         if conversation_context:
             user_prompt_parts.append(f"Previous Conversation:\n{conversation_context}\n")
 
-        user_prompt_parts.append(f"Context from Documents:\n{rag_context}\n")
+        user_prompt_parts.append(f"Context from Documents and Web:\n{rag_context}\n")
         user_prompt_parts.append(f"Current Question: {question}\n")
         user_prompt_parts.append("Answer in detail and comprehensively.")
 
@@ -169,7 +225,8 @@ class RAGService:
         return {
             "answer": response,
             "sources": sources,
-            "context_warning": context_warning
+            "context_warning": context_warning,
+            "search_queries": search_queries if web_search else []
         }
     
     @staticmethod

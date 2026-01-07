@@ -81,6 +81,8 @@ def chat():
         if prompt_obj:
             system_prompt = prompt_obj.content
 
+    web_search = data.get('web_search', False) if request.is_json else False
+
     # Perform RAG with conversation context
     rag = RAGService(db.session)
     result = rag.query(
@@ -88,7 +90,8 @@ def chat():
         document_ids=doc_ids,
         top_k=5,
         conversation_history=conversation_history,
-        system_prompt=system_prompt
+        system_prompt=system_prompt,
+        web_search=web_search
     )
 
     # Save Assistant Message

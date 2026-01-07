@@ -57,9 +57,18 @@ import { MessageSource } from '@core/models';
                     <label class="text-xs font-medium text-secondary uppercase tracking-wide">Metadata</label>
                     <div class="mt-2 grid grid-cols-2 gap-2 text-sm">
                       @for (key of objectKeys(source()!.metadata); track key) {
-                        <div class="flex gap-2">
-                          <span class="text-secondary opacity-70">{{ key }}:</span>
-                          <span class="text-primary">{{ source()!.metadata[key] }}</span>
+                        <div class="flex gap-2 min-w-0">
+                          <span class="text-secondary opacity-70 shrink-0">{{ key }}:</span>
+                          @if (isUrl(key, source()!.metadata[key])) {
+                            <a [href]="source()!.metadata[key]"
+                               target="_blank"
+                               class="text-accent hover:underline truncate"
+                               (click)="$event.stopPropagation()">
+                              {{ source()!.metadata[key] }}
+                            </a>
+                          } @else {
+                            <span class="text-primary truncate">{{ source()!.metadata[key] }}</span>
+                          }
                         </div>
                       }
                     </div>
@@ -124,5 +133,11 @@ export class SourceModalComponent {
       return 'N/A';
     }
     return `${(score * 100).toFixed(1)}%`;
+  }
+
+  isUrl(key: string, value: any): boolean {
+    if (key === 'url') return true;
+    if (typeof value === 'string' && value.startsWith('http')) return true;
+    return false;
   }
 }

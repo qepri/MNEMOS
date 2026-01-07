@@ -29,3 +29,4 @@ langchain-text-splitters
 EbookLib
 beautifulsoup4
 docker>=7.0.0
+ddgs
