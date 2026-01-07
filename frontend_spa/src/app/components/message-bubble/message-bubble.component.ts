@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Message, MessageSource } from '@core/models';
 import { SourceModalComponent } from '@shared/components/source-modal/source-modal.component';
 import { MarkdownDisplayComponent } from '../markdown/markdown-display.component';
+import { ModalService } from '@services/modal.service';
 
 @Component({
   selector: 'app-message-bubble',
@@ -121,6 +122,8 @@ export class MessageBubbleComponent {
   message = input.required<Message>();
   onEdit = output<string>(); // Emits new content
 
+  private modalService = inject(ModalService);
+
   // State
   isEditing = signal(false);
   editContent = signal('');
@@ -150,8 +153,19 @@ export class MessageBubbleComponent {
   }
 
   openSourceModal(source: MessageSource) {
-    this.selectedSource.set(source);
-    this.isModalOpen.set(true);
+    if (source.document_id && source.document.toLowerCase().endsWith('.pdf')) {
+      // Create a minimal document object for the viewer
+      // We cast to any because we only really need ID and filename for the viewer/title
+      const doc: any = {
+        id: source.document_id,
+        original_filename: source.document,
+        file_type: 'pdf'
+      };
+      this.modalService.openPdfViewer(doc, source.text, source.page_number);
+    } else {
+      this.selectedSource.set(source);
+      this.isModalOpen.set(true);
+    }
   }
 
   closeSourceModal() {

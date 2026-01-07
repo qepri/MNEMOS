@@ -7,6 +7,7 @@ export const ApiEndpoints = {
   DOCUMENTS_UPLOAD: '/api/documents/upload',
   DOCUMENT_STATUS: (id: string) => `/api/documents/${id}/status`,
   DOCUMENT_DELETE: (id: string) => `/api/documents/${id}`,
+  DOCUMENT_CONTENT: (id: string) => `/api/documents/${id}/content`,
 
   // Conversations
   CONVERSATIONS: '/api/conversations',

@@ -47,6 +47,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/ngx-extended-pdf-viewer/assets/",
+                "output": "/assets/"
               }
             ],
             "styles": [
@@ -82,7 +87,8 @@
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {
-            "port": 5200
+            "port": 5200,
+            "proxyConfig": "proxy.conf.json"
           },
           "configurations": {
             "production": {

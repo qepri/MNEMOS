@@ -1,5 +1,5 @@
 import logging
-from flask import Blueprint, request, render_template, jsonify
+from flask import Blueprint, request, render_template, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 from app.models.document import Document
 from app.tasks.processing import process_document_task
@@ -127,3 +127,16 @@ def get_document_status(doc_id):
         return render_template('partials/document_item.html', document=doc)
         
     return jsonify({"status": doc.status, "error": doc.error_message})
+
+@bp.route('/<string:doc_id>/content', methods=['GET'])
+def get_document_content(doc_id):
+    """Serve the document file content."""
+    doc = db.session.query(Document).get(doc_id)
+    if not doc or not doc.file_path:
+        return "", 404
+    
+    # Ensure it's not a youtube "file" (which are URLs)
+    if doc.file_type == 'youtube':
+        return "", 400
+
+    return send_from_directory(settings.UPLOAD_FOLDER, doc.file_path)

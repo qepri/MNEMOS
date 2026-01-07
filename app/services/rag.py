@@ -103,6 +103,8 @@ class RAGService:
             context_parts.append(f"--- {doc.original_filename} {location} ---\n{meta_str}{chunk.content}")
             sources.append({
                 "document": doc.original_filename,
+                "document_id": str(doc.id),
+                "page_number": chunk.page_number,
                 "chunk_id": str(chunk.id),
                 "location": location,
                 "text": chunk.content,

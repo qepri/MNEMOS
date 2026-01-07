@@ -9,11 +9,13 @@ import { ChatService } from '../../services/chat.service';
 import { FullscreenModalComponent } from '../../components/loaders/fullscreen-modal/fullscreen-modal.component';
 import { SettingsService } from '../../services/settings.service';
 import { ToastrService } from 'ngx-toastr';
+import { PdfViewerComponent } from '../../components/modals/pdf-viewer/pdf-viewer.component';
+import { Document } from '@core/models';
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, CommonModule, FormsModule, FullscreenModalComponent],
+  imports: [RouterOutlet, RouterLink, CommonModule, FormsModule, FullscreenModalComponent, PdfViewerComponent],
   templateUrl: './main-layout.html',
   styleUrl: './main-layout.css'
 })
@@ -126,6 +128,11 @@ export class MainLayout implements OnInit {
     if (!confirm('Are you sure you want to delete this document?')) return;
 
     await this.documentsService.removeDocument(id);
+  }
+
+  openPdf(doc: Document, event: Event) {
+    event.stopPropagation();
+    this.modalService.openPdfViewer(doc);
   }
 
   // Upload Modal Methods

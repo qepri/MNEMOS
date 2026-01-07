@@ -17,6 +17,8 @@ export interface Message {
 
 export interface MessageSource {
   document: string;
+  document_id?: string;
+  page_number?: number;
   text: string;
   score: number;
   location?: string;
