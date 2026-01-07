@@ -29,7 +29,7 @@ export class ChatService {
       }
 
       // Add assistant message with simulated streaming
-      await this.addAssistantMessage(response.answer, response.sources);
+      await this.addAssistantMessage(response.answer, response.sources, response.search_queries);
 
       return response;
     } catch (error) {
@@ -55,7 +55,7 @@ export class ChatService {
     this.messages.update(msgs => [...msgs, userMessage]);
   }
 
-  async addAssistantMessage(content: string, sources: any[] = []) {
+  async addAssistantMessage(content: string, sources: any[] = [], search_queries: string[] = []) {
     const id = `temp-${Date.now()}`;
     const assistantMessage: Message = {
       id,
@@ -63,6 +63,7 @@ export class ChatService {
       role: 'assistant',
       content: '', // Start empty
       sources,
+      search_queries,
       created_at: new Date().toISOString(),
       status: 'generating'
     };

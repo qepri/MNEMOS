@@ -41,9 +41,6 @@ export class LlmSelectionModalComponent {
     selectedModel = signal<string>(''); // For dropdown selection
 
     constructor() {
-        // Load models on init
-        this.settingsService.loadModels();
-
         // Effect to sync state when modal opens
         effect(() => {
             if (this.isVisible()) {

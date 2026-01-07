@@ -5,9 +5,9 @@ import { ChatService } from '@services/chat.service';
 import { DocumentsService } from '@services/documents.service';
 import { ConversationsService } from '@services/conversations.service';
 import { SettingsService } from '@services/settings.service';
-import { ModalService } from '../../../services/modal.service';
-import { MessageBubbleComponent } from '../../../components/chat/message-bubble.component';
-import { LlmSelectionModalComponent } from '../../../components/modals';
+import { ModalService } from '../../../../services/modal.service';
+import { MessageBubbleComponent } from '@components/index';
+import { LlmSelectionModalComponent } from '@components/modals';
 
 @Component({
   selector: 'app-chat-page',
@@ -34,6 +34,7 @@ export class ChatPage {
   conversationSearch = signal<string>('');
   theme = signal<'dark' | 'light'>('dark');
   isLlmModalOpen = signal<boolean>(false);
+  isWebSearchEnabled = signal<boolean>(false);
 
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef;
 
@@ -76,10 +77,6 @@ export class ChatPage {
   });
 
   constructor() {
-    // Load initial data
-    this.conversationsService.loadConversations();
-    this.settingsService.loadCurrentModel();
-
     // Auto-scroll effect
     effect(() => {
       const count = this.chatService.messages().length;
@@ -109,7 +106,8 @@ export class ChatPage {
       await this.chatService.sendMessage({
         question,
         document_ids: documentIds,
-        conversation_id: conversationId || undefined
+        conversation_id: conversationId || undefined,
+        web_search: this.isWebSearchEnabled()
       });
 
       // Note: sendMessage() already adds the assistant message via streaming

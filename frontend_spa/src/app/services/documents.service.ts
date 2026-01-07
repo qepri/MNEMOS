@@ -18,7 +18,6 @@ export class DocumentsService {
     totalCount = computed(() => this.documents().length);
 
     constructor() {
-        this.fetchDocuments();
     }
 
     async fetchDocuments() {

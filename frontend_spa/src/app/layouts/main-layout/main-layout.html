@@ -1,0 +1,363 @@
+<!-- Initial Loader -->
+<app-fullscreen-modal [isLoading]="isInitialLoading()"></app-fullscreen-modal>
+
+<div class="flex h-screen overflow-hidden bg-base text-primary font-sans antialiased">
+
+    <!-- Sidebar (Desktop) -->
+    <aside
+        class="hidden lg:flex flex-col w-64 bg-sidebar border-r border-divider flex-shrink-0 transition-all duration-300">
+        <!-- Sidebar Content (Reused) -->
+        <ng-container *ngTemplateOutlet="sidebarContent"></ng-container>
+    </aside>
+
+    <!-- Sidebar (Mobile - Fullscreen Modal) -->
+    @if (isSidebarOpen()) {
+    <div class="fixed inset-0 z-50 lg:hidden">
+        <!-- Backdrop (Optional for fullscreen, but good for transition) -->
+        <div class="absolute inset-0 bg-base transition-opacity"></div>
+
+        <!-- Sidebar Panel (Fullscreen) -->
+        <aside class="absolute inset-0 w-full h-full bg-sidebar flex flex-col anime-slide-in">
+            <ng-container *ngTemplateOutlet="sidebarContent"></ng-container>
+        </aside>
+    </div>
+    }
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col bg-base relative w-full h-full overflow-hidden">
+        <!-- Mobile Header -->
+        <div class="lg:hidden flex items-center justify-between p-4 border-b border-divider bg-sidebar">
+            <h1 class="text-lg font-bold text-primary">MNEMOS</h1>
+            <button (click)="toggleSidebar()" class="p-2 -mr-2 text-secondary hover:text-primary">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Router Outlet -->
+        <div class="flex-1 overflow-hidden relative">
+            <router-outlet></router-outlet>
+        </div>
+    </main>
+</div>
+
+<!-- Reusable Sidebar Content Template -->
+<ng-template #sidebarContent>
+    <!-- Sidebar Header -->
+    <div class="p-4 border-b border-divider">
+        <div class="flex items-center justify-between mb-4">
+            <h1 class="text-lg font-bold text-primary">MNEMOS</h1>
+            <div class="flex items-center gap-2">
+                <button class="p-2 hover:bg-hover rounded-lg transition-colors" title="New Chat"
+                    (click)="handleNewChat(); isSidebarOpen.set(false)">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                </button>
+                <!-- Close Button (Mobile Only) -->
+                <button
+                    class="lg:hidden p-2 hover:bg-hover rounded-lg transition-colors text-secondary hover:text-primary"
+                    (click)="toggleSidebar()" title="Close Menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <input type="text" placeholder="Search chats..."
+            class="w-full px-3 py-2 text-sm bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent transition-all">
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex-1 overflow-y-auto flex flex-col">
+        <div class="flex border-b border-divider px-2 mb-2">
+            <button (click)="switchTab('chats')" [class.border-accent]="activeTab() === 'chats'"
+                [class.text-primary]="activeTab() === 'chats'" [class.text-secondary]="activeTab() !== 'chats'"
+                class="flex-1 px-2 py-2 text-xs font-medium border-b-2 hover:text-primary transition-colors duration-200"
+                [style.border-color]="activeTab() !== 'chats' ? 'transparent' : ''">
+                Chats
+            </button>
+            <button (click)="switchTab('documents')" [class.border-accent]="activeTab() === 'documents'"
+                [class.text-primary]="activeTab() === 'documents'" [class.text-secondary]="activeTab() !== 'documents'"
+                class="flex-1 px-2 py-2 text-xs font-medium border-b-2 hover:text-primary transition-colors duration-200"
+                [style.border-color]="activeTab() !== 'documents' ? 'transparent' : ''">
+                Documents
+            </button>
+        </div>
+
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto p-2">
+            @if (activeTab() === 'chats') {
+            <div class="text-xs font-medium text-secondary mb-2 px-2">Conversations</div>
+            @for (conv of conversationsService.conversations(); track conv.id) {
+            <div class="group relative">
+                <button (click)="handleSelectConversation(conv.id); isSidebarOpen.set(false)"
+                    class="w-full text-left px-3 py-2 rounded-lg hover:bg-hover transition-colors pr-8"
+                    [class.bg-accent-subtle]="chatService.currentConversationId() === conv.id">
+                    <div class="text-sm text-primary truncate group-hover:text-accent">{{ conv.title }}</div>
+                    <div class="text-xs text-secondary mt-0.5">{{ conv.updated_at | date:'short' }}</div>
+                </button>
+                <button (click)="handleDeleteConversation(conv.id, $event)"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-secondary hover:text-error hover:bg-white/10 rounded-md opacity-0 group-hover:opacity-100 transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
+            </div>
+            }
+            @if (conversationsService.conversations().length === 0) {
+            <div class="px-3 py-4 text-center text-sm text-secondary">
+                No conversations yet. Start a new chat!
+            </div>
+            }
+            } @else {
+            <!-- Documents List -->
+            <div class="mb-3 px-2">
+                <div class="flex items-center justify-between text-xs text-secondary mb-2">
+                    <span>{{ documentsService.selectedCount() }} selected</span>
+                    <button (click)="documentsService.clearSelection()" class="text-accent hover:underline">Clear
+                        all</button>
+                </div>
+            </div>
+            <div class="space-y-2">
+                @for (doc of documentsService.documents(); track doc.id) {
+                <div class="group flex items-center gap-2 p-2 rounded-lg hover:bg-hover transition-colors">
+                    <label class="flex-1 flex items-start gap-2 cursor-pointer min-w-0">
+                        <input type="checkbox" [checked]="doc.selected"
+                            (change)="documentsService.toggleDocument(doc.id)"
+                            class="checkbox checkbox-xs checkbox-accent mt-0.5">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-1 mb-1">
+                                <svg class="w-3 h-3 text-error flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path
+                                        d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
+                                </svg>
+                                <span class="text-xs text-primary font-medium truncate">{{ doc.original_filename
+                                    }}</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs text-secondary">
+                                <span class="badge badge-success text-xs px-1 py-0"
+                                    [class.badge-success]="doc.status === 'completed'">{{ doc.status }}</span>
+                            </div>
+                        </div>
+                    </label>
+                    <div class="flex items-center">
+                        @if (doc.file_type === 'pdf') {
+                        <button (click)="openPdf(doc, $event)"
+                            class="p-1.5 text-secondary hover:text-accent hover:bg-white/10 rounded-md opacity-0 group-hover:opacity-100 transition-all mr-1"
+                            title="Open PDF">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </button>
+                        }
+                        <button (click)="handleDeleteDocument(doc.id, $event)"
+                            class="p-1.5 text-secondary hover:text-error hover:bg-white/10 rounded-md opacity-0 group-hover:opacity-100 transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                }
+            </div>
+            <!-- Add Document Button -->
+            <div class="mt-3 px-2">
+                <button (click)="modalService.openUpload()"
+                    class="w-full px-3 py-2 text-xs text-accent border border-accent rounded-lg hover:bg-accent-subtle transition-colors">
+                    + Add Document
+                </button>
+            </div>
+            }
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="p-3 border-t border-divider space-y-2">
+        <button (click)="modalService.openUpload()"
+            class="w-full flex items-center gap-2 px-3 py-2 text-sm text-primary hover:bg-hover rounded-lg transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <span>Upload Document</span>
+        </button>
+        <button routerLink="/settings" (click)="isSidebarOpen.set(false)"
+            class="w-full flex items-center gap-2 px-3 py-2 text-sm text-primary hover:bg-hover rounded-lg transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            </svg>
+            <span>Settings</span>
+        </button>
+        <button (click)="toggleTheme()"
+            class="w-full flex items-center gap-2 px-3 py-2 text-sm text-primary hover:bg-hover rounded-lg transition-colors">
+            @if (theme() === 'dark') {
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+            <span>Dark Mode</span>
+            } @else {
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <span>Light Mode</span>
+            }
+        </button>
+    </div>
+</ng-template>
+
+<!-- Modal: Model Selection -->
+@if (modalService.isModelSelectionOpen()) {
+<div class="modal modal-open">
+    <div class="modal-box bg-panel border border-divider rounded-2xl p-0 max-w-sm">
+        <div class="sticky top-0 bg-panel border-b border-divider p-4 z-10">
+            <h3 class="text-lg font-semibold text-primary mb-3">Select Model</h3>
+            <input type="text" placeholder="Search models..."
+                class="w-full px-3 py-2 text-sm bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+        </div>
+        <ul class="p-2 max-h-96 overflow-y-auto">
+            <li>
+                <button (click)="modalService.closeModelSelection()"
+                    class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-hover transition-colors group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                        <span class="text-sm text-primary">llama3:8b</span>
+                    </div>
+                    <svg class="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                </button>
+            </li>
+            <li>
+                <button (click)="modalService.closeModelSelection()"
+                    class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-hover transition-colors group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                        <span class="text-sm text-primary">mistral:7b</span>
+                    </div>
+                </button>
+            </li>
+            <li>
+                <button (click)="modalService.closeModelSelection()"
+                    class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-hover transition-colors group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-1.5 h-1.5 bg-gray-500 rounded-full"></div>
+                        <div>
+                            <div class="text-sm text-primary">gemma:27b</div>
+                            <div class="text-xs text-secondary">Download available</div>
+                        </div>
+                    </div>
+                </button>
+            </li>
+        </ul>
+        <div class="sticky bottom-0 bg-panel border-t border-divider p-3">
+            <button routerLink="/settings" (click)="modalService.closeModelSelection()"
+                class="w-full px-3 py-2 text-sm text-accent hover:bg-accent-subtle rounded-lg transition-colors flex items-center justify-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Discover More Models</span>
+            </button>
+        </div>
+    </div>
+    <div class="modal-backdrop" (click)="modalService.closeModelSelection()"></div>
+</div>
+}
+
+<!-- Modal: Upload Document -->
+@if (modalService.isUploadOpen()) {
+<div class="modal modal-open">
+    <div class="modal-box bg-panel border border-divider rounded-2xl p-0 max-w-lg">
+        <div class="p-4 border-b border-divider">
+            <h3 class="text-lg font-semibold text-primary">Upload Document</h3>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex border-b border-divider">
+            <button (click)="switchUploadTab('file')" [class.border-accent]="uploadTab() === 'file'"
+                [class.text-primary]="uploadTab() === 'file'" [class.text-secondary]="uploadTab() !== 'file'"
+                class="flex-1 px-4 py-3 text-sm font-medium border-b-2 transition-colors"
+                [style.border-color]="uploadTab() !== 'file' ? 'transparent' : ''">
+                File Upload
+            </button>
+            <button (click)="switchUploadTab('youtube')" [class.border-accent]="uploadTab() === 'youtube'"
+                [class.text-primary]="uploadTab() === 'youtube'" [class.text-secondary]="uploadTab() !== 'youtube'"
+                class="flex-1 px-4 py-3 text-sm font-medium border-b-2 transition-colors"
+                [style.border-color]="uploadTab() !== 'youtube' ? 'transparent' : ''">
+                YouTube
+            </button>
+        </div>
+
+        <div class="p-4">
+            <!-- File Upload Tab -->
+            @if (uploadTab() === 'file') {
+            <div (dragover)="onDragOver($event)" (drop)="onDrop($event)"
+                class="border-2 border-dashed border-divider rounded-xl p-8 text-center hover:border-accent transition-colors cursor-pointer relative">
+
+                <input type="file" (change)="onFileSelected($event)"
+                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+
+                <svg class="w-12 h-12 mx-auto text-secondary mb-3" fill="none" stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <p class="text-sm text-primary mb-1">
+                    {{ selectedFile() ? selectedFile()?.name : 'Drop files here or click to browse' }}
+                </p>
+                <p class="text-xs text-secondary">PDF, TXT, Audio, Video (Max 10MB)</p>
+            </div>
+            }
+
+            <!-- YouTube Tab -->
+            @if (uploadTab() === 'youtube') {
+            <div>
+                <input type="text" [(ngModel)]="youtubeUrl" placeholder="https://youtube.com/watch?v=..."
+                    class="w-full px-3 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent mb-3">
+                <p class="text-xs text-secondary">Enter a YouTube URL to transcribe and analyze the video</p>
+            </div>
+            }
+
+            <!-- Progress Bar -->
+            @if (isUploading()) {
+            <div class="mt-4">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm text-secondary">Processing...</span>
+                    <span class="text-sm text-accent">{{ uploadProgress() }}%</span>
+                </div>
+                <progress class="progress progress-accent w-full" [value]="uploadProgress()" max="100"></progress>
+            </div>
+            }
+        </div>
+
+        <div class="flex gap-2 p-4 border-t border-divider">
+            <button (click)="modalService.closeUpload()"
+                class="flex-1 px-4 py-2 text-sm text-secondary hover:bg-hover rounded-lg transition-colors">
+                Cancel
+            </button>
+            <button (click)="startUpload()"
+                [disabled]="isUploading() || (uploadTab() === 'file' && !selectedFile()) || (uploadTab() === 'youtube' && !youtubeUrl())"
+                class="flex-1 px-4 py-2 text-sm bg-accent text-white rounded-lg hover:bg-accent-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                {{ isUploading() ? 'Uploading...' : 'Upload' }}
+            </button>
+        </div>
+    </div>
+</div>
+}
+
+<!-- PDF Viewer Modal -->
+<app-pdf-viewer></app-pdf-viewer>
+<!-- Youtube Viewer Modal -->
+<app-youtube-viewer></app-youtube-viewer>
+<!-- Video Player Modal -->
+<app-video-player></app-video-player>

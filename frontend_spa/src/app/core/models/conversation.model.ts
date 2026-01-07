@@ -13,11 +13,18 @@ export interface Message {
   sources?: MessageSource[];
   created_at: string;
   status?: 'generating' | 'completed' | 'error';
+  search_queries?: string[];
 }
 
 export interface MessageSource {
   document: string;
+  document_id?: string;
+  page_number?: number;
+  start_time?: number;
+  end_time?: number;
   text: string;
+  file_type?: string;
+  youtube_url?: string;
   score: number;
   location?: string;
   metadata?: any;

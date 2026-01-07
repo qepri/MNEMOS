@@ -1,28 +1,29 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners, APP_INITIALIZER, inject } from '@angular/core';
+import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter } from '@angular/router';
+import { provideAnimations } from '@angular/platform-browser/animations';
+import { provideToastr } from 'ngx-toastr';
 
 import { provideHttpClient, withFetch } from '@angular/common/http';
 import { routes } from './app.routes';
-import { SettingsService } from '@services/settings.service';
-
-function initializeApp(settingsService: SettingsService) {
-  return () => Promise.all([
-    settingsService.loadChatPreferences(),
-    settingsService.loadModels(),
-    settingsService.loadCurrentModel()
-  ]);
-}
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideHttpClient(withFetch()),
-    {
-      provide: APP_INITIALIZER,
-      useFactory: initializeApp,
-      deps: [SettingsService],
-      multi: true
-    }
+    provideAnimations(), // required animations providers
+    provideToastr({
+      easing: 'ease-out',
+      easeTime: 500,
+      timeOut: 3500,
+      positionClass: 'toast-bottom-right',
+      preventDuplicates: true,
+      closeButton: false, // minimalist/KISS
+      progressBar: true,
+      tapToDismiss: true,
+      progressAnimation: 'decreasing',
+      maxOpened: 5,
+      // We will override these classes in styles.css
+    }),
   ]
 };

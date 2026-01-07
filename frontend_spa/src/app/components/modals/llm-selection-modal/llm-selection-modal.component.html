@@ -1,5 +1,5 @@
-<div *ngIf="isVisible()"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity anime-fade-in"
+@if (isVisible()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity anime-fade-in"
     (click)="closeModal()">
     <!-- Modal Container (Matching Settings Page 'bg-panel' style) -->
     <div class="bg-panel border border-divider rounded-xl w-full max-w-xl mx-4 flex flex-col max-h-[90vh] overflow-hidden shadow-2xl anime-scale-in"
@@ -40,7 +40,8 @@
                     <!-- Dynamic Settings based on Provider -->
 
                     <!-- API Keys -->
-                    <div *ngIf="['openai', 'anthropic', 'groq', 'custom'].includes(selectedProvider())">
+                    @if (['openai', 'anthropic', 'groq', 'custom'].includes(selectedProvider())) {
+                    <div>
                         <label class="block text-sm font-medium mb-2">
                             {{ selectedProvider() === 'openai' ? 'OpenAI API Key' :
                             (selectedProvider() === 'anthropic' ? 'Anthropic API Key' :
@@ -49,43 +50,59 @@
                         <input type="password" [ngModel]="apiKey()" (ngModelChange)="updateApiKey($event)"
                             [placeholder]="selectedProvider() === 'groq' ? 'gsk_...' : 'sk-...'"
                             class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
-                        <p *ngIf="selectedProvider() === 'groq'" class="text-xs text-secondary mt-1">
+
+                        @if (selectedProvider() === 'groq') {
+                        <p class="text-xs text-secondary mt-1">
                             Get your key at <a href="https://console.groq.com/keys" target="_blank"
                                 class="text-accent hover:underline">console.groq.com</a>
                         </p>
+                        }
                     </div>
+                    }
 
                     <!-- Base URL -->
-                    <div *ngIf="['ollama', 'lm_studio', 'custom'].includes(selectedProvider())">
+                    @if (['ollama', 'lm_studio', 'custom'].includes(selectedProvider())) {
+                    <div>
                         <label class="block text-sm font-medium mb-2">Base URL</label>
                         <input type="text" [ngModel]="baseUrl()" (ngModelChange)="updateBaseUrl($event)"
                             placeholder="http://localhost:11434"
                             class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
-                        <p *ngIf="selectedProvider() === 'custom'" class="text-xs text-secondary mt-1">
+
+                        @if (selectedProvider() === 'custom') {
+                        <p class="text-xs text-secondary mt-1">
                             Must be an OpenAI-compatible endpoint (e.g., vLLM, text-generation-webui)
                         </p>
+                        }
                     </div>
+                    }
 
                     <!-- Model Name (Manual Input) -->
-                    <div *ngIf="isManualModelInput()">
+                    @if (isManualModelInput()) {
+                    <div>
                         <label class="block text-sm font-medium mb-2">Model Name</label>
                         <input type="text" [ngModel]="customModelId()" (ngModelChange)="updateCustomModelId($event)"
                             placeholder="e.g., mixtral-8x7b-32768"
                             class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
                     </div>
+                    }
 
                     <!-- Models Select (Shown for Standard providers OR Groq) -->
-                    <div *ngIf="['ollama', 'openai', 'anthropic', 'groq'].includes(selectedProvider())">
+                    @if (['ollama', 'openai', 'anthropic', 'groq'].includes(selectedProvider())) {
+                    <div>
                         <label class="block text-sm font-medium mb-2">Available Models</label>
 
                         <select [ngModel]="selectedModel()" (ngModelChange)="updateSelectedModel($event)"
                             class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
-                            <option *ngFor="let model of currentModels()" [value]="model">
+                            @for (model of currentModels(); track model) {
+                            <option [value]="model">
                                 {{ model }}
                             </option>
-                            <option *ngIf="currentModels().length === 0" disabled>No models found</option>
+                            } @empty {
+                            <option disabled>No models found</option>
+                            }
                         </select>
                     </div>
+                    }
                 </div>
             </div>
         </div>
@@ -103,3 +120,4 @@
         </div>
     </div>
 </div>
+}

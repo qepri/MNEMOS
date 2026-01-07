@@ -1,0 +1,39 @@
+@if (isVisible()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity anime-fade-in"
+    (click)="closeModal()">
+    <!-- Modal Container -->
+    <div class="bg-panel border border-divider rounded-xl w-full max-w-6xl mx-4 flex flex-col h-[90vh] shadow-2xl anime-scale-in"
+        (click)="$event.stopPropagation()">
+
+        <!-- Header -->
+        <div class="p-4 border-b border-divider flex justify-between items-center bg-panel">
+            <h3 class="text-lg font-semibold text-primary truncate max-w-3xl">
+                {{ currentDoc()?.original_filename }}
+            </h3>
+            <div class="flex items-center gap-2">
+                <!-- Close Button -->
+                <button class="btn-icon text-secondary hover:text-primary transition-colors p-1" (click)="closeModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 6 6 18" />
+                        <path d="M6 6 18 18" />
+                    </svg>
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Body -->
+        <div class="flex-1 bg-neutral-900 relative overflow-hidden">
+            @if (pdfSrc()) {
+            <ngx-extended-pdf-viewer [src]="pdfSrc()" [textLayer]="true" [showHandToolButton]="true"
+                [showPresentationModeButton]="true" [showPrintButton]="true" [showDownloadButton]="true"
+                (pdfLoaded)="onPdfLoaded($event)" (pdfLoadingFailed)="onPdfError($event)" [page]="page()"
+                [showSecondaryToolbarButton]="true" [height]="'calc(90vh - 65px)'" theme="dark"
+                backgroundColor="#1b1b1b">
+            </ngx-extended-pdf-viewer>
+            }
+        </div>
+    </div>
+</div>
+}

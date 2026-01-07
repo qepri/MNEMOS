@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { Message, MessageSource } from '@core/models';
 import { SourceModalComponent } from '@shared/components/source-modal/source-modal.component';
 import { MarkdownDisplayComponent } from '../markdown/markdown-display.component';
+import { ModalService } from '@services/modal.service';
+import { ApiEndpoints } from '@core/constants/api-endpoints';
 
 @Component({
   selector: 'app-message-bubble',
@@ -48,6 +50,20 @@ import { MarkdownDisplayComponent } from '../markdown/markdown-display.component
             [content]="message().content" 
             (citationClick)="handleCitation($event)">
           </app-markdown-display>
+
+          @if (message().search_queries && message().search_queries!.length > 0) {
+            <div class="mt-4 pt-3 border-t border-divider">
+              <p class="text-xs font-medium text-secondary mb-2 flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>
+                Web Search Queries used:
+              </p>
+              <div class="flex flex-wrap gap-2">
+                @for (query of message().search_queries; track query) {
+                  <span class="badge badge-ghost badge-sm text-xs font-normal h-auto py-1 text-left whitespace-normal text-secondary">{{ query }}</span>
+                }
+              </div>
+            </div>
+          }
 
           @if (message().sources && message().sources!.length > 0 && (!message().status || message().status === 'completed')) {
             <div class="mt-4 pt-3 border-t border-divider" [class.anime-fade-in]="message().status === 'completed'">
@@ -121,6 +137,8 @@ export class MessageBubbleComponent {
   message = input.required<Message>();
   onEdit = output<string>(); // Emits new content
 
+  private modalService = inject(ModalService);
+
   // State
   isEditing = signal(false);
   editContent = signal('');
@@ -150,8 +168,26 @@ export class MessageBubbleComponent {
   }
 
   openSourceModal(source: MessageSource) {
-    this.selectedSource.set(source);
-    this.isModalOpen.set(true);
+    if (source.file_type === 'youtube' && source.youtube_url) {
+      this.modalService.openYoutubeViewer(source.youtube_url, source.start_time);
+    } else if (source.document_id && (source.file_type === 'video' || source.file_type === 'audio')) {
+      // Open Generic Video/Audio Player
+      // We rely on the backend endpoint to serve the file content
+      const url = ApiEndpoints.DOCUMENT_CONTENT(source.document_id);
+      this.modalService.openVideoPlayer(url, source.start_time);
+    } else if (source.document_id && (source.document.toLowerCase().endsWith('.pdf') || source.file_type === 'pdf')) {
+      // Create a minimal document object for the viewer
+      // We cast to any because we only really need ID and filename for the viewer/title
+      const doc: any = {
+        id: source.document_id,
+        original_filename: source.document,
+        file_type: 'pdf'
+      };
+      this.modalService.openPdfViewer(doc, source.text, source.page_number);
+    } else {
+      this.selectedSource.set(source);
+      this.isModalOpen.set(true);
+    }
   }
 
   closeSourceModal() {

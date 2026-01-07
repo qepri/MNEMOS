@@ -43,7 +43,7 @@ Soporte para múltiples proveedores de LLM:
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    Frontend (Angular SPA)               │
-│  - Puerto 4200 (Dev) / 80 (Prod)                        │
+│  - Puerto 5200 (Dev) / 80 (Prod)                        │
 │  - Gestión de documentos & Chat                         │
 │  - Visualización de fuentes                             │
 └────────────────────┬────────────────────────────────────┘
@@ -260,7 +260,7 @@ El sistema despliega los siguientes contenedores:
 
 ### Interfaz Web
 
-Acceder a [http://localhost:4200](http://localhost:4200) (o el puerto configurado).
+Acceder a [http://localhost:5200](http://localhost:5200) (o el puerto configurado).
 
 #### Subir Documentos
 1. Ir a la sección "Documents"

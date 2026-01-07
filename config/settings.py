@@ -69,7 +69,8 @@ class Settings(BaseSettings):
     
     # Storage
     # In docker, mapped to /app/uploads
-    UPLOAD_FOLDER: str = "/app/uploads"
+    # Default to a local 'uploads' directory for Windows dev
+    UPLOAD_FOLDER: str = os.path.join(os.getcwd(), 'uploads') if os.name == 'nt' else "/app/uploads"
     MAX_CONTENT_LENGTH: int = 500 * 1024 * 1024  # 500MB
     
     class Config:
