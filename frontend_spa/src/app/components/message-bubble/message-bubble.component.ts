@@ -5,6 +5,7 @@ import { Message, MessageSource } from '@core/models';
 import { SourceModalComponent } from '@shared/components/source-modal/source-modal.component';
 import { MarkdownDisplayComponent } from '../markdown/markdown-display.component';
 import { ModalService } from '@services/modal.service';
+import { ApiEndpoints } from '@core/constants/api-endpoints';
 
 @Component({
   selector: 'app-message-bubble',
@@ -153,7 +154,14 @@ export class MessageBubbleComponent {
   }
 
   openSourceModal(source: MessageSource) {
-    if (source.document_id && source.document.toLowerCase().endsWith('.pdf')) {
+    if (source.file_type === 'youtube' && source.youtube_url) {
+      this.modalService.openYoutubeViewer(source.youtube_url, source.start_time);
+    } else if (source.document_id && (source.file_type === 'video' || source.file_type === 'audio')) {
+      // Open Generic Video/Audio Player
+      // We rely on the backend endpoint to serve the file content
+      const url = ApiEndpoints.DOCUMENT_CONTENT(source.document_id);
+      this.modalService.openVideoPlayer(url, source.start_time);
+    } else if (source.document_id && (source.document.toLowerCase().endsWith('.pdf') || source.file_type === 'pdf')) {
       // Create a minimal document object for the viewer
       // We cast to any because we only really need ID and filename for the viewer/title
       const doc: any = {

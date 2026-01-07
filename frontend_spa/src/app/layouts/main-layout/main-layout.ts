@@ -10,12 +10,14 @@ import { FullscreenModalComponent } from '../../components/loaders/fullscreen-mo
 import { SettingsService } from '../../services/settings.service';
 import { ToastrService } from 'ngx-toastr';
 import { PdfViewerComponent } from '../../components/modals/pdf-viewer/pdf-viewer.component';
+import { YoutubeViewer } from '../../components/modals/youtube-viewer/youtube-viewer';
+import { VideoPlayerComponent } from '../../components/modals/video-player/video-player.component';
 import { Document } from '@core/models';
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, CommonModule, FormsModule, FullscreenModalComponent, PdfViewerComponent],
+  imports: [RouterOutlet, RouterLink, CommonModule, FormsModule, FullscreenModalComponent, PdfViewerComponent, YoutubeViewer, VideoPlayerComponent],
   templateUrl: './main-layout.html',
   styleUrl: './main-layout.css'
 })

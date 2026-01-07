@@ -45,4 +45,38 @@ export class ModalService {
         this.pdfSearchTerm.set(null);
         this.pdfPage.set(undefined);
     }
+
+    // YouTube Viewer Modal
+    isYoutubeViewerOpen = signal(false);
+    youtubeVideoUrl = signal<string | null>(null);
+    youtubeTimestamp = signal<number | undefined>(undefined);
+
+    openYoutubeViewer(url: string, timestamp?: number) {
+        this.youtubeVideoUrl.set(url);
+        this.youtubeTimestamp.set(timestamp);
+        this.isYoutubeViewerOpen.set(true);
+    }
+
+    closeYoutubeViewer() {
+        this.isYoutubeViewerOpen.set(false);
+        this.youtubeVideoUrl.set(null);
+        this.youtubeTimestamp.set(undefined);
+    }
+
+    // Video Player Modal (Local/Uploaded Files)
+    isVideoPlayerOpen = signal(false);
+    videoUrl = signal<string | null>(null);
+    videoTimestamp = signal<number | undefined>(undefined);
+
+    openVideoPlayer(url: string, timestamp?: number) {
+        this.videoUrl.set(url);
+        this.videoTimestamp.set(timestamp);
+        this.isVideoPlayerOpen.set(true);
+    }
+
+    closeVideoPlayer() {
+        this.isVideoPlayerOpen.set(false);
+        this.videoUrl.set(null);
+        this.videoTimestamp.set(undefined);
+    }
 }

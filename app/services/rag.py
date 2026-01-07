@@ -105,9 +105,13 @@ class RAGService:
                 "document": doc.original_filename,
                 "document_id": str(doc.id),
                 "page_number": chunk.page_number,
+                "start_time": chunk.start_time,
+                "end_time": chunk.end_time,
                 "chunk_id": str(chunk.id),
                 "location": location,
                 "text": chunk.content,
+                "file_type": doc.file_type,
+                "youtube_url": doc.youtube_url,
                 "metadata": doc.metadata_
             })
 
