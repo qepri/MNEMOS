@@ -44,12 +44,13 @@ export class ChatService {
     this.messages.set(messages);
   }
 
-  addUserMessage(content: string) {
+  addUserMessage(content: string, images?: string[]) {
     const userMessage: Message = {
       id: `temp-${Date.now()}`,
       conversation_id: this.currentConversationId() || '',
       role: 'user',
       content,
+      images,
       created_at: new Date().toISOString()
     };
     this.messages.update(msgs => [...msgs, userMessage]);

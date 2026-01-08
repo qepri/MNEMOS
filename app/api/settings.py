@@ -17,7 +17,27 @@ def get_models():
         base_url = settings.OLLAMA_BASE_URL.replace("/v1", "") # Strip /v1 for native API
         resp = requests.get(f"{base_url}/api/tags", timeout=5)
         resp.raise_for_status()
-        return jsonify(resp.json())
+        
+        data = resp.json()
+        models = data.get('models', [])
+        
+        # Enrich with capability flags
+        for m in models:
+            families = m.get('details', {}).get('families', []) or []
+            name_lower = m.get('name', '').lower()
+            
+            # Detect vision capability
+            # 1. 'clip' family (LLaVA uses this)
+            # 2. 'mllm' family (sometimes used)
+            # 3. Known vision model names
+            is_vision = 'clip' in families or 'mllm' in families
+            if not is_vision:
+                 if 'llava' in name_lower or 'moondream' in name_lower or 'minicpm' in name_lower or 'vision' in name_lower:
+                     is_vision = True
+            
+            m['vision'] = is_vision
+            
+        return jsonify({"models": models})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -599,6 +619,48 @@ def import_model():
 
         return generate(), {"Content-Type": "application/json"}
 
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@bp.route('/models/lookup', methods=['POST'])
+def lookup_models():
+    """Fetch available models from a provider using provided credentials."""
+    data = request.json
+    provider = data.get('provider')
+    api_key = data.get('api_key')
+    
+    if not provider or not api_key:
+        return jsonify({"error": "Provider and API Key required"}), 400
+        
+    try:
+        if provider == 'groq':
+            url = "https://api.groq.com/openai/v1/models"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            resp = requests.get(url, headers=headers, timeout=10)
+            resp.raise_for_status()
+            
+            data = resp.json()
+            # Groq returns standard OpenAI format: {"data": [{"id": "...", ...}]}
+            models = []
+            for m in data.get('data', []):
+                model_id = m.get('id')
+                if model_id:
+                     # Detect vision capability 
+                     # (Groq currently labels vision models with 'vision' in ID sometimes, or we check known ones)
+                     is_vision = 'vision' in model_id.lower() or 'llava' in model_id.lower() \
+                                 or 'scout' in model_id.lower() or 'maverick' in model_id.lower()
+                     models.append({
+                         "name": model_id,
+                         "vision": is_vision
+                     })
+            
+            return jsonify({"models": models})
+            
+        return jsonify({"error": f"Provider {provider} lookup not supported"}), 400
+        
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

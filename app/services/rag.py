@@ -83,7 +83,8 @@ Output ONLY the queries, one per line. Do not include numbering or bullets."""
         top_k: int = 5,
         conversation_history: List = None,
         system_prompt: str = None,
-        web_search: bool = False
+        web_search: bool = False,
+        images: List[str] = None
     ) -> Dict:
         """Executes full RAG flow with optional conversation context.
 
@@ -174,12 +175,15 @@ Provide detailed and comprehensive answers."""
 
         # Check if we have ANY context (chunks or web)
         if not rag_context:
-             return {
-                 "answer": "No relevant documents or web results found for this query.",
-                 "sources": [],
-                 "context_warning": None
-             }
-
+             # If using vision (images present), we might NOT need text context. 
+             # So we don't bail out strictly if images are present.
+             if not images:
+                 return {
+                     "answer": "No relevant documents or web results found for this query.",
+                     "sources": [],
+                     "context_warning": None
+                 }
+        
         # 3. Build conversation history context (if provided)
         conversation_context = ""
         context_warning = None
@@ -189,6 +193,9 @@ Provide detailed and comprehensive answers."""
             history_lines = []
             for msg in conversation_history:
                 role_label = "User" if msg.role == "user" else "Assistant"
+                # If message has images, mention it? 
+                # (For now we rely on history_msgs being just text here unless we do multimodal history replays, 
+                # which is complex. We'll stick to text-only context for history for now to avoid token explosion)
                 history_lines.append(f"[Previous {role_label}]: {msg.content}")
 
             conversation_context = "\n".join(history_lines)
@@ -210,7 +217,9 @@ Provide detailed and comprehensive answers."""
         if conversation_context:
             user_prompt_parts.append(f"Previous Conversation:\n{conversation_context}\n")
 
-        user_prompt_parts.append(f"Context from Documents and Web:\n{rag_context}\n")
+        if rag_context:
+            user_prompt_parts.append(f"Context from Documents and Web:\n{rag_context}\n")
+            
         user_prompt_parts.append(f"Current Question: {question}\n")
         user_prompt_parts.append("Answer in detail and comprehensively.")
 
@@ -219,7 +228,8 @@ Provide detailed and comprehensive answers."""
         # 6. Generate response with LLM
         response = self.llm.chat(
             system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}]
+            messages=[{"role": "user", "content": user_prompt}],
+            images=images
         )
 
         return {

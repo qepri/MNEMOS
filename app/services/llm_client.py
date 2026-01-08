@@ -73,10 +73,11 @@ class LLMClient:
             )
              self.model = local_model
             
-    def chat(self, system: str, messages: list) -> str:
+    def chat(self, system: str, messages: list, images: list = None) -> str:
         """
         Unified chat method.
         messages format: [{"role": "user", "content": "..."}]
+        images: list of base64 strings (optional)
         """
         # Use runtime-selected model if available, otherwise fall back to config
         active_model = model_manager.get_model() or self.model
@@ -84,24 +85,94 @@ class LLMClient:
         try:
             if self.provider == LLMProvider.ANTHROPIC:
                 # Convert system message to Anthropic format (param)
+                # Anthropic Vision support: format user message content as list
+                
+                final_messages = messages
+                
+                # If there are images, we need to restructure the LAST user message (which contains the prompt)
+                if images:
+                     # Find the last user message
+                     last_msg = None
+                     for m in reversed(messages):
+                         if m['role'] == 'user':
+                             last_msg = m
+                             break
+                     
+                     if last_msg:
+                         content_block = []
+                         # Add images first
+                         for img_b64 in images:
+                             # Strip prefix if present (data:image/jpeg;base64,...)
+                             if "," in img_b64:
+                                 img_b64 = img_b64.split(",")[1]
+                                 
+                             content_block.append({
+                                 "type": "image",
+                                 "source": {
+                                     "type": "base64",
+                                     "media_type": "image/jpeg", # Assuming jpeg for now, or detect?
+                                     "data": img_b64
+                                 }
+                             })
+                         # Add text
+                         content_block.append({
+                             "type": "text",
+                             "text": last_msg['content']
+                         })
+                         last_msg['content'] = content_block
+
                 response = self.client.messages.create(
                     model=active_model,
                     max_tokens=1024,
                     system=system,
-                    messages=messages
+                    messages=final_messages
                 )
                 return response.content[0].text
 
             else:
                 # OpenAI / Compatible (Ollama, LM Studio)
                 # Prepend system message
-                full_messages = [{"role": "system", "content": system}] + messages
+                
+                # Handle images for OpenAI/Ollama 
+                # They use "content": [{"type": "text", "text": "..." }, { "type": "image_url", "image_url": { "url": "data:image/jpeg;base64,..." } }]
+                
+                final_messages = []
+                # Copy messages to avoid mutating original list reference issues
+                import copy
+                msgs_copy = copy.deepcopy(messages)
+                
+                if images:
+                     # Attach images to the last user message
+                     last_msg = None
+                     for m in reversed(msgs_copy):
+                         if m['role'] == 'user':
+                             last_msg = m
+                             break
+                     
+                     if last_msg:
+                         text_content = last_msg['content']
+                         new_content = [{"type": "text", "text": text_content}]
+                         
+                         for img_b64 in images:
+                             # Ensure prefix is present for OpenAI/Ollama
+                             if "," not in img_b64:
+                                 img_b64 = f"data:image/jpeg;base64,{img_b64}"
+                                 
+                             new_content.append({
+                                 "type": "image_url",
+                                 "image_url": {
+                                     "url": img_b64
+                                 }
+                             })
+                         last_msg['content'] = new_content
+
+                full_messages = [{"role": "system", "content": system}] + msgs_copy
 
                 import json
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.info(f"Using model: {active_model}")
-                logger.info(f"Sending payload to LLM: {json.dumps(full_messages, indent=2)}")
+                # logger.info(f"Sending payload to LLM: {json.dumps(full_messages, indent=2)}") # Too verbose with base64
 
                 # Prepare options directly supported by Ollama
                 extra_body = {}
@@ -112,7 +183,7 @@ class LLMClient:
 
                 response = self.client.chat.completions.create(
                     model=active_model,
-                    messages=full_messages,
+                    messages=full_messages, # Pass full_messages here instead of messages
                     temperature=0.7,
                     extra_body=extra_body
                 )

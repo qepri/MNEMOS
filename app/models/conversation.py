@@ -31,6 +31,7 @@ class Message(db.Model):
     content = db.Column(db.Text, nullable=False)
     sources = db.Column(JSONB, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    images = db.Column(JSONB, nullable=True)
 
     def to_dict(self):
         return {
@@ -39,5 +40,6 @@ class Message(db.Model):
             'role': self.role,
             'content': self.content,
             'sources': self.sources,
+            'images': self.images,
             'created_at': self.created_at.isoformat()
         }

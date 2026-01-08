@@ -11,6 +11,7 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   sources?: MessageSource[];
+  images?: string[];
   created_at: string;
   status?: 'generating' | 'completed' | 'error';
   search_queries?: string[];

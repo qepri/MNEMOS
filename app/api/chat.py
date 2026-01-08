@@ -19,11 +19,13 @@ def chat():
         question = data.get('question')
         doc_ids = data.get('document_ids', [])
         conversation_id = data.get('conversation_id')
+        images = data.get('images', []) # List of base64 strings
     else:
         question = request.form.get('question')
         doc_ids_str = request.form.get('document_ids', '')
         doc_ids = [d.strip() for d in doc_ids_str.split(',') if d.strip()]
         conversation_id = request.form.get('conversation_id')
+        images = [] # Form data support for images could be added via file keys, but for now assuming JSON mostly or empty
 
     if not question:
         return jsonify({"error": "Question required"}), 400
@@ -56,7 +58,8 @@ def chat():
     user_msg = Message(
         conversation_id=conversation.id,
         role='user',
-        content=question
+        content=question,
+        images=images # Save images to simple DB column (JSONB)
     )
     db.session.add(user_msg)
     db.session.commit()
@@ -91,7 +94,8 @@ def chat():
         top_k=5,
         conversation_history=conversation_history,
         system_prompt=system_prompt,
-        web_search=web_search
+        web_search=web_search,
+        images=images
     )
 
     # Save Assistant Message

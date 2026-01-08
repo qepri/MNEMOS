@@ -275,4 +275,15 @@ export class SettingsService {
       throw error;
     }
   }
+  async lookupModels(provider: string, apiKey: string): Promise<any[]> {
+    try {
+      const response = await firstValueFrom(
+        this.http.post<{ models: any[] }>('/api/settings/models/lookup', { provider, api_key: apiKey })
+      );
+      return response.models;
+    } catch (error) {
+      console.error('Failed to lookup models', error);
+      throw error;
+    }
+  }
 }

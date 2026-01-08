@@ -79,4 +79,42 @@ export class ModalService {
         this.videoUrl.set(null);
         this.videoTimestamp.set(undefined);
     }
+    // Image Viewer Modal
+    isImageViewerOpen = signal(false);
+    images = signal<string[]>([]);
+    currentImageIndex = signal<number>(0);
+
+    // Computed or Helper to get current
+    get currentImageUrl(): string | null {
+        const imgs = this.images();
+        const idx = this.currentImageIndex();
+        if (imgs.length > 0 && idx >= 0 && idx < imgs.length) {
+            return imgs[idx];
+        }
+        return null;
+    }
+
+    openImageViewer(index: number, images: string[]) {
+        this.images.set(images);
+        this.currentImageIndex.set(index);
+        this.isImageViewerOpen.set(true);
+    }
+
+    closeImageViewer() {
+        this.isImageViewerOpen.set(false);
+        this.images.set([]);
+        this.currentImageIndex.set(0);
+    }
+
+    nextImage() {
+        const len = this.images().length;
+        if (len <= 1) return;
+        this.currentImageIndex.update(i => (i + 1) % len);
+    }
+
+    prevImage() {
+        const len = this.images().length;
+        if (len <= 1) return;
+        this.currentImageIndex.update(i => (i - 1 + len) % len);
+    }
 }

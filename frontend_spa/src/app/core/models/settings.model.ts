@@ -11,6 +11,7 @@ export interface OllamaModel {
     parameter_size?: string;
     quantization_level?: string;
   };
+  vision?: boolean;
 }
 
 export interface ModelsResponse {
@@ -54,7 +55,7 @@ export interface SystemPromptsResponse {
   prompts: SystemPrompt[];
 }
 
-export interface LibraryModel {
+export interface Model {
   name: string;
   full_name: string;
   ollama_name: string | null;
@@ -69,12 +70,13 @@ export interface LibraryModel {
   downloads: number;
   likes: number;
   updated_at: string;
-  hf_url?: string;
-  is_hf_only: boolean;
+  hf_url: string;
+  is_hf_only?: boolean;
+  vision?: boolean; // New
 }
 
 export interface LibrarySearchResponse {
-  models: LibraryModel[];
+  models: Model[];
   total: number;
   fallback?: boolean;
 }

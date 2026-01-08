@@ -25,6 +25,17 @@ import { ApiEndpoints } from '@core/constants/api-endpoints';
         [style.color]="message().role === 'assistant' ? 'var(--color-base-content, #ffffff)' : 'inherit'">
         
         @if (message().role === 'user') {
+          <!-- Display Images -->
+          @if (message().images && message().images!.length > 0) {
+            <div class="flex flex-wrap gap-2 mb-2">
+              @for (img of message().images; track $index) {
+                <img [src]="img" 
+                     alt="Uploaded Image" 
+                     class="max-w-full h-auto rounded-lg max-h-60 object-contain border border-white/20 cursor-pointer hover:opacity-90 transition-opacity"
+                     (click)="openImage($index, message().images)">
+              }
+            </div>
+          }
           @if (isEditing()) {
             <div class="flex flex-col gap-2 min-w-[300px]">
               <textarea 
@@ -165,6 +176,12 @@ export class MessageBubbleComponent {
 
   copyMessage() {
     navigator.clipboard.writeText(this.message().content);
+  }
+
+  openImage(index: number, images: string[] | undefined) {
+    if (images && images.length > 0) {
+      this.modalService.openImageViewer(index, images);
+    }
   }
 
   openSourceModal(source: MessageSource) {
