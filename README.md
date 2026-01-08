@@ -11,6 +11,7 @@ MNEMOS es un sistema de indexación semántica con memoria persistente y capacid
 - **Lanzador Automático**: Script `launcher.py` para configuración "one-click" en Windows
 
 ### Procesamiento Multimodal
+- **Imágenes (Visión)**: Análisis inteligente de imágenes con modelos Llama 3.2 Vision y similares
 - **PDFs**: Extracción de texto y segmentación por páginas
 - **Audio/Video**: Transcripción automática usando Whisper de OpenAI
 - **YouTube**: Descarga y transcripción automática de videos
@@ -34,6 +35,8 @@ Soporte para múltiples proveedores de LLM:
 - **Interfaz Web Moderna**: Single Page Application (SPA) construida con **Angular 19**.
 - **Diseño Responsivo**: Experiencia de usuario fluida en escritorio y móviles.
 - **Micro-interacciones**: Feedback visual inmediato y animaciones suaves.
+- **Gestión de Documentos Mejorada**: Barras de progreso en tiempo real para subidas y procesamiento.
+- **Visor de Imágenes**: Navegación tipo carrusel para imágenes adjuntas.
 - **API REST**: Endpoints completos para integración
 - **MCP Server**: Servidor Model Context Protocol para integración con Claude Desktop
 - **Sistema de Conversaciones**: Gestión de historial de chat con contexto
@@ -613,8 +616,8 @@ Las contribuciones son bienvenidas. Por favor:
 
 Funcionalidades planeadas:
 - [x] Soporte para EPUB (Incluyendo metadatos)
-- [ ] Soporte para más formatos de documentos (Word, Excel, PowerPoint)
-- [ ] Procesamiento de imágenes con modelos multimodales
+- [x] Soporte para más formatos de documentos (Word, Excel, PowerPoint)
+- [x] Procesamiento de imágenes con modelos multimodales (Visión)
 - [ ] Exportación de conversaciones
 
 

@@ -6,7 +6,7 @@ import { Document } from '@core/models';
 })
 export class ModalService {
     isUploadOpen = signal(false);
-    isModelSelectionOpen = signal(false);
+
 
     // Upload Modal
     openUpload() {
@@ -15,15 +15,6 @@ export class ModalService {
 
     closeUpload() {
         this.isUploadOpen.set(false);
-    }
-
-    // Model Selection Modal
-    openModelSelection() {
-        this.isModelSelectionOpen.set(true);
-    }
-
-    closeModelSelection() {
-        this.isModelSelectionOpen.set(false);
     }
 
     // PDF Viewer Modal

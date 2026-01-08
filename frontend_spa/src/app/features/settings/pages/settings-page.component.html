@@ -321,151 +321,63 @@
                     <!-- AI Provider Configuration -->
                     <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
                         <h2 class="text-lg font-semibold mb-4">AI Provider</h2>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Provider</label>
-                                <select [(ngModel)]="settingsService.chatPreferences()!.llm_provider"
-                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
-                                    <option value="ollama">Ollama (Local)</option>
-                                    <option value="openai">OpenAI</option>
-                                    <option value="anthropic">Anthropic (Claude)</option>
-                                    <option value="groq">Groq</option>
-                                    <option value="lm_studio">LM Studio</option>
-                                    <option value="custom">Custom (OpenAI Compatible)</option>
-                                </select>
-                            </div>
+                        <app-llm-selector [preferences]="settingsService.chatPreferences()" #llmSelector>
+                        </app-llm-selector>
 
-                            <!-- Ollama Service Management -->
-                            @if (settingsService.chatPreferences()!.llm_provider === 'ollama') {
-                            <div class="p-4 bg-base-200 rounded-lg border border-divider">
-                                <div class="flex items-center justify-between mb-2">
-                                    <h3 class="text-sm font-medium">Ollama Service Status</h3>
-                                    @if (ollamaStatus().status === 'running') {
-                                    <span class="badge badge-success">Running</span>
-                                    } @else if (ollamaStatus().status === 'stopped' || ollamaStatus().status ===
-                                    'installed_but_not_created') {
-                                    <span class="badge badge-warning">Stopped</span>
-                                    } @else if (ollamaStatus().status === 'not_installed') {
-                                    <span class="badge badge-error">Not Installed</span>
-                                    } @else if (ollamaStatus().status === 'error' || ollamaStatus().status ===
-                                    'docker_error') {
-                                    <span class="badge badge-error">Unavailable</span>
-                                    } @else {
-                                    <span class="badge badge-ghost">Checking...</span>
-                                    }
-                                </div>
-
-                                @if (ollamaInstallProgress()) {
-                                <div class="space-y-2">
-                                    <div class="flex justify-between text-xs">
-                                        <span>{{ ollamaInstallProgress()?.message }}</span>
-                                        @if (ollamaInstallProgress()?.progress) {
-                                        <span>{{ ollamaInstallProgress()?.progress | number:'1.0-0' }}%</span>
-                                        }
-                                    </div>
-                                    <progress class="progress progress-accent w-full"
-                                        [value]="ollamaInstallProgress()?.progress" max="100"></progress>
-                                </div>
-                                } @else {
+                        <!-- Ollama Service Management (Keep separate as it's specific to managing the service, not selecting it) -->
+                        @if (llmSelector.selectedProvider() === 'ollama') {
+                        <div class="mt-6 p-4 bg-base-200 rounded-lg border border-divider">
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="text-sm font-medium">Ollama Service Status</h3>
                                 @if (ollamaStatus().status === 'running') {
-                                <p class="text-xs text-base-content/60 mb-2">Service is active and ready to use.</p>
+                                <span class="badge badge-success">Running</span>
                                 } @else if (ollamaStatus().status === 'stopped' || ollamaStatus().status ===
                                 'installed_but_not_created') {
-                                <button (click)="handleStartOllamaService()" class="btn-primary w-full text-sm">Start
-                                    Ollama Service</button>
+                                <span class="badge badge-warning">Stopped</span>
                                 } @else if (ollamaStatus().status === 'not_installed') {
-                                <button (click)="handleInstallOllamaService()"
-                                    class="btn-primary w-full text-sm">Install Ollama Service</button>
-                                <p class="text-xs text-base-content/60 mt-2 text-center">This will download the Ollama
-                                    Docker image (~500MB).</p>
+                                <span class="badge badge-error">Not Installed</span>
                                 } @else if (ollamaStatus().status === 'error' || ollamaStatus().status ===
                                 'docker_error') {
-                                <div class="text-xs text-error mb-2">
-                                    Unable to connect to Docker or Ollama service. Ensure Docker is running.
+                                <span class="badge badge-error">Unavailable</span>
+                                } @else {
+                                <span class="badge badge-ghost">Checking...</span>
+                                }
+                            </div>
+
+                            @if (ollamaInstallProgress()) {
+                            <div class="space-y-2">
+                                <div class="flex justify-between text-xs">
+                                    <span>{{ ollamaInstallProgress()?.message }}</span>
+                                    @if (ollamaInstallProgress()?.progress) {
+                                    <span>{{ ollamaInstallProgress()?.progress | number:'1.0-0' }}%</span>
+                                    }
                                 </div>
-                                <button (click)="checkOllamaStatus()" class="btn-secondary w-full text-sm">Retry
-                                    Connection</button>
-                                }
-                                }
+                                <progress class="progress progress-accent w-full"
+                                    [value]="ollamaInstallProgress()?.progress" max="100"></progress>
                             </div>
+                            } @else {
+                            @if (ollamaStatus().status === 'running') {
+                            <p class="text-xs text-base-content/60 mb-2">Service is active and ready to use.</p>
+                            } @else if (ollamaStatus().status === 'stopped' || ollamaStatus().status ===
+                            'installed_but_not_created') {
+                            <button (click)="handleStartOllamaService()" class="btn-primary w-full text-sm">Start
+                                Ollama Service</button>
+                            } @else if (ollamaStatus().status === 'not_installed') {
+                            <button (click)="handleInstallOllamaService()" class="btn-primary w-full text-sm">Install
+                                Ollama Service</button>
+                            <p class="text-xs text-base-content/60 mt-2 text-center">This will download the Ollama
+                                Docker image (~500MB).</p>
+                            } @else if (ollamaStatus().status === 'error' || ollamaStatus().status ===
+                            'docker_error') {
+                            <div class="text-xs text-error mb-2">
+                                Unable to connect to Docker or Ollama service. Ensure Docker is running.
+                            </div>
+                            <button (click)="checkOllamaStatus()" class="btn-secondary w-full text-sm">Retry
+                                Connection</button>
                             }
-
-                            <!-- Base URL (Ollama, LM Studio, Custom) -->
-                            @if (settingsService.chatPreferences()!.llm_provider === 'ollama' ||
-                            settingsService.chatPreferences()!.llm_provider === 'lm_studio' ||
-                            settingsService.chatPreferences()!.llm_provider === 'custom') {
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Base URL</label>
-                                <input type="text" [(ngModel)]="settingsService.chatPreferences()!.local_llm_base_url"
-                                    placeholder="http://localhost:11434/v1"
-                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
-                                @if (settingsService.chatPreferences()!.llm_provider === 'custom') {
-                                <p class="text-xs text-secondary mt-1">Must be an OpenAI-compatible endpoint (e.g.,
-                                    vLLM, text-generation-webui)</p>
-                                }
-                            </div>
-                            }
-
-                            <!-- Model Name (Generic for most providers) -->
-                            @if (settingsService.chatPreferences()!.llm_provider !== 'ollama' &&
-                            settingsService.chatPreferences()!.llm_provider !== 'groq') {
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Model Name</label>
-                                <input type="text" [(ngModel)]="settingsService.chatPreferences()!.selected_llm_model"
-                                    [placeholder]="settingsService.chatPreferences()!.llm_provider === 'openai' ? 'gpt-4o' : (settingsService.chatPreferences()!.llm_provider === 'anthropic' ? 'claude-3-5-sonnet-20240620' : 'model-identifier')"
-                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
-                            </div>
-                            }
-
-                            <!-- API Keys -->
-                            @if (settingsService.chatPreferences()!.llm_provider === 'openai') {
-                            <div>
-                                <label class="block text-sm font-medium mb-2">OpenAI API Key</label>
-                                <input type="password" [(ngModel)]="settingsService.chatPreferences()!.openai_api_key"
-                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
-                            </div>
-                            }
-
-                            @if (settingsService.chatPreferences()!.llm_provider === 'anthropic') {
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Anthropic API Key</label>
-                                <input type="password"
-                                    [(ngModel)]="settingsService.chatPreferences()!.anthropic_api_key"
-                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
-                            </div>
-                            }
-
-                            @if (settingsService.chatPreferences()!.llm_provider === 'custom') {
-                            <div>
-                                <label class="block text-sm font-medium mb-2">API Key (Optional)</label>
-                                <input type="password" [(ngModel)]="settingsService.chatPreferences()!.custom_api_key"
-                                    placeholder="sk-..."
-                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
-                            </div>
-                            }
-
-                            @if (settingsService.chatPreferences()!.llm_provider === 'groq') {
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Groq Model</label>
-                                <select [(ngModel)]="settingsService.chatPreferences()!.selected_llm_model"
-                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent mb-4">
-                                    <option value="llama-3.3-70b-versatile">Llama 3.3 70B (Versatile)</option>
-                                    <option value="llama-3.1-70b-versatile">Llama 3.1 70B (Versatile)</option>
-                                    <option value="llama-3.1-8b-instant">Llama 3.1 8B (Instant)</option>
-                                    <option value="mixtral-8x7b-32768">Mixtral 8x7b</option>
-                                    <option value="gemma2-9b-it">Gemma 2 9B</option>
-                                </select>
-
-                                <label class="block text-sm font-medium mb-2">Groq API Key</label>
-                                <input type="password" [(ngModel)]="settingsService.chatPreferences()!.groq_api_key"
-                                    placeholder="gsk_..."
-                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
-                                <p class="text-xs text-secondary mt-1">Get your key at <a
-                                        href="https://console.groq.com/keys" target="_blank"
-                                        class="text-accent hover:underline">console.groq.com</a></p>
-                            </div>
                             }
                         </div>
+                        }
                     </div>
 
                     <!-- Conversation Context -->

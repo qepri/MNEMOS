@@ -1,5 +1,5 @@
 
-import { Component, computed, inject, effect } from '@angular/core';
+import { Component, computed, inject, effect, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NgxExtendedPdfViewerModule, NgxExtendedPdfViewerService } from 'ngx-extended-pdf-viewer';
 import { ModalService } from '@services/modal.service';
@@ -18,6 +18,9 @@ import { ApiEndpoints } from '@core/constants/api-endpoints';
 export class PdfViewerComponent {
     modalService = inject(ModalService);
     pdfService = inject(NgxExtendedPdfViewerService);
+
+    // Theme input
+    theme = input<'dark' | 'light'>('dark');
 
     // Computed
     isVisible = this.modalService.isPdfViewerOpen;

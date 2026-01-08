@@ -89,17 +89,17 @@ export class DocumentsService {
         // Poll every 2 seconds
         const subscription = interval(2000).subscribe(async () => {
             try {
-                const doc = await firstValueFrom(
-                    this.http.get<Document>(ApiEndpoints.DOCUMENT_STATUS(docId))
+                const statusUpdate = await firstValueFrom(
+                    this.http.get<{ status: string, error?: string }>(ApiEndpoints.DOCUMENT_STATUS(docId))
                 );
 
                 // Update document in list
                 this.documents.update(docs =>
-                    docs.map(d => d.id === docId ? { ...doc, selected: d.selected } : d)
+                    docs.map(d => d.id === docId ? { ...d, status: statusUpdate.status as Document['status'], error_message: statusUpdate.error } : d)
                 );
 
                 // Stop polling if completed or failed
-                if (doc.status === 'completed' || doc.status === 'failed') {
+                if (statusUpdate.status === 'completed' || statusUpdate.status === 'failed') {
                     this.stopPolling(docId);
                 }
             } catch (error) {

@@ -1,21 +1,23 @@
-import { Component, signal, inject, OnInit, computed } from '@angular/core';
+import { Component, signal, inject, OnInit, computed, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SettingsService } from '@services/settings.service';
 import { ChatPreferences, SystemPrompt } from '@core/models';
 import { ProgressBarComponent } from '@shared/components/progress-bar/progress-bar.component';
+import { LlmSelectorComponent } from '@shared/components/llm-selector/llm-selector.component';
 
 @Component({
     selector: 'app-settings-page',
     standalone: true,
-    imports: [CommonModule, RouterLink, FormsModule, ProgressBarComponent],
+    imports: [CommonModule, RouterLink, FormsModule, ProgressBarComponent, LlmSelectorComponent],
     host: { class: 'flex flex-col h-full w-full' },
     templateUrl: './settings-page.component.html',
     styleUrl: './settings-page.component.css'
 })
 export class SettingsPage implements OnInit {
     settingsService = inject(SettingsService);
+    llmSelector = viewChild(LlmSelectorComponent);
 
     activeTab = signal<'models' | 'discover' | 'import' | 'chat'>('models');
 
@@ -241,11 +243,33 @@ export class SettingsPage implements OnInit {
 
     // Chat Preferences
     async handleSaveChatPreferences() {
-        const prefs = this.settingsService.chatPreferences();
-        if (prefs) {
-            await this.settingsService.saveChatPreferences(prefs);
-            alert('Settings saved');
+        const currentPrefs = this.settingsService.chatPreferences();
+        if (!currentPrefs) return;
+
+        // Get LLM settings from selector
+        const selector = this.llmSelector();
+        let llmUpdate: any = {};
+        let ollamaModelToSet: string | undefined;
+
+        if (selector) {
+            const snapshot = selector.getSnapshot();
+            ollamaModelToSet = snapshot.ollamaModel;
+            delete snapshot.ollamaModel;
+            llmUpdate = snapshot;
         }
+
+        // Merge updates
+        const finalPrefs: ChatPreferences = {
+            ...currentPrefs,
+            ...llmUpdate
+        };
+
+        await this.settingsService.saveChatPreferences(finalPrefs);
+
+        if (ollamaModelToSet) {
+            await this.settingsService.setCurrentModel(ollamaModelToSet);
+        }
+        alert('Settings saved');
     }
 
     // Ollama Service State

@@ -29,7 +29,7 @@
             <ngx-extended-pdf-viewer [src]="pdfSrc()" [textLayer]="true" [showHandToolButton]="true"
                 [showPresentationModeButton]="true" [showPrintButton]="true" [showDownloadButton]="true"
                 (pdfLoaded)="onPdfLoaded($event)" (pdfLoadingFailed)="onPdfError($event)" [page]="page()"
-                [showSecondaryToolbarButton]="true" [height]="'calc(90vh - 65px)'" theme="dark"
+                [showSecondaryToolbarButton]="true" [height]="'calc(90vh - 65px)'" [theme]="theme()"
                 backgroundColor="#1b1b1b">
             </ngx-extended-pdf-viewer>
             }

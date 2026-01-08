@@ -138,9 +138,14 @@
                                 <span class="text-xs text-primary font-medium truncate">{{ doc.original_filename
                                     }}</span>
                             </div>
-                            <div class="flex items-center gap-2 text-xs text-secondary">
+                            <div class="flex items-center gap-2 text-xs text-secondary w-full">
+                                @if (doc.status === 'processing' || doc.status === 'pending') {
+                                <progress class="progress progress-accent w-16 h-1.5"></progress>
+                                } @else {
                                 <span class="badge badge-success text-xs px-1 py-0"
-                                    [class.badge-success]="doc.status === 'completed'">{{ doc.status }}</span>
+                                    [class.badge-success]="doc.status === 'completed'"
+                                    [class.badge-error]="doc.status === 'failed'">{{ doc.status }}</span>
+                                }
                             </div>
                         </div>
                     </label>
@@ -216,63 +221,7 @@
     </div>
 </ng-template>
 
-<!-- Modal: Model Selection -->
-@if (modalService.isModelSelectionOpen()) {
-<div class="modal modal-open">
-    <div class="modal-box bg-panel border border-divider rounded-2xl p-0 max-w-sm">
-        <div class="sticky top-0 bg-panel border-b border-divider p-4 z-10">
-            <h3 class="text-lg font-semibold text-primary mb-3">Select Model</h3>
-            <input type="text" placeholder="Search models..."
-                class="w-full px-3 py-2 text-sm bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
-        </div>
-        <ul class="p-2 max-h-96 overflow-y-auto">
-            <li>
-                <button (click)="modalService.closeModelSelection()"
-                    class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-hover transition-colors group">
-                    <div class="flex items-center gap-3">
-                        <div class="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                        <span class="text-sm text-primary">llama3:8b</span>
-                    </div>
-                    <svg class="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                </button>
-            </li>
-            <li>
-                <button (click)="modalService.closeModelSelection()"
-                    class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-hover transition-colors group">
-                    <div class="flex items-center gap-3">
-                        <div class="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                        <span class="text-sm text-primary">mistral:7b</span>
-                    </div>
-                </button>
-            </li>
-            <li>
-                <button (click)="modalService.closeModelSelection()"
-                    class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-hover transition-colors group">
-                    <div class="flex items-center gap-3">
-                        <div class="w-1.5 h-1.5 bg-gray-500 rounded-full"></div>
-                        <div>
-                            <div class="text-sm text-primary">gemma:27b</div>
-                            <div class="text-xs text-secondary">Download available</div>
-                        </div>
-                    </div>
-                </button>
-            </li>
-        </ul>
-        <div class="sticky bottom-0 bg-panel border-t border-divider p-3">
-            <button routerLink="/settings" (click)="modalService.closeModelSelection()"
-                class="w-full px-3 py-2 text-sm text-accent hover:bg-accent-subtle rounded-lg transition-colors flex items-center justify-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-                <span>Discover More Models</span>
-            </button>
-        </div>
-    </div>
-    <div class="modal-backdrop" (click)="modalService.closeModelSelection()"></div>
-</div>
-}
+
 
 <!-- Modal: Upload Document -->
 @if (modalService.isUploadOpen()) {
@@ -356,7 +305,7 @@
 }
 
 <!-- PDF Viewer Modal -->
-<app-pdf-viewer></app-pdf-viewer>
+<app-pdf-viewer [theme]="theme()"></app-pdf-viewer>
 <!-- Youtube Viewer Modal -->
 <app-youtube-viewer></app-youtube-viewer>
 <!-- Video Player Modal -->
