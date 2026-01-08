@@ -32,4 +32,8 @@ export const ApiEndpoints = {
   SETTINGS_OLLAMA_STATUS: '/api/settings/ollama/status',
   SETTINGS_OLLAMA_INSTALL: '/api/settings/ollama/install',
   SETTINGS_OLLAMA_START: '/api/settings/ollama/start',
+
+  // Memory
+  MEMORY_GET: '/api/memory',
+  MEMORY_DELETE: (id: string) => `/api/memory/${id}`,
 } as const;

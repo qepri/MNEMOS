@@ -11,7 +11,8 @@ import {
   LibrarySearchResponse,
   ModelPullRequest,
   ModelPullResponse,
-  PullStatusResponse
+  PullStatusResponse,
+  MemoriesResponse
 } from '@core/models';
 
 @Injectable({
@@ -283,6 +284,32 @@ export class SettingsService {
       return response.models;
     } catch (error) {
       console.error('Failed to lookup models', error);
+      throw error;
+    }
+  }
+
+  // Memories
+  memories = signal<MemoriesResponse | null>(null);
+
+  async loadMemories() {
+    try {
+      const res = await firstValueFrom(
+        this.http.get<MemoriesResponse>(ApiEndpoints.MEMORY_GET)
+      );
+      this.memories.set(res);
+    } catch (error) {
+      console.error('Failed to load memories', error);
+    }
+  }
+
+  async deleteMemory(id: string) {
+    try {
+      await firstValueFrom(
+        this.http.delete(ApiEndpoints.MEMORY_DELETE(id))
+      );
+      await this.loadMemories();
+    } catch (error) {
+      console.error('Failed to delete memory', error);
       throw error;
     }
   }

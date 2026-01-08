@@ -321,7 +321,7 @@
                     <!-- AI Provider Configuration -->
                     <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
                         <h2 class="text-lg font-semibold mb-4">AI Provider</h2>
-                        <app-llm-selector [preferences]="settingsService.chatPreferences()" #llmSelector>
+                        <app-llm-selector #chatSelector [preferences]="settingsService.chatPreferences()" #llmSelector>
                         </app-llm-selector>
 
                         <!-- Ollama Service Management (Keep separate as it's specific to managing the service, not selecting it) -->
@@ -451,6 +451,97 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Long Term Memory -->
+                    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 class="text-lg font-semibold">Long Term Memory</h2>
+                                <p class="text-xs text-secondary mt-1">Remember permanent facts about you across
+                                    conversations.</p>
+                            </div>
+                            <input type="checkbox" [(ngModel)]="settingsService.chatPreferences()!.memory_enabled"
+                                class="toggle toggle-accent" />
+                        </div>
+
+                        @if (settingsService.chatPreferences()!.memory_enabled) {
+                        <div class="space-y-6 animation-fade-in">
+                            <!-- Memory Usage -->
+                            @if (settingsService.memories()) {
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-secondary">Memory Usage</span>
+                                    <span class="font-medium">{{ settingsService.memories()?.usage?.current }} / {{
+                                        settingsService.memories()?.usage?.max }} items</span>
+                                </div>
+                                <progress class="progress progress-accent w-full"
+                                    [value]="settingsService.memories()?.usage?.current"
+                                    [max]="settingsService.memories()?.usage?.max"></progress>
+                            </div>
+                            }
+
+                            <!-- Configuration -->
+                            <div class="grid grid-cols-1 gap-6">
+                                <!-- Memory LLM Selector -->
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Detailed Extraction
+                                        Configuration</label>
+                                    <app-llm-selector #memorySelector [preferences]="memoryLlmPreferences()" />
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Capacity Limit</label>
+                                    <input type="number" [(ngModel)]="settingsService.chatPreferences()!.max_memories"
+                                        class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                    <p class="text-xs text-secondary mt-1">Maximum number of memories to store.</p>
+                                </div>
+                            </div>
+
+                            <!-- Manage Memories -->
+                            <div class="pt-2 border-t border-divider">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h3 class="font-medium text-sm">Stored Memories</h3>
+                                    <button (click)="settingsService.loadMemories()"
+                                        class="btn-icon text-secondary hover:text-primary">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                <div
+                                    class="bg-input rounded-lg border border-divider max-h-60 overflow-y-auto divide-y divide-divider">
+                                    @for (mem of settingsService.memories()?.memories; track mem.id) {
+                                    <div
+                                        class="p-3 flex items-start justify-between gap-3 hover:bg-hover transition-colors group">
+                                        <p class="text-sm text-base-content/90">{{ mem.content }}</p>
+                                        <button (click)="settingsService.deleteMemory(mem.id)"
+                                            class="opacity-0 group-hover:opacity-100 transition-opacity text-secondary hover:text-error p-1">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    }
+                                    @if (!settingsService.memories()?.memories?.length) {
+                                    <div
+                                        class="p-6 text-center text-secondary text-sm flex flex-col items-center gap-2">
+                                        <svg class="w-8 h-8 opacity-20" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                        </svg>
+                                        <p>No memories extracted yet.</p>
+                                        <p class="text-xs">Chat normally and facts will appear here.</p>
+                                    </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        }
                     </div>
 
                     <!-- System Prompts -->

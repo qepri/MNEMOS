@@ -763,7 +763,11 @@ def get_chat_settings():
         "custom_api_key": prefs.custom_api_key or "",
         "local_llm_base_url": prefs.local_llm_base_url or "http://host.docker.internal:1234/v1",
         "transcription_provider": getattr(prefs, 'transcription_provider', 'local'),
-        "selected_llm_model": prefs.selected_llm_model or ""
+        "selected_llm_model": prefs.selected_llm_model or "",
+        "memory_enabled": getattr(prefs, 'memory_enabled', False),
+        "memory_provider": getattr(prefs, 'memory_provider', 'ollama'),
+        "memory_llm_model": getattr(prefs, 'memory_llm_model', 'llama3:8b'),
+        "max_memories": getattr(prefs, 'max_memories', 50)
     })
 
 
@@ -809,6 +813,17 @@ def save_chat_settings():
         ]
         if model in valid_models:
             prefs.whisper_model = model
+
+    # Memory Config
+    if 'memory_enabled' in data:
+        prefs.memory_enabled = data['memory_enabled']
+    if 'memory_provider' in data:
+        prefs.memory_provider = data['memory_provider']
+    if 'memory_llm_model' in data:
+        if data['memory_llm_model']: # Only update if not empty, similar to selected_llm_model
+            prefs.memory_llm_model = data['memory_llm_model']
+    if 'max_memories' in data:
+        prefs.max_memories = int(data['max_memories'])
 
     # LLM Config
     if 'llm_provider' in data:

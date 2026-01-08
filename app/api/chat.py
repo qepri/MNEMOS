@@ -111,6 +111,22 @@ def chat():
     conversation.updated_at = db.func.now()
     db.session.commit()
 
+    # Trigger Memory Extraction (Async)
+    if prefs.memory_enabled:
+        try:
+            from app.tasks.memory_tasks import extract_memories_task
+            
+            # Prepare context: history + new exchange
+            # Note: conversation_history was reversed earlier to be chronological logic, but let's verify.
+            # Line 76: conversation_history = list(reversed(history_msgs)) -> So it IS chronological (oldest to newest).
+            
+            all_msgs = conversation_history + [user_msg, assistant_msg]
+            msgs_dicts = [{'role': m.role, 'content': m.content} for m in all_msgs]
+            
+            extract_memories_task.delay(msgs_dicts)
+        except Exception as e:
+            logger.error(f"Failed to trigger memory task: {e}")
+
     if request.headers.get('HX-Request'):
         return render_template(
             'partials/chat_messages.html',

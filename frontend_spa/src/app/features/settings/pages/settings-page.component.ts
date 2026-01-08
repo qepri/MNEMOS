@@ -17,15 +17,81 @@ import { LlmSelectorComponent } from '@shared/components/llm-selector/llm-select
 })
 export class SettingsPage implements OnInit {
     settingsService = inject(SettingsService);
-    llmSelector = viewChild(LlmSelectorComponent);
+    // Use template refs to distinguish
+    chatSelector = viewChild<LlmSelectorComponent>('chatSelector');
+    memorySelector = viewChild<LlmSelectorComponent>('memorySelector');
 
     activeTab = signal<'models' | 'discover' | 'import' | 'chat'>('models');
+
+    // Proxy for Memory Selector
+    // Maps memory_* fields to llm_* fields so LlmSelectorComponent works as is
+    memoryLlmPreferences = computed(() => {
+        const prefs = this.settingsService.chatPreferences();
+        if (!prefs) return null;
+        return {
+            ...prefs,
+            llm_provider: prefs.memory_provider,
+            selected_llm_model: prefs.memory_llm_model
+        } as ChatPreferences;
+    });
 
     // Prompt Modal
     isPromptModalOpen = signal<boolean>(false);
     editingPromptId = signal<string | null>(null);
     promptForm = signal<{ title: string, content: string }>({ title: '', content: '' });
 
+
+
+    // Chat Preferences
+    async handleSaveChatPreferences() {
+        const currentPrefs = this.settingsService.chatPreferences();
+        if (!currentPrefs) return;
+
+        // 1. Get Chat LLM settings
+        const chatSel = this.chatSelector();
+        let chatUpdate: any = {};
+        let ollamaModelToSet: string | undefined;
+
+        if (chatSel) {
+            const snapshot = chatSel.getSnapshot();
+            ollamaModelToSet = snapshot.ollamaModel;
+            delete snapshot.ollamaModel;
+            chatUpdate = snapshot;
+        }
+
+        // 2. Get Memory LLM settings
+        const memSel = this.memorySelector();
+        let memUpdate: any = {};
+
+        if (memSel) {
+            const snapshot = memSel.getSnapshot();
+            // Map back: llm_provider -> memory_provider
+            memUpdate.memory_provider = snapshot.llm_provider;
+            // Map back: selected_llm_model OR ollamaModel -> memory_llm_model
+            memUpdate.memory_llm_model = snapshot.selected_llm_model || snapshot.ollamaModel;
+
+            // Allow updating keys from here too? Yes, keys are global.
+            if (snapshot.openai_api_key) memUpdate.openai_api_key = snapshot.openai_api_key;
+            if (snapshot.anthropic_api_key) memUpdate.anthropic_api_key = snapshot.anthropic_api_key;
+            if (snapshot.groq_api_key) memUpdate.groq_api_key = snapshot.groq_api_key;
+            if (snapshot.custom_api_key) memUpdate.custom_api_key = snapshot.custom_api_key;
+            if (snapshot.local_llm_base_url) memUpdate.local_llm_base_url = snapshot.local_llm_base_url;
+        }
+
+        // Merge updates
+        const finalPrefs: ChatPreferences = {
+            ...currentPrefs,
+            ...chatUpdate,
+            ...memUpdate
+        };
+
+        await this.settingsService.saveChatPreferences(finalPrefs);
+
+        if (ollamaModelToSet) {
+            await this.settingsService.setCurrentModel(ollamaModelToSet);
+        }
+        alert('Settings saved');
+    }
     // Import State
     importFiles = signal<string[]>([]);
     importModelName = signal<string>('');
@@ -64,6 +130,7 @@ export class SettingsPage implements OnInit {
             this.settingsService.loadCurrentModel().catch(() => { }),
             this.settingsService.loadChatPreferences(),
             this.settingsService.loadSystemPrompts(),
+            this.settingsService.loadMemories(),
             this.checkOllamaStatus()
         ]);
     }
@@ -241,36 +308,7 @@ export class SettingsPage implements OnInit {
         }
     }
 
-    // Chat Preferences
-    async handleSaveChatPreferences() {
-        const currentPrefs = this.settingsService.chatPreferences();
-        if (!currentPrefs) return;
 
-        // Get LLM settings from selector
-        const selector = this.llmSelector();
-        let llmUpdate: any = {};
-        let ollamaModelToSet: string | undefined;
-
-        if (selector) {
-            const snapshot = selector.getSnapshot();
-            ollamaModelToSet = snapshot.ollamaModel;
-            delete snapshot.ollamaModel;
-            llmUpdate = snapshot;
-        }
-
-        // Merge updates
-        const finalPrefs: ChatPreferences = {
-            ...currentPrefs,
-            ...llmUpdate
-        };
-
-        await this.settingsService.saveChatPreferences(finalPrefs);
-
-        if (ollamaModelToSet) {
-            await this.settingsService.setCurrentModel(ollamaModelToSet);
-        }
-        alert('Settings saved');
-    }
 
     // Ollama Service State
     ollamaStatus = signal<{ status: string; id?: string }>({ status: 'unknown' });

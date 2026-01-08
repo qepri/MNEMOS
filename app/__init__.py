@@ -34,7 +34,10 @@ def create_app():
     app.register_blueprint(web_bp)
     app.register_blueprint(conversations_bp)
     app.register_blueprint(settings_bp, url_prefix='/api/settings') # Changed: Added url_prefix
-    app.register_blueprint(ollama_manage_bp, url_prefix='/api/settings/ollama') # Changed: Register ollama_manage_bp
+    app.register_blueprint(ollama_manage_bp, url_prefix='/api/settings/ollama')
+    
+    from app.api.memory import bp as memory_bp
+    app.register_blueprint(memory_bp, url_prefix='/api/memory')
     
     from sqlalchemy import text
     from sqlalchemy.exc import SQLAlchemyError

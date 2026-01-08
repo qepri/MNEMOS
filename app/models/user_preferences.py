@@ -29,6 +29,12 @@ class UserPreferences(db.Model):
     transcription_provider = db.Column(db.String(50), default='local', nullable=False)
     local_llm_base_url = db.Column(db.String(255), default="http://host.docker.internal:1234/v1", nullable=True)
 
+    # Long-term Memory
+    memory_enabled = db.Column(db.Boolean, default=False, nullable=False)
+    memory_provider = db.Column(db.String(50), default='ollama', nullable=False)
+    memory_llm_model = db.Column(db.String(255), nullable=True) # e.g. 'llama3:8b'
+    max_memories = db.Column(db.Integer, default=50, nullable=False)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -48,7 +54,12 @@ class UserPreferences(db.Model):
             "groq_api_key": self.groq_api_key,
             "custom_api_key": self.custom_api_key,
             "transcription_provider": self.transcription_provider,
+            "transcription_provider": self.transcription_provider,
             'local_llm_base_url': self.local_llm_base_url,
+            'memory_enabled': self.memory_enabled,
+            'memory_provider': self.memory_provider,
+            'memory_llm_model': self.memory_llm_model,
+            'max_memories': self.max_memories,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }

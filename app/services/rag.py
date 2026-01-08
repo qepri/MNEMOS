@@ -205,11 +205,22 @@ Provide detailed and comprehensive answers."""
                 context_warning = f"Conversation history is getting long ({len(conversation_history)} messages). Consider starting a new conversation for better performance."
 
         # 4. Use custom or default system prompt
+        # 4. Use custom or default system prompt
         if not system_prompt:
             system_prompt = """You are a helpful assistant that answers questions based ONLY on the provided context.
         If the information is not in the context, say so.
         Always cite the sources using the strict format: [Source: filename] when relevant.
         Provide detailed and comprehensive answers. Use markdown (bold, lists, headers) to structure your response."""
+
+        # Inject User Memories
+        from app.models.user_preferences import UserPreferences
+        from app.models.memory import UserMemory
+        prefs = self.db.query(UserPreferences).first()
+        if prefs and prefs.memory_enabled:
+             memories = self.db.query(UserMemory).all()
+             if memories:
+                 mem_text = "\n".join([f"- {m.content}" for m in memories])
+                 system_prompt += f"\n\nUser Profile / Memories:\n{mem_text}"
 
         # 5. Build final user prompt with all context
         user_prompt_parts = []

@@ -11,7 +11,7 @@ def make_celery(app_name=__name__):
         app_name,
         backend=settings.REDIS_URL,
         broker=settings.REDIS_URL,
-        include=['app.tasks.processing']
+        include=['app.tasks.processing', 'app.tasks.memory_tasks']
     )
     return celery
 

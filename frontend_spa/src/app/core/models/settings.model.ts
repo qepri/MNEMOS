@@ -39,6 +39,24 @@ export interface ChatPreferences {
   selected_llm_model?: string;
   transcription_provider?: string;
   custom_api_key?: string;
+  memory_enabled?: boolean;
+  memory_provider?: string;
+  memory_llm_model?: string;
+  max_memories?: number;
+}
+
+export interface UserMemory {
+  id: string;
+  content: string;
+  created_at: string;
+}
+
+export interface MemoriesResponse {
+  memories: UserMemory[];
+  usage: {
+    current: number;
+    max: number;
+  };
 }
 
 export interface SystemPrompt {

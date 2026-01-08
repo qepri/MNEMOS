@@ -6,81 +6,93 @@ from app.extensions import db
 from app.models.user_preferences import UserPreferences
 
 class LLMClient:
-    def __init__(self):
-        # Default defaults
-        self.provider = settings.LLM_PROVIDER
-        openai_key = settings.OPENAI_API_KEY
-        anthropic_key = settings.ANTHROPIC_API_KEY
-        groq_key = settings.GROQ_API_KEY
-        local_base_url = settings.LOCAL_LLM_BASE_URL
-        local_model = settings.LOCAL_LLM_MODEL
+    def __init__(self, provider=None, api_key=None, base_url=None, model=None):
+        # 1. Determine Provider
+        # Priority: Argument > DB > Settings
         
-        # Try loading from DB
+        db_prefs = None
         try:
             if db.session.registry.has():
-                prefs = db.session.query(UserPreferences).first()
-                if prefs:
-                    if prefs.llm_provider:
-                        self.provider = prefs.llm_provider
-                    if prefs.openai_api_key:
-                        openai_key = prefs.openai_api_key
-                    if prefs.anthropic_api_key:
-                        anthropic_key = prefs.anthropic_api_key
-                    if prefs.groq_api_key:
-                        groq_key = prefs.groq_api_key
-                    if prefs.local_llm_base_url:
-                        local_base_url = prefs.local_llm_base_url
-                    # Note: Local Model Name is usually handled by ModelManager selection, 
-                    # but we keep a default here just in case.
+                db_prefs = db.session.query(UserPreferences).first()
         except Exception as e:
             print(f"Error loading LLM config from DB: {e}")
 
+        # Provider
+        if provider:
+            self.provider = provider
+        elif db_prefs and db_prefs.llm_provider:
+             self.provider = db_prefs.llm_provider
+        else:
+             self.provider = settings.LLM_PROVIDER
+             
+        # Config Values (Load all potential sources)
+        s_openai_key = settings.OPENAI_API_KEY
+        s_anthropic_key = settings.ANTHROPIC_API_KEY
+        s_groq_key = settings.GROQ_API_KEY
+        s_local_base_url = settings.LOCAL_LLM_BASE_URL
+        s_local_model = settings.LOCAL_LLM_MODEL
+        
+        d_openai_key = db_prefs.openai_api_key if db_prefs else None
+        d_anthropic_key = db_prefs.anthropic_api_key if db_prefs else None
+        d_groq_key = db_prefs.groq_api_key if db_prefs else None
+        d_local_base_url = db_prefs.local_llm_base_url if db_prefs else None
+        
         # Initialize Client based on Provider
         if self.provider == LLMProvider.OPENAI:
-            self.client = OpenAI(api_key=openai_key)
-            self.model = settings.OPENAI_MODEL # Fallback defaults
+            key = api_key or d_openai_key or s_openai_key
+            self.client = OpenAI(api_key=key)
+            self.model = model or settings.OPENAI_MODEL # Fallback defaults
             
         elif self.provider == LLMProvider.ANTHROPIC:
-            self.client = Anthropic(api_key=anthropic_key)
-            self.model = settings.ANTHROPIC_MODEL
+            key = api_key or d_anthropic_key or s_anthropic_key
+            self.client = Anthropic(api_key=key)
+            self.model = model or settings.ANTHROPIC_MODEL
 
         elif self.provider == LLMProvider.GROQ:
+            key = api_key or d_groq_key or s_groq_key
             self.client = OpenAI(
                 base_url="https://api.groq.com/openai/v1",
-                api_key=groq_key or "gsk_..." # Placeholder if empty, will fail gracefully
+                api_key=key or "gsk_..." 
             )
-            self.model = settings.GROQ_MODEL
+            self.model = model or settings.GROQ_MODEL
             
         elif self.provider == LLMProvider.OLLAMA:
+            # For Ollama, we can use the passed base_url or the internal docker one
+            # If base_url is passed (e.g. from Custom/LM Studio override), use it, otherwise default to internal
+            url = base_url or settings.OLLAMA_BASE_URL
             self.client = OpenAI(
-                base_url=settings.OLLAMA_BASE_URL,
+                base_url=url,
                 api_key="ollama" 
             )
-            self.model = local_model
+            self.model = model or s_local_model
 
         elif self.provider == LLMProvider.LM_STUDIO:
+            url = base_url or d_local_base_url or s_local_base_url
             self.client = OpenAI(
-                base_url=local_base_url,
+                base_url=url,
                 api_key="lm-studio"
             )
-            self.model = local_model
+            self.model = model or s_local_model
         
         # Generic Custom Provider (treated as OpenAI compatible)
         else:
+             url = base_url or d_local_base_url or s_local_base_url
+             key = api_key or (db_prefs.custom_api_key if db_prefs else None) or "custom"
              self.client = OpenAI(
-                base_url=local_base_url,
-                api_key="custom"
+                base_url=url,
+                api_key=key
             )
-             self.model = local_model
+             self.model = model or s_local_model
             
-    def chat(self, system: str, messages: list, images: list = None) -> str:
+    def chat(self, system: str, messages: list, images: list = None, model: str = None) -> str:
         """
         Unified chat method.
         messages format: [{"role": "user", "content": "..."}]
         images: list of base64 strings (optional)
+        model: optional model name to override the default/selected model
         """
-        # Use runtime-selected model if available, otherwise fall back to config
-        active_model = model_manager.get_model() or self.model
+        # Use explicit model if provided, otherwise check manager, otherwise default
+        active_model = model or model_manager.get_model() or self.model
 
         try:
             if self.provider == LLMProvider.ANTHROPIC:
