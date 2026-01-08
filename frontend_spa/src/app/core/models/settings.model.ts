@@ -43,6 +43,23 @@ export interface ChatPreferences {
   memory_provider?: string;
   memory_llm_model?: string;
   max_memories?: number;
+  active_connection_id?: string;
+}
+
+export interface LLMConnection {
+  id: string;
+  name: string;
+  base_url: string;
+  api_key?: string | null;
+  default_model?: string;
+  models?: string[];
+  provider_type: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LLMConnectionsResponse {
+  connections: LLMConnection[];
 }
 
 export interface UserMemory {

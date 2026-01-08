@@ -8,6 +8,8 @@ class LLMProvider(str, Enum):
     GROQ = "groq"
     LM_STUDIO = "lm_studio"
     OLLAMA = "ollama"
+    CEREBRAS = "cerebras"
+    CUSTOM = "custom"
 
 class Settings(BaseSettings):
     # App
@@ -32,8 +34,12 @@ class Settings(BaseSettings):
     
     # Groq
     GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "llama-3.3-70b-versatile" # Default strong model from updated docs
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
     
+    # Cerebras
+    CEREBRAS_API_KEY: str = ""
+    CEREBRAS_MODEL: str = "llama-3.3-70b"
+
     # LM Studio / Ollama (OpenAI-compatible)
     LOCAL_LLM_BASE_URL: str = "http://host.docker.internal:1234/v1"
     LOCAL_LLM_MODEL: str = "local-model"
@@ -75,6 +81,7 @@ class Settings(BaseSettings):
     
     class Config:
         env_file = ".env"
+        env_file_encoding = 'utf-8' # Ensure encoding is supported
         extra = "ignore" # Ignore extra env vars
 
 settings = Settings()

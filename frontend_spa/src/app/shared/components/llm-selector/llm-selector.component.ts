@@ -2,114 +2,13 @@ import { Component, computed, inject, signal, effect, input, output } from '@ang
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SettingsService } from '@services/settings.service';
-import { ChatPreferences } from '@core/models';
+import { ChatPreferences, LLMConnection } from '@core/models';
 
 @Component({
   selector: 'app-llm-selector',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  template: `
-    <div class="space-y-4">
-      <!-- Provider Selection -->
-      <div class="form-control">
-        <label class="label">
-          <span class="label-text font-medium text-secondary">Provider</span>
-        </label>
-        <select 
-          [ngModel]="selectedProvider()" 
-          (ngModelChange)="updateProvider($event)"
-          class="select select-bordered w-full bg-input border-divider text-primary focus:border-accent focus:ring-1 focus:ring-accent transition-all">
-          <option value="ollama">Ollama (Local)</option>
-          <option value="openai">OpenAI</option>
-          <option value="anthropic">Anthropic</option>
-          <option value="groq">Groq</option>
-          <option value="lm_studio">LM Studio</option>
-          <option value="custom">Custom (OpenAI Compatible)</option>
-        </select>
-      </div>
-
-      <!-- Provider Specific Config -->
-
-      <!-- API Key (OpenAI, Anthropic, Groq, Custom) -->
-      @if (isApiKeyRequired() || selectedProvider() === 'custom') {
-        <div class="form-control anime-fade-in">
-          <label class="label">
-            <span class="label-text font-medium text-secondary">
-              {{ selectedProvider() | titlecase }} API Key
-            </span>
-          </label>
-          <input 
-            type="password" 
-            [ngModel]="apiKey()"
-            (ngModelChange)="updateApiKey($event)"
-            placeholder="sk-..." 
-            class="input input-bordered w-full bg-input border-divider text-primary focus:border-accent focus:ring-1 focus:ring-accent transition-all pl-10">
-          
-          @if (selectedProvider() === 'groq') {
-            <div class="label">
-              <span class="label-text-alt text-secondary">Get your key at <a href="https://console.groq.com" target="_blank" class="link link-accent">console.groq.com</a></span>
-            </div>
-          }
-        </div>
-      }
-
-      <!-- Base URL (Ollama, LM Studio, Custom) -->
-      @if (['ollama', 'lm_studio', 'custom'].includes(selectedProvider())) {
-        <div class="form-control anime-fade-in">
-          <label class="label">
-            <span class="label-text font-medium text-secondary">Base URL</span>
-          </label>
-          <input 
-            type="text" 
-            [ngModel]="baseUrl()" 
-            (ngModelChange)="baseUrl.set($event)"
-            [placeholder]="selectedProvider() === 'ollama' ? 'http://localhost:11434' : 'http://localhost:1234/v1'"
-            class="input input-bordered w-full bg-input border-divider text-primary focus:border-accent focus:ring-1 focus:ring-accent transition-all">
-        </div>
-      }
-
-      <!-- Model Selection (Dropdown) -->
-      @if (!isManualModelInput()) {
-        <div class="form-control anime-fade-in">
-          <label class="label">
-            <span class="label-text font-medium text-secondary">Available Models</span>
-          </label>
-          <select 
-            [ngModel]="selectedModel()" 
-            (ngModelChange)="selectedModel.set($event)"
-            class="select select-bordered w-full bg-input border-divider text-primary focus:border-accent focus:ring-1 focus:ring-accent transition-all"
-            [disabled]="currentModels().length === 0">
-            <option value="" disabled selected>Select a model</option>
-            @for (model of currentModels(); track model.name) {
-              <option [value]="model.name">
-                {{ model.name }} {{ model.vision ? '(Vision)' : '' }}
-              </option>
-            }
-          </select>
-          @if (currentModels().length === 0) {
-            <div class="label">
-              <span class="label-text-alt text-error">No models found. Check connection/key.</span>
-            </div>
-          }
-        </div>
-      }
-
-      <!-- Manual Model ID (LM Studio, Custom) -->
-      @if (isManualModelInput()) {
-        <div class="form-control anime-fade-in">
-          <label class="label">
-            <span class="label-text font-medium text-secondary">Model ID</span>
-          </label>
-          <input 
-            type="text" 
-            [ngModel]="customModelId()" 
-            (ngModelChange)="customModelId.set($event)"
-            placeholder="e.g., local-model" 
-            class="input input-bordered w-full bg-input border-divider text-primary focus:border-accent focus:ring-1 focus:ring-accent transition-all">
-        </div>
-      }
-    </div>
-  `,
+  templateUrl: './llm-selector.component.html',
   styles: [`
     .anime-fade-in {
       animation: fadeIn 0.3s ease-out forwards;
@@ -133,9 +32,27 @@ export class LlmSelectorComponent {
   customModelId = signal<string>('');
   selectedModel = signal<string>('');
 
+  // Custom Connection State
+  selectedConnectionId = signal<string>('new');
+  isEditingConnection = signal<boolean>(false);
+
+  // Form State (New & Edit)
+  connForm = {
+    name: signal(''),
+    baseUrl: signal(''),
+    apiKey: signal(''),
+    defaultModel: signal(''),
+    models: signal<string[]>([])
+  };
+
+  // Active Connection Computed
+  activeConnection = computed(() =>
+    this.settingsService.llmConnections().find((c: LLMConnection) => c.id === this.selectedConnectionId())
+  );
+
   fetchedGroqModels = signal<any[]>([]);
 
-  // Hardcoded Model Lists (same as before)
+  // Hardcoded Model Lists (unchanged)
   readonly openaiModels = [
     { name: 'gpt-4o', vision: true },
     { name: 'gpt-4o-mini', vision: true },
@@ -165,12 +82,39 @@ export class LlmSelectorComponent {
 
 
   constructor() {
+    this.settingsService.loadConnections();
+
     // Sync when preferences input changes
     effect(() => {
       const prefs = this.preferences();
       if (prefs) {
         this.selectedProvider.set(prefs.llm_provider || 'ollama');
         this.initFromPrefs(prefs.llm_provider || 'ollama', prefs);
+
+        if (prefs.active_connection_id) {
+          this.selectedConnectionId.set(prefs.active_connection_id);
+        } else if (prefs.llm_provider === 'custom') {
+          if (this.settingsService.llmConnections().length > 0) {
+            this.selectedConnectionId.set(this.settingsService.llmConnections()[0].id);
+          } else {
+            this.selectedConnectionId.set('new');
+          }
+        }
+      }
+    }, { allowSignalWrites: true });
+
+    // Sync Form with Selection
+    effect(() => {
+      const id = this.selectedConnectionId();
+      const connections = this.settingsService.llmConnections(); // Track dependency
+
+      if (id === 'new') {
+        this.resetForm();
+      } else {
+        const conn = connections.find(c => c.id === id);
+        if (conn) {
+          this.populateForm(conn);
+        }
       }
     }, { allowSignalWrites: true });
   }
@@ -202,7 +146,6 @@ export class LlmSelectorComponent {
       case 'custom':
       case 'ollama':
         this.baseUrl.set(prefs.local_llm_base_url || '');
-        if (provider === 'custom') this.apiKey.set(prefs.custom_api_key || '');
         if (provider !== 'ollama') this.customModelId.set(prefs.selected_llm_model || '');
         break;
     }
@@ -210,7 +153,7 @@ export class LlmSelectorComponent {
 
   // Computed
   isApiKeyRequired = computed(() => ['openai', 'anthropic', 'groq'].includes(this.selectedProvider()));
-  isManualModelInput = computed(() => ['lm_studio', 'custom'].includes(this.selectedProvider()));
+  isManualModelInput = computed(() => ['lm_studio'].includes(this.selectedProvider()));
 
   currentModels = computed(() => {
     let models: any[] = [];
@@ -227,6 +170,15 @@ export class LlmSelectorComponent {
       case 'groq':
         models = this.fetchedGroqModels().length > 0 ? this.fetchedGroqModels() : this.groqModels;
         break;
+      case 'custom':
+        // Custom models from active connection
+        const active = this.activeConnection();
+        if (active && active.models && active.models.length > 0) {
+          models = active.models.map(m => ({ name: m, vision: false }));
+        } else if (active && active.default_model) {
+          models = [{ name: active.default_model, vision: false }];
+        }
+        break;
     }
     // Alphabetical sort (case-insensitive)
     return models.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
@@ -236,10 +188,20 @@ export class LlmSelectorComponent {
   updateProvider(provider: string) {
     this.selectedProvider.set(provider);
     const prefs = this.settingsService.chatPreferences();
-    if (prefs) this.initFromPrefs(provider, prefs); // Try to sync existing prefs for this provider
+    if (prefs) this.initFromPrefs(provider, prefs);
 
-    // Reset model if invalid
-    if (!this.currentModels().some(m => m.name === this.selectedModel())) {
+    if (provider === 'custom') {
+      this.settingsService.loadConnections();
+      if (prefs?.active_connection_id) {
+        this.selectedConnectionId.set(prefs.active_connection_id);
+      } else if (this.settingsService.llmConnections().length > 0) {
+        this.selectedConnectionId.set(this.settingsService.llmConnections()[0].id);
+      } else {
+        this.selectedConnectionId.set('new');
+      }
+    }
+
+    if (provider !== 'custom' && !this.currentModels().some(m => m.name === this.selectedModel())) {
       this.selectedModel.set('');
     }
   }
@@ -258,25 +220,137 @@ export class LlmSelectorComponent {
     } catch (e) { console.error(e); }
   }
 
+  // Custom Connection Logic
+  async updateConnectionSelection(connId: string) {
+    this.selectedConnectionId.set(connId);
+
+    if (connId === 'new') {
+      this.resetForm();
+    } else {
+      // Auto-populate form for editing/viewing
+      const conn = this.settingsService.llmConnections().find(c => c.id === connId);
+      if (conn) {
+        this.populateForm(conn);
+      }
+    }
+  }
+
+  populateForm(conn: LLMConnection) {
+    this.connForm.name.set(conn.name);
+    this.connForm.baseUrl.set(conn.base_url);
+    this.connForm.apiKey.set(conn.api_key || '');
+    this.connForm.defaultModel.set(conn.default_model || '');
+    this.connForm.models.set(conn.models || []);
+  }
+
+  // Removed startEditing/cancelEditing as we are always in "edit/view" mode
+
+  resetForm() {
+    this.connForm.name.set('');
+    this.connForm.baseUrl.set('');
+    this.connForm.apiKey.set('');
+    this.connForm.defaultModel.set('');
+    this.connForm.models.set([]);
+  }
+
+  addModelToForm(modelInput: HTMLInputElement) {
+    const val = modelInput.value.trim();
+    if (val && !this.connForm.models().includes(val)) {
+      this.connForm.models.update(m => [...m, val]);
+      // If no default, set this as default
+      if (!this.connForm.defaultModel()) {
+        this.connForm.defaultModel.set(val);
+      }
+      modelInput.value = '';
+    }
+  }
+
+  removeModelFromForm(model: string) {
+    this.connForm.models.update(m => m.filter(x => x !== model));
+    if (this.connForm.defaultModel() === model) {
+      this.connForm.defaultModel.set(this.connForm.models()[0] || '');
+    }
+  }
+
+  setDefaultModel(model: string) {
+    this.connForm.defaultModel.set(model);
+  }
+
+  async saveConnection() {
+    try {
+      const id = this.selectedConnectionId();
+      const payload = {
+        name: this.connForm.name(),
+        base_url: this.connForm.baseUrl(),
+        api_key: this.connForm.apiKey() || undefined, // Send undefined if empty to avoid overwrite with empty
+        default_model: this.connForm.defaultModel(),
+        models: this.connForm.models(),
+        provider_type: 'openai'
+      };
+
+      if (id === 'new') {
+        const newConn = await this.settingsService.createConnection({
+          ...payload,
+          api_key: this.connForm.apiKey() // Required for new
+        });
+        // This sets the ID, but we also want to trigger the "selection" logic to populate form cleanly from source
+        // effectively switching from "new" mode to "edit" mode of the created conn
+        this.updateConnectionSelection(newConn.id);
+      } else {
+        await this.settingsService.updateConnection(id, payload);
+        // Don't reset form! We are still editing this connection.
+        // Optionally refresh form from source to be sure
+        const updatedConn = this.settingsService.llmConnections().find(c => c.id === id);
+        if (updatedConn) this.populateForm(updatedConn);
+      }
+
+      // this.resetForm(); // REMOVED: This was clearing the form after save!
+
+    } catch (e) {
+      console.error("Failed to save connection", e);
+    }
+  }
+
+  async deleteSelectedConnection() {
+    const id = this.selectedConnectionId();
+    if (id && id !== 'new') {
+      if (confirm('Are you sure you want to delete this connection?')) {
+        await this.settingsService.deleteConnection(id);
+        this.selectedConnectionId.set('new');
+        await this.settingsService.setActiveConnection(null);
+      }
+    }
+  }
+
   // Helper to get current state (for parent to save)
   getSnapshot(): Partial<ChatPreferences> & { ollamaModel?: string } {
     const provider = this.selectedProvider();
     const update: any = { llm_provider: provider };
 
+    // Clear active connection if not custom
+    if (provider !== 'custom') {
+      update.active_connection_id = null; // Or handle this in service/backend? Backend handles override
+    }
+
     if (provider === 'openai') update.openai_api_key = this.apiKey();
     if (provider === 'anthropic') update.anthropic_api_key = this.apiKey();
     if (provider === 'groq') update.groq_api_key = this.apiKey();
-    if (provider === 'custom') update.custom_api_key = this.apiKey();
 
-    if (['ollama', 'lm_studio', 'custom'].includes(provider)) {
+    if (['ollama', 'lm_studio'].includes(provider)) {
       update.local_llm_base_url = this.baseUrl();
+    }
+
+    if (provider === 'custom') {
+      // We rely on active_connection_id being set via the actions immediately
+      // But for redundancy we can pass it here too if the backend needed it in prefs
+      update.active_connection_id = this.selectedConnectionId() === 'new' ? null : this.selectedConnectionId();
     }
 
     if (this.isManualModelInput()) {
       update.selected_llm_model = this.customModelId();
     } else if (provider === 'ollama') {
       update.ollamaModel = this.selectedModel(); // Special handling for Ollama
-    } else {
+    } else if (provider !== 'custom') {
       update.selected_llm_model = this.selectedModel();
     }
     return update;

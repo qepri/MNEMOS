@@ -12,6 +12,10 @@ class UserPreferences(db.Model):
     max_context_messages = db.Column(db.Integer, default=10, nullable=False)
     selected_system_prompt_id = db.Column(UUID(as_uuid=True), db.ForeignKey('system_prompts.id'), nullable=True)
     
+    # Custom Connections
+    active_connection_id = db.Column(UUID(as_uuid=True), db.ForeignKey('llm_connections.id'), nullable=True)
+
+    
     # RAG Settings
     chunk_size = db.Column(db.Integer, default=512, nullable=False)
     chunk_overlap = db.Column(db.Integer, default=50, nullable=False)
@@ -44,6 +48,7 @@ class UserPreferences(db.Model):
             'use_conversation_context': self.use_conversation_context,
             'max_context_messages': self.max_context_messages,
             'selected_system_prompt_id': str(self.selected_system_prompt_id) if self.selected_system_prompt_id else None,
+            'active_connection_id': str(self.active_connection_id) if self.active_connection_id else None,
             'chunk_size': self.chunk_size,
             'chunk_overlap': self.chunk_overlap,
             'selected_llm_model': self.selected_llm_model,

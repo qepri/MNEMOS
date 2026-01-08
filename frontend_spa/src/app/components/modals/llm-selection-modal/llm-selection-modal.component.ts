@@ -5,10 +5,10 @@ import { SettingsService } from '@services/settings.service';
 import { LlmSelectorComponent } from '@shared/components/llm-selector/llm-selector.component';
 
 @Component({
-    selector: 'app-llm-selection-modal',
-    standalone: true,
-    imports: [CommonModule, FormsModule, LlmSelectorComponent],
-    template: `
+  selector: 'app-llm-selection-modal',
+  standalone: true,
+  imports: [CommonModule, FormsModule, LlmSelectorComponent],
+  template: `
     @if (isVisible()) {
       <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <!-- Backdrop -->
@@ -45,7 +45,7 @@ import { LlmSelectorComponent } from '@shared/components/llm-selector/llm-select
       </div>
     }
     `,
-    styles: [`
+  styles: [`
     .anime-scale-in { animation: scaleIn 0.2s ease-out forwards; }
     @keyframes scaleIn {
       from { opacity: 0; transform: scale(0.95); }
@@ -54,32 +54,39 @@ import { LlmSelectorComponent } from '@shared/components/llm-selector/llm-select
     `]
 })
 export class LlmSelectionModalComponent {
-    isVisible = model<boolean>(false);
-    settingsService = inject(SettingsService);
+  isVisible = model<boolean>(false);
+  settingsService = inject(SettingsService);
 
-    // Access the child component to get state
-    llmSelector = viewChild(LlmSelectorComponent);
+  // Access the child component to get state
+  llmSelector = viewChild(LlmSelectorComponent);
 
-    closeModal() {
-        this.isVisible.set(false);
+  closeModal() {
+    this.isVisible.set(false);
+  }
+
+  async saveSettings() {
+    const selector = this.llmSelector();
+    if (!selector) return;
+
+    let update = selector.getSnapshot();
+
+    // Check if we need to auto-save the custom connection form (Unified Save Request)
+    if (update.llm_provider === 'custom') {
+      await selector.saveConnection();
+      // Refetch snapshot to get updated ID if it was new
+      update = selector.getSnapshot();
     }
 
-    async saveSettings() {
-        const selector = this.llmSelector();
-        if (!selector) return;
+    const { ollamaModel, ...prefs } = update;
 
-        const update = selector.getSnapshot();
-        const { ollamaModel, ...prefs } = update;
+    // Save prefs
+    await this.settingsService.saveChatPreferences(prefs);
 
-        // Save prefs
-        await this.settingsService.saveChatPreferences(prefs);
-
-        // Set Ollama model if needed
-        if (ollamaModel) {
-            await this.settingsService.setCurrentModel(ollamaModel);
-        }
-
-        this.closeModal();
+    // Set Ollama model if needed
+    if (ollamaModel) {
+      await this.settingsService.setCurrentModel(ollamaModel);
     }
+
+    this.closeModal();
+  }
 }
-

@@ -4,6 +4,7 @@ from config.settings import settings, LLMProvider
 from app.services.model_manager import model_manager
 from app.extensions import db
 from app.models.user_preferences import UserPreferences
+from app.models.llm_connection import LLMConnection
 
 class LLMClient:
     def __init__(self, provider=None, api_key=None, base_url=None, model=None):
@@ -29,12 +30,14 @@ class LLMClient:
         s_openai_key = settings.OPENAI_API_KEY
         s_anthropic_key = settings.ANTHROPIC_API_KEY
         s_groq_key = settings.GROQ_API_KEY
+        s_cerebras_key = settings.CEREBRAS_API_KEY
         s_local_base_url = settings.LOCAL_LLM_BASE_URL
         s_local_model = settings.LOCAL_LLM_MODEL
         
         d_openai_key = db_prefs.openai_api_key if db_prefs else None
         d_anthropic_key = db_prefs.anthropic_api_key if db_prefs else None
         d_groq_key = db_prefs.groq_api_key if db_prefs else None
+        d_cerebras_key = getattr(db_prefs, 'cerebras_api_key', None) # Handle migration later
         d_local_base_url = db_prefs.local_llm_base_url if db_prefs else None
         
         # Initialize Client based on Provider
@@ -66,6 +69,14 @@ class LLMClient:
             )
             self.model = model or s_local_model
 
+        elif self.provider == LLMProvider.CEREBRAS:
+            key = api_key or d_cerebras_key or s_cerebras_key
+            self.client = OpenAI(
+                base_url="https://api.cerebras.ai/v1",
+                api_key=key
+            )
+            self.model = model or settings.CEREBRAS_MODEL
+
         elif self.provider == LLMProvider.LM_STUDIO:
             url = base_url or d_local_base_url or s_local_base_url
             self.client = OpenAI(
@@ -74,10 +85,30 @@ class LLMClient:
             )
             self.model = model or s_local_model
         
-        # Generic Custom Provider (treated as OpenAI compatible)
+        # Generic Custom Provider (Dynamic Connections)
         else:
-             url = base_url or d_local_base_url or s_local_base_url
-             key = api_key or (db_prefs.custom_api_key if db_prefs else None) or "custom"
+             url = None
+             key = None
+             active_conn = None
+             
+             # Try to load from active connection if set
+             if db_prefs and db_prefs.active_connection_id:
+                 try:
+                     active_conn = db.session.query(LLMConnection).filter_by(id=db_prefs.active_connection_id).first()
+                 except Exception as e:
+                     print(f"Error loading active connection: {e}")
+             
+             if active_conn:
+                 url = active_conn.base_url
+                 key = active_conn.api_key
+                 # Use connection default model if no specific override
+                 if not model and active_conn.default_model:
+                     model = active_conn.default_model
+             else:
+                 # Fallback to legacy env vars/settings if no connection active
+                 url = base_url or d_local_base_url or s_local_base_url
+                 key = api_key or (db_prefs.custom_api_key if db_prefs else None) or "custom"
+
              self.client = OpenAI(
                 base_url=url,
                 api_key=key

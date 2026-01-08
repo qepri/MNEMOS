@@ -1,0 +1,187 @@
+<div class="space-y-4">
+  <!-- Provider Selection -->
+  <div class="form-control">
+    <label class="label">
+      <span class="label-text font-medium text-secondary">Provider</span>
+    </label>
+    <select [ngModel]="selectedProvider()" (ngModelChange)="updateProvider($event)"
+      class="select select-bordered w-full bg-input border-divider text-primary focus:border-accent focus:ring-1 focus:ring-accent transition-all">
+      <option value="ollama">Ollama (Local)</option>
+      <option value="openai">OpenAI</option>
+      <option value="anthropic">Anthropic</option>
+      <option value="groq">Groq</option>
+      <option value="lm_studio">LM Studio</option>
+      <option value="custom">Custom Connections</option>
+    </select>
+  </div>
+
+  <!-- Custom Connection Selector -->
+  @if (selectedProvider() === 'custom') {
+  <div class="form-control anime-fade-in">
+    <label class="label">
+      <span class="label-text font-medium text-secondary">Connection</span>
+      <button class="btn btn-ghost btn-xs text-error" (click)="deleteSelectedConnection()"
+        [disabled]="!selectedConnectionId() || selectedConnectionId() === 'new'">Delete</button>
+    </label>
+    <select [ngModel]="selectedConnectionId()" (ngModelChange)="updateConnectionSelection($event)"
+      class="select select-bordered w-full bg-input border-divider text-primary focus:border-accent focus:ring-1 focus:ring-accent transition-all">
+      <option value="new">+ Create New Connection</option>
+      @for (conn of settingsService.llmConnections(); track conn.id) {
+      <option [value]="conn.id">{{ conn.name }}</option>
+      }
+    </select>
+  </div>
+  }
+
+  <!-- Unified Connection Form (New & Edit) -->
+  @if (selectedProvider() === 'custom') {
+  <div class="p-4 bg-base-200 rounded-lg space-y-3 anime-fade-in border border-divider">
+    <div class="flex justify-between items-center">
+      <h4 class="font-bold text-sm">
+        {{ selectedConnectionId() === 'new' ? 'Create New Connection' : 'Connection Details' }}
+      </h4>
+      @if (selectedConnectionId() !== 'new') {
+      <button class="btn btn-xs btn-outline btn-error" (click)="deleteSelectedConnection()">
+        Delete
+      </button>
+      }
+    </div>
+
+    <div class="form-control">
+      <span class="label-text text-xs">Name</span>
+      <input type="text" [ngModel]="connForm.name()" (ngModelChange)="connForm.name.set($event)"
+        class="input input-sm input-bordered w-full bg-input" placeholder="e.g. My Cerebras">
+    </div>
+
+    <div class="form-control">
+      <span class="label-text text-xs">Base URL</span>
+      <input type="text" [ngModel]="connForm.baseUrl()" (ngModelChange)="connForm.baseUrl.set($event)"
+        class="input input-sm input-bordered w-full bg-input" placeholder="https://api.provider.com/v1">
+    </div>
+
+    <div class="form-control">
+      <span class="label-text text-xs">API Key {{ selectedConnectionId() !== 'new' ? '(Unmasked)' : ''
+        }}</span>
+      <input type="text" [ngModel]="connForm.apiKey()" (ngModelChange)="connForm.apiKey.set($event)"
+        placeholder="sk-..." class="input input-sm input-bordered w-full bg-input">
+    </div>
+
+    <!-- Models Management -->
+    <div class="form-control">
+      <span class="label-text text-xs font-bold mt-2">Models</span>
+      <div class="flex gap-2 mb-2">
+        <input #newModelInput type="text" placeholder="Add model e.g. llama-3.1"
+          class="input input-xs input-bordered flex-1 bg-input" (keydown.enter)="addModelToForm(newModelInput)">
+        <button class="btn btn-xs btn-primary" (click)="addModelToForm(newModelInput)">Add</button>
+      </div>
+
+      <div class="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
+        @for (model of connForm.models(); track model) {
+        <div class="badge badge-neutral gap-1 text-xs">
+          <span [class.text-accent]="model === connForm.defaultModel()" (click)="setDefaultModel(model)"
+            class="cursor-pointer" title="Click to set as default">
+            {{ model }} {{ model === connForm.defaultModel() ? '(default)' : '' }}
+          </span>
+          <button class="btn btn-ghost btn-xs w-4 h-4 min-h-0 p-0 rounded-full"
+            (click)="removeModelFromForm(model)">x</button>
+        </div>
+        }
+        @if (connForm.models().length === 0) {
+        <span class="text-xs text-base-content/50 italic">No models added. Default model will be used.</span>
+        }
+      </div>
+    </div>
+
+    <div class="form-control">
+      <span class="label-text text-xs">Default Model (Fallback)</span>
+      <select [ngModel]="connForm.defaultModel()" (ngModelChange)="connForm.defaultModel.set($event)"
+        class="select select-sm select-bordered w-full bg-input" [disabled]="connForm.models().length === 0">
+        <option value="" disabled selected>Select a default model</option>
+        @for (model of connForm.models(); track model) {
+        <option [value]="model">{{ model }}</option>
+        }
+      </select>
+      @if (connForm.models().length === 0) {
+      <span class="text-xs text-error mt-1">Add models above to select a default.</span>
+      }
+    </div>
+
+    @if (selectedConnectionId() === 'new') {
+    <button class="btn btn-sm btn-accent w-full mt-2" (click)="saveConnection()"
+      [disabled]="!connForm.name() || !connForm.baseUrl() || !connForm.apiKey()">
+      Create Connection
+    </button>
+    }
+  </div>
+  }
+
+  <!-- Provider Specific Config (Legacy logic for non-custom) -->
+
+  <!-- API Key (OpenAI, Anthropic, Groq) -->
+  @if (isApiKeyRequired()) {
+  <div class="form-control anime-fade-in">
+    <label class="label">
+      <span class="label-text font-medium text-secondary">
+        {{ selectedProvider() | titlecase }} API Key
+      </span>
+    </label>
+    <input type="password" [ngModel]="apiKey()" (ngModelChange)="updateApiKey($event)" placeholder="sk-..."
+      class="input input-bordered w-full bg-input border-divider text-primary focus:border-accent focus:ring-1 focus:ring-accent transition-all pl-10">
+
+    @if (selectedProvider() === 'groq') {
+    <div class="label">
+      <span class="label-text-alt text-secondary">Get your key at <a href="https://console.groq.com" target="_blank"
+          class="link link-accent">console.groq.com</a></span>
+    </div>
+    }
+  </div>
+  }
+
+  <!-- Base URL (Ollama, LM Studio) -->
+  @if (['ollama', 'lm_studio'].includes(selectedProvider())) {
+  <div class="form-control anime-fade-in">
+    <label class="label">
+      <span class="label-text font-medium text-secondary">Base URL</span>
+    </label>
+    <input type="text" [ngModel]="baseUrl()" (ngModelChange)="baseUrl.set($event)"
+      [placeholder]="selectedProvider() === 'ollama' ? 'http://localhost:11434' : 'http://localhost:1234/v1'"
+      class="input input-bordered w-full bg-input border-divider text-primary focus:border-accent focus:ring-1 focus:ring-accent transition-all">
+  </div>
+  }
+
+  <!-- Model Selection (Dropdown) - NOT for Custom (handled by connection default or manual override later if needed) -->
+  @if (!isManualModelInput() && selectedProvider() !== 'custom') {
+  <div class="form-control anime-fade-in">
+    <label class="label">
+      <span class="label-text font-medium text-secondary">Available Models</span>
+    </label>
+    <select [ngModel]="selectedModel()" (ngModelChange)="selectedModel.set($event)"
+      class="select select-bordered w-full bg-input border-divider text-primary focus:border-accent focus:ring-1 focus:ring-accent transition-all"
+      [disabled]="currentModels().length === 0">
+      <option value="" disabled selected>Select a model</option>
+      @for (model of currentModels(); track model.name) {
+      <option [value]="model.name">
+        {{ model.name }} {{ model.vision ? '(Vision)' : '' }}
+      </option>
+      }
+    </select>
+    @if (currentModels().length === 0) {
+    <div class="label">
+      <span class="label-text-alt text-error">No models found. Check connection/key.</span>
+    </div>
+    }
+  </div>
+  }
+
+  <!-- Manual Model ID (LM Studio Only) -->
+  @if (selectedProvider() === 'lm_studio') {
+  <div class="form-control anime-fade-in">
+    <label class="label">
+      <span class="label-text font-medium text-secondary">Model ID</span>
+    </label>
+    <input type="text" [ngModel]="customModelId()" (ngModelChange)="customModelId.set($event)"
+      placeholder="e.g., local-model"
+      class="input input-bordered w-full bg-input border-divider text-primary focus:border-accent focus:ring-1 focus:ring-accent transition-all">
+  </div>
+  }
+</div>

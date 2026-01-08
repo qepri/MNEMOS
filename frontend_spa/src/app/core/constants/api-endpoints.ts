@@ -27,6 +27,9 @@ export const ApiEndpoints = {
   SETTINGS_PULL_DELETE: (taskId: string) => `/api/settings/pull/${taskId}`,
   SETTINGS_PULL_ACTIVE: '/api/settings/pull/active',
   SETTINGS_HARDWARE: '/api/settings/hardware',
+  SETTINGS_CONNECTIONS: '/api/settings/connections',
+  SETTINGS_CONNECTION_DELETE: (id: string) => `/api/settings/connections/${id}`,
+  SETTINGS_CONNECTION_ACTIVE: '/api/settings/connections/active',
 
   // Ollama Service
   SETTINGS_OLLAMA_STATUS: '/api/settings/ollama/status',

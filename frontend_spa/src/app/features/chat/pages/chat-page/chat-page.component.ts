@@ -66,6 +66,15 @@ export class ChatPage {
 
     const provider = prefs.llm_provider || 'ollama';
 
+    if (provider === 'custom') {
+      const connId = prefs.active_connection_id;
+      const allConns = this.settingsService.llmConnections();
+      const conn = allConns.find(c => c.id === connId);
+
+      const name = conn ? conn.name : 'Custom';
+      return `${name} / ${prefs.selected_llm_model || '...'}`;
+    }
+
     if (provider === 'ollama') {
       const model = this.settingsService.currentModel();
       return `ollama / ${model || '...'}`;

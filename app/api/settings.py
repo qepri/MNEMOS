@@ -5,6 +5,7 @@ from config.settings import settings
 from app.services.model_manager import model_manager
 from app.extensions import db, celery_app
 from app.models.user_preferences import UserPreferences, SystemPrompt
+from app.models.llm_connection import LLMConnection
 from datetime import datetime
 
 bp = Blueprint('settings', __name__, url_prefix='/api/settings')
@@ -767,7 +768,8 @@ def get_chat_settings():
         "memory_enabled": getattr(prefs, 'memory_enabled', False),
         "memory_provider": getattr(prefs, 'memory_provider', 'ollama'),
         "memory_llm_model": getattr(prefs, 'memory_llm_model', 'llama3:8b'),
-        "max_memories": getattr(prefs, 'max_memories', 50)
+        "max_memories": getattr(prefs, 'max_memories', 50),
+        "active_connection_id": str(prefs.active_connection_id) if prefs.active_connection_id else None
     })
 
 
@@ -838,6 +840,11 @@ def save_chat_settings():
         prefs.groq_api_key = data['groq_api_key']
     if 'custom_api_key' in data:
         prefs.custom_api_key = data['custom_api_key']
+    
+    if 'active_connection_id' in data:
+        # data['active_connection_id'] can be None or a UUID string
+        val = data['active_connection_id']
+        prefs.active_connection_id = val if val else None
     
     if 'selected_llm_model' in data:
         new_model = data['selected_llm_model']

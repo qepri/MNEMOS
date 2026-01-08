@@ -12,7 +12,9 @@ import {
   ModelPullRequest,
   ModelPullResponse,
   PullStatusResponse,
-  MemoriesResponse
+  MemoriesResponse,
+  LLMConnection,
+  LLMConnectionsResponse
 } from '@core/models';
 
 @Injectable({
@@ -26,8 +28,71 @@ export class SettingsService {
   currentModel = signal<string | null>(null);
   currentProvider = signal<string | null>(null);
   chatPreferences = signal<ChatPreferences | null>(null);
+  llmConnections = signal<LLMConnection[]>([]);
   systemPrompts = signal<SystemPrompt[]>([]);
   isLoading = signal<boolean>(false);
+
+  async loadConnections() {
+    try {
+      const response = await firstValueFrom(
+        this.http.get<LLMConnectionsResponse>(ApiEndpoints.SETTINGS_CONNECTIONS)
+      );
+      this.llmConnections.set(response.connections);
+    } catch (error) {
+      console.error('Failed to load connections', error);
+    }
+  }
+
+  async createConnection(connection: Partial<LLMConnection>): Promise<LLMConnection> {
+    try {
+      const newConn = await firstValueFrom(
+        this.http.post<LLMConnection>(ApiEndpoints.SETTINGS_CONNECTIONS, connection)
+      );
+      this.llmConnections.update(conns => [newConn, ...conns]);
+      return newConn;
+    } catch (error) {
+      console.error('Failed to create connection', error);
+      throw error;
+    }
+  }
+
+  async updateConnection(id: string, connection: Partial<LLMConnection>): Promise<LLMConnection> {
+    try {
+      const updatedConn = await firstValueFrom(
+        this.http.put<LLMConnection>(`${ApiEndpoints.SETTINGS_CONNECTIONS}/${id}`, connection)
+      );
+      this.llmConnections.update(conns => conns.map(c => c.id === id ? updatedConn : c));
+      return updatedConn;
+    } catch (error) {
+      console.error('Failed to update connection', error);
+      throw error;
+    }
+  }
+
+  async deleteConnection(id: string) {
+    try {
+      await firstValueFrom(
+        this.http.delete(ApiEndpoints.SETTINGS_CONNECTION_DELETE(id))
+      );
+      this.llmConnections.update(conns => conns.filter(c => c.id !== id));
+    } catch (error) {
+      console.error('Failed to delete connection', error);
+      throw error;
+    }
+  }
+
+  async setActiveConnection(id: string | null) {
+    try {
+      await firstValueFrom(
+        this.http.post(ApiEndpoints.SETTINGS_CONNECTION_ACTIVE, { connection_id: id })
+      );
+      // Refresh prefs to verify state (optional but good practice)
+      await this.loadChatPreferences();
+    } catch (error) {
+      console.error('Failed to set active connection', error);
+      throw error;
+    }
+  }
 
   async loadModels() {
     this.isLoading.set(true);

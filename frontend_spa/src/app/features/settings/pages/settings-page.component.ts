@@ -54,6 +54,18 @@ export class SettingsPage implements OnInit {
 
         if (chatSel) {
             const snapshot = chatSel.getSnapshot();
+
+            // Check if we need to auto-save the custom connection form (Unified Save Request)
+            if (snapshot.llm_provider === 'custom') {
+                await chatSel.saveConnection();
+                // Refresh snapshot after save? saveConnection mostly updates backend state.
+                // The prefs still need the connection ID which is in the snapshot.
+                // If it was 'new', saveConnection updates selectedConnectionId, so we should re-fetch snapshot?
+                // Let's refetch snapshot to be safe.
+                const newSnapshot = chatSel.getSnapshot();
+                Object.assign(snapshot, newSnapshot);
+            }
+
             ollamaModelToSet = snapshot.ollamaModel;
             delete snapshot.ollamaModel;
             chatUpdate = snapshot;

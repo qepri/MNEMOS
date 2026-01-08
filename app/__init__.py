@@ -27,6 +27,7 @@ def create_app():
     from app.web import bp as web_bp
     from app.api.conversations import bp as conversations_bp
     from app.api.settings import bp as settings_bp
+    from app.api.connections import bp as connections_bp
     from app.api.ollama_manage import bp as ollama_manage_bp # Changed: Import ollama_manage_bp
     
     app.register_blueprint(documents_bp)
@@ -34,6 +35,7 @@ def create_app():
     app.register_blueprint(web_bp)
     app.register_blueprint(conversations_bp)
     app.register_blueprint(settings_bp, url_prefix='/api/settings') # Changed: Added url_prefix
+    app.register_blueprint(connections_bp)
     app.register_blueprint(ollama_manage_bp, url_prefix='/api/settings/ollama')
     
     from app.api.memory import bp as memory_bp
@@ -56,6 +58,19 @@ def create_app():
             # This import is necessary for Alembic to detect models
             from app import models
             db.create_all()
+            
+            # Auto-migration for new features without full Alembic reset
+            try:
+                 db.session.execute(text("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS active_connection_id UUID REFERENCES llm_connections(id)"))
+                 db.session.commit()
+                 
+                 db.session.execute(text("ALTER TABLE llm_connections ADD COLUMN IF NOT EXISTS models JSONB DEFAULT '[]'"))
+                 db.session.commit()
+            except Exception as e:
+                 # Ignore if it fails (e.g. invalid state), logs will show
+                 print(f"Schema migration note: {e}")
+                 pass
+                 
         except SQLAlchemyError:
             pass
 

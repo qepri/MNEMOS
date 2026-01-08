@@ -68,7 +68,8 @@ export class MainLayout implements OnInit {
         this.documentsService.fetchDocuments(),
         this.settingsService.loadModels(),
         this.settingsService.loadCurrentModel(),
-        this.settingsService.loadChatPreferences()
+        this.settingsService.loadChatPreferences(),
+        this.settingsService.loadConnections()
       ]);
       this.toastr.success('Initial data loaded successfully');
     } catch (error) {
