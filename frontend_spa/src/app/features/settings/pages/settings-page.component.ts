@@ -198,7 +198,24 @@ export class SettingsPage implements OnInit {
                     // Start with basic pull info
                     let merged = { ...pull };
 
-                    // If backend return includes 'result' or 'error' in pull object (from my python changes), use it
+                    // Parse progress_line if it exists (It's a JSON string from backend)
+                    if (merged.progress_line && typeof merged.progress_line === 'string') {
+                        try {
+                            const progressData = JSON.parse(merged.progress_line);
+                            if (progressData.total && progressData.completed) {
+                                merged.total = progressData.total;
+                                merged.completed = progressData.completed;
+                                // Calculate progress immediately for consistency
+                                merged.progress = (merged.completed / merged.total) * 100;
+                            }
+                            // Also update status message if available
+                            if (progressData.status) {
+                                merged.status = progressData.status; // e.g. "pulling sha256..."
+                            }
+                        } catch (e) {
+                            console.warn("Failed to parse progress_line", e);
+                        }
+                    }
 
                     // Normalize Status for UI
                     // If Celery says SUCCESS but result has error -> Error
@@ -208,6 +225,29 @@ export class SettingsPage implements OnInit {
                     } else if (merged.status === 'SUCCESS') {
                         merged.status = 'success';
                         merged.progress = 100;
+
+                        // Auto-dismiss success after 5 seconds
+                        // First check if we already scheduled it
+                        if (!currentDownloads[pull.task_id]?.dismissScheduled) {
+                            merged.dismissScheduled = true;
+                            // Trigger model refresh so new model appears in list
+                            this.settingsService.loadModels();
+
+                            setTimeout(() => {
+                                const now = { ...this.activeDownloads() };
+                                // Only delete if it's still success (user might have deleted it manually)
+                                if (now[pull.task_id] && now[pull.task_id].status === 'success') {
+                                    delete now[pull.task_id];
+                                    this.activeDownloads.set(now);
+                                    // Also try to clean up backend if possible, but frontend-only dismissal is fine for UX
+                                    this.settingsService.deletePull(pull.task_id).catch(() => { });
+                                }
+                            }, 5000);
+                        } else {
+                            // Preserve scheduled flag
+                            merged.dismissScheduled = true;
+                        }
+
                     } else if (merged.status === 'FAILURE') {
                         merged.status = 'failure';
                     }
@@ -219,39 +259,26 @@ export class SettingsPage implements OnInit {
                 }
             }
 
-            // Remove downloads that are no longer active (completed/failed and removed from backend list) (?)
-            // Actually backend keeps them in list if we implemented it that way?
-            // Let's assume backend list is the source of truth for "active"
-            // But we might want to keep "completed" ones visible for a bit? 
-            // For KISS, let's just sync with backend list.
-
+            // Remove downloads that are no longer active (completed/failed and removed from backend list)
             // Filter out keys in currentDownloads that are not in activePulls
             const activeIds = new Set(pullsArray.map(p => p.task_id));
             Object.keys(currentDownloads).forEach(id => {
+                // If it's not in backend list AND not scheduled for dismissal (meaning it's gone abruptly)
+                // Or if it IS in backend list but we track it locally
                 if (!activeIds.has(id)) {
-                    // If it was recently completed, maybe keep it?
-                    // For now, if it's gone from backend, remove it.
-                    delete currentDownloads[id];
-                    hasChanges = true;
+                    // If it was validly removed (e.g. by delete button), let it go.
+                    // But if it finished and backend cleared it, we might want to show it?
+                    // For now, sync with backend, except if we are holding it for dismissal
+                    if (!currentDownloads[id].dismissScheduled) {
+                        delete currentDownloads[id];
+                        hasChanges = true;
+                    }
                 }
             });
 
             if (hasChanges) {
                 this.activeDownloads.set(currentDownloads);
             }
-
-            // Specific fix: If we have active downloads that are NOT in the backend list anymore,
-            // it means the backend cleaned them up. We should update them to 'completed' or remove them.
-            // But if we just remove them, the user won't know they finished.
-            // Let's rely on getActivePulls returning even finished tasks as seen in previous backend code analysis.
-            // (Backend code: "if status in ['SUCCESS'...] ids_to_remove.append... else active_list.append")
-            // Wait, backend explicitly REMOVES success tasks from the returned list!
-            // That's bad for UI.
-            // Re-reading backend logic:
-            // "if status in ['SUCCESS', 'FAILURE', 'REVOKED']: ids_to_remove.append(task_id)"
-            // "if status in [...] active_list.append(...)" -> This is in the loop. 
-            // It appends to active_list in the `else` block? 
-            // Let me re-read backend code carefully.
 
         } catch (e) {
             console.error('Polling failed', e);

@@ -66,7 +66,7 @@
                         <div class="flex items-center gap-3">
                             <div class="flex-1">
                                 <app-progress-bar [label]="download.model || download.model_name"
-                                    [progress]="download.total ? (download.completed / download.total * 100) : 0"
+                                    [progress]="download.progress !== undefined ? download.progress : (download.total ? (download.completed / download.total * 100) : 0)"
                                     [status]="download.status === 'success' ? 'completed' : (download.status === 'failure' ? 'error' : (download.status === 'revoked' ? 'error' : 'downloading'))"
                                     [message]="download.status">
                                 </app-progress-bar>
@@ -128,7 +128,7 @@
                                                 (change)="handleSetCurrentModel(model.name)"
                                                 class="radio radio-sm radio-accent">
                                             <h3
-                                                class="font-mono text-sm sm:text-base text-primary font-semibold truncate">
+                                                class="font-mono text-primary text-sm sm:text-base text-primary font-semibold truncate">
                                                 {{ model.name }}
                                             </h3>
                                             @if (settingsService.currentModel() === model.name) {
