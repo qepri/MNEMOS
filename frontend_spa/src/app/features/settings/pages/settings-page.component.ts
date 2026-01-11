@@ -6,6 +6,7 @@ import { SettingsService } from '@services/settings.service';
 import { ChatPreferences, SystemPrompt } from '@core/models';
 import { ProgressBarComponent } from '@shared/components/progress-bar/progress-bar.component';
 import { LlmSelectorComponent } from '@shared/components/llm-selector/llm-selector.component';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
     selector: 'app-settings-page',
@@ -17,6 +18,7 @@ import { LlmSelectorComponent } from '@shared/components/llm-selector/llm-select
 })
 export class SettingsPage implements OnInit {
     settingsService = inject(SettingsService);
+    toastr = inject(ToastrService);
     // Use template refs to distinguish
     chatSelector = viewChild<LlmSelectorComponent>('chatSelector');
     memorySelector = viewChild<LlmSelectorComponent>('memorySelector');
@@ -52,57 +54,80 @@ export class SettingsPage implements OnInit {
         let chatUpdate: any = {};
         let ollamaModelToSet: string | undefined;
 
-        if (chatSel) {
-            const snapshot = chatSel.getSnapshot();
+        try {
+            if (chatSel) {
+                const snapshot = chatSel.getSnapshot();
 
-            // Check if we need to auto-save the custom connection form (Unified Save Request)
-            if (snapshot.llm_provider === 'custom') {
-                await chatSel.saveConnection();
-                // Refresh snapshot after save? saveConnection mostly updates backend state.
-                // The prefs still need the connection ID which is in the snapshot.
-                // If it was 'new', saveConnection updates selectedConnectionId, so we should re-fetch snapshot?
-                // Let's refetch snapshot to be safe.
-                const newSnapshot = chatSel.getSnapshot();
-                Object.assign(snapshot, newSnapshot);
+                // Unified Save: If user is editing a custom connection, save it first
+                if (snapshot.llm_provider === 'custom') {
+                    // Check if form is valid (naive check via internal signals logic or just try save)
+                    // The saveConnection method in child throws if invalid? No, it just errors.
+                    // Ideally we check validity. 
+                    // Accessing internal computed/signals: chatSel.connForm.name(), etc.
+                    const name = chatSel.connForm.name();
+                    const url = chatSel.connForm.baseUrl();
+                    const key = chatSel.connForm.apiKey();
+                    const isNew = chatSel.selectedConnectionId() === 'new';
+                    const defaultModel = chatSel.connForm.defaultModel();
+
+                    // Only attempt save if it looks valid to avoid error toasts for half-filled forms
+                    if (name && url && (!isNew || key)) {
+                        try {
+                            await chatSel.saveConnection();
+                            // Fetch fresh snapshot after save (in case ID changed from 'new' to 'uuid')
+                            const newSnapshot = chatSel.getSnapshot();
+                            Object.assign(snapshot, newSnapshot);
+
+                            this.toastr.info('Connection details updated automatically', 'Unified Save');
+                        } catch (e) {
+                            console.warn("Auto-save of connection failed", e);
+                            // Don't block main save, but maybe warn?
+                        }
+                    }
+                }
+
+                ollamaModelToSet = snapshot.ollamaModel;
+                delete snapshot.ollamaModel;
+                chatUpdate = snapshot;
             }
 
-            ollamaModelToSet = snapshot.ollamaModel;
-            delete snapshot.ollamaModel;
-            chatUpdate = snapshot;
+            // 2. Get Memory LLM settings
+            const memSel = this.memorySelector();
+            let memUpdate: any = {};
+
+            if (memSel) {
+                const snapshot = memSel.getSnapshot();
+                // Map back: llm_provider -> memory_provider
+                memUpdate.memory_provider = snapshot.llm_provider;
+                // Map back: selected_llm_model OR ollamaModel -> memory_llm_model
+                memUpdate.memory_llm_model = snapshot.selected_llm_model || snapshot.ollamaModel;
+
+                // Allow updating keys from here too? Yes, keys are global.
+                if (snapshot.openai_api_key) memUpdate.openai_api_key = snapshot.openai_api_key;
+                if (snapshot.anthropic_api_key) memUpdate.anthropic_api_key = snapshot.anthropic_api_key;
+                if (snapshot.groq_api_key) memUpdate.groq_api_key = snapshot.groq_api_key;
+                if (snapshot.custom_api_key) memUpdate.custom_api_key = snapshot.custom_api_key;
+                if (snapshot.local_llm_base_url) memUpdate.local_llm_base_url = snapshot.local_llm_base_url;
+            }
+
+            // Merge updates
+            const finalPrefs: ChatPreferences = {
+                ...currentPrefs,
+                ...chatUpdate,
+                ...memUpdate
+            };
+
+            await this.settingsService.saveChatPreferences(finalPrefs);
+
+            if (ollamaModelToSet) {
+                await this.settingsService.setCurrentModel(ollamaModelToSet);
+            }
+            this.toastr.success('Settings saved successfully');
+        } catch (e: any) {
+            console.error(e);
+            const msg = e.error?.error || 'Failed to save settings. Please check your inputs.';
+            this.toastr.error(msg, 'Error saving settings');
         }
-
-        // 2. Get Memory LLM settings
-        const memSel = this.memorySelector();
-        let memUpdate: any = {};
-
-        if (memSel) {
-            const snapshot = memSel.getSnapshot();
-            // Map back: llm_provider -> memory_provider
-            memUpdate.memory_provider = snapshot.llm_provider;
-            // Map back: selected_llm_model OR ollamaModel -> memory_llm_model
-            memUpdate.memory_llm_model = snapshot.selected_llm_model || snapshot.ollamaModel;
-
-            // Allow updating keys from here too? Yes, keys are global.
-            if (snapshot.openai_api_key) memUpdate.openai_api_key = snapshot.openai_api_key;
-            if (snapshot.anthropic_api_key) memUpdate.anthropic_api_key = snapshot.anthropic_api_key;
-            if (snapshot.groq_api_key) memUpdate.groq_api_key = snapshot.groq_api_key;
-            if (snapshot.custom_api_key) memUpdate.custom_api_key = snapshot.custom_api_key;
-            if (snapshot.local_llm_base_url) memUpdate.local_llm_base_url = snapshot.local_llm_base_url;
-        }
-
-        // Merge updates
-        const finalPrefs: ChatPreferences = {
-            ...currentPrefs,
-            ...chatUpdate,
-            ...memUpdate
-        };
-
-        await this.settingsService.saveChatPreferences(finalPrefs);
-
-        if (ollamaModelToSet) {
-            await this.settingsService.setCurrentModel(ollamaModelToSet);
-        }
-        alert('Settings saved');
     }
     // Import State
     importFiles = signal<string[]>([]);

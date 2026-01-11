@@ -106,12 +106,10 @@
       }
     </div>
 
-    @if (selectedConnectionId() === 'new') {
     <button class="btn btn-sm btn-accent w-full mt-2" (click)="saveConnection()"
-      [disabled]="!connForm.name() || !connForm.baseUrl() || !connForm.apiKey()">
-      Create Connection
+      [disabled]="!connForm.name() || !connForm.baseUrl() || (selectedConnectionId() === 'new' && !connForm.apiKey())">
+      {{ selectedConnectionId() === 'new' ? 'Create Connection' : 'Update Connection' }}
     </button>
-    }
   </div>
   }
 

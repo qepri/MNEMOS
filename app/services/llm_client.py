@@ -26,15 +26,7 @@ class LLMClient:
         else:
              self.provider = settings.LLM_PROVIDER
              
-        # Config Values (Load all potential sources)
-        s_openai_key = settings.OPENAI_API_KEY
-        s_anthropic_key = settings.ANTHROPIC_API_KEY
-        s_groq_key = settings.GROQ_API_KEY
-        s_cerebras_key = settings.CEREBRAS_API_KEY
-        s_local_base_url = settings.LOCAL_LLM_BASE_URL
-        s_local_model = settings.LOCAL_LLM_MODEL
         
-        d_openai_key = db_prefs.openai_api_key if db_prefs else None
         d_anthropic_key = db_prefs.anthropic_api_key if db_prefs else None
         d_groq_key = db_prefs.groq_api_key if db_prefs else None
         d_cerebras_key = getattr(db_prefs, 'cerebras_api_key', None) # Handle migration later
@@ -105,7 +97,20 @@ class LLMClient:
                  if not model and active_conn.default_model:
                      model = active_conn.default_model
              else:
-                 # Fallback to legacy env vars/settings if no connection active
+                 # Fallback logic: check if we have manual overrides, otherwise ERROR if strictly custom
+                 # If the provider is explicitly set to 'custom' via DB/Settings, we MUST have a connection.
+                 # Failing to have one and falling back to localhost causes the confusing "Connection refused"
+                 
+                 # Check if we have explicit manual overrides (e.g. from env vars or partial DB state)
+                 # If we are here, it means provider was 'custom' (or fell through to else) AND active_conn was None.
+                 
+                 if self.provider == LLMProvider.CUSTOM:
+                      # If we don't have a valid active_conn ID, this is a misconfiguration.
+                      # We shouldn't silently default to localhost unless that WAS the intention.
+                      # But for 'custom', the intention is a specific connection.
+                      raise ValueError("LLM Provider is set to 'Custom' but no active connection is selected. Please select a connection in Settings.")
+
+                 # Legacy/Default fallback (for non-strict custom or other cases)
                  url = base_url or d_local_base_url or s_local_base_url
                  key = api_key or (db_prefs.custom_api_key if db_prefs else None) or "custom"
 
@@ -114,6 +119,8 @@ class LLMClient:
                 api_key=key
             )
              self.model = model or s_local_model
+             
+        print(f"DEBUG: LLMClient Initialized. Provider: {self.provider}. Base URL: {self.client.base_url}")
             
     def chat(self, system: str, messages: list, images: list = None, model: str = None) -> str:
         """

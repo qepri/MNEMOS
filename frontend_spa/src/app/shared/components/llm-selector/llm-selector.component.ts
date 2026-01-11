@@ -304,10 +304,9 @@ export class LlmSelectorComponent {
         if (updatedConn) this.populateForm(updatedConn);
       }
 
-      // this.resetForm(); // REMOVED: This was clearing the form after save!
-
     } catch (e) {
       console.error("Failed to save connection", e);
+      throw e; // Re-throw to let parent handle it
     }
   }
 
@@ -350,7 +349,10 @@ export class LlmSelectorComponent {
       update.selected_llm_model = this.customModelId();
     } else if (provider === 'ollama') {
       update.ollamaModel = this.selectedModel(); // Special handling for Ollama
-    } else if (provider !== 'custom') {
+    } else if (provider === 'custom') {
+      // For Custom, the "selected model" is the connection's default model
+      update.selected_llm_model = this.connForm.defaultModel();
+    } else {
       update.selected_llm_model = this.selectedModel();
     }
     return update;

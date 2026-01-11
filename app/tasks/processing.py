@@ -96,8 +96,10 @@ def process_document_task(self, document_id: str):
                 for page in pages:
                     sub_chunks = chunker.chunk_text(page["text"])
                     for i, sub in enumerate(sub_chunks):
+                        # Sanitize text for Postgres (no null bytes)
+                        clean_text = sub.replace('\x00', '')
                         text_chunks.append({
-                            "text": sub,
+                            "text": clean_text,
                             "page": page["page"],
                             "chunk_index": i
                         })
@@ -121,8 +123,9 @@ def process_document_task(self, document_id: str):
                 for page in pages:
                     sub_chunks = chunker.chunk_text(page["text"])
                     for i, sub in enumerate(sub_chunks):
+                        clean_text = sub.replace('\x00', '')
                         text_chunks.append({
-                            "text": sub,
+                            "text": clean_text,
                             "page": page["page"],
                             "chunk_index": i
                         })

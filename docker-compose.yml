@@ -18,9 +18,9 @@ services:
       - PYTHONUNBUFFERED=1
       - OLLAMA_NUM_CTX=2048
       - EMBEDDING_PROVIDER=local
-      - EMBEDDING_DEVICE=cpu
-      - EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
-      - EMBEDDING_DIMENSION=384
+      - EMBEDDING_DEVICE=cuda
+      - EMBEDDING_MODEL=BAAI/bge-m3
+      - EMBEDDING_DIMENSION=1024
       - HOST_PROJECT_PATH=${HOST_PROJECT_PATH:-.}
     volumes:
       - ./app:/app/app:rw
@@ -30,6 +30,7 @@ services:
       - ./ollama_models/import:/app/ollama_import:ro
       - uploads_data:/app/uploads
       - whisper_cache:/root/.cache/whisper
+      - hf_cache:/root/.cache/huggingface
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       db:
@@ -55,9 +56,9 @@ services:
       - PYTHONUNBUFFERED=1
       - OLLAMA_NUM_CTX=2048
       - EMBEDDING_PROVIDER=local
-      - EMBEDDING_DEVICE=cpu
-      - EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
-      - EMBEDDING_DIMENSION=384
+      - EMBEDDING_DEVICE=cuda
+      - EMBEDDING_MODEL=BAAI/bge-m3
+      - EMBEDDING_DIMENSION=1024
       - HOST_PROJECT_PATH=${HOST_PROJECT_PATH:-.}
     volumes:
       - ./app:/app/app:rw
@@ -65,6 +66,7 @@ services:
       - ./.env:/app/.env:ro
       - uploads_data:/app/uploads
       - whisper_cache:/root/.cache/whisper
+      - hf_cache:/root/.cache/huggingface
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       db:
@@ -155,3 +157,4 @@ volumes:
   uploads_data:
   whisper_cache:
   redis_data:
+  hf_cache:
