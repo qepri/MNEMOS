@@ -31,6 +31,16 @@ class LLMClient:
         d_groq_key = db_prefs.groq_api_key if db_prefs else None
         d_cerebras_key = getattr(db_prefs, 'cerebras_api_key', None) # Handle migration later
         d_local_base_url = db_prefs.local_llm_base_url if db_prefs else None
+        d_local_model = getattr(db_prefs, 'local_llm_model', None) # Use getattr for safety
+        
+        # Settings Fallbacks
+        s_local_model = settings.LOCAL_LLM_MODEL
+        s_local_base_url = settings.LOCAL_LLM_BASE_URL
+        s_openai_key = settings.OPENAI_API_KEY
+        d_openai_key = db_prefs.openai_api_key if db_prefs else None
+        s_anthropic_key = settings.ANTHROPIC_API_KEY
+        s_groq_key = settings.GROQ_API_KEY
+        s_cerebras_key = getattr(settings, 'CEREBRAS_API_KEY', None)
         
         # Initialize Client based on Provider
         if self.provider == LLMProvider.OPENAI:
