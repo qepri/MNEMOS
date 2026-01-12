@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "dev"
     
     # Database
-    DATABASE_URL: str = "postgresql://raguser:ragpass@db:5432/ragdb"
+    DATABASE_URL: str = "postgresql://mnemos_user:mnemos_pass@db:5432/mnemos_db"
     
     # Redis
     REDIS_URL: str = "redis://redis:6379/0"

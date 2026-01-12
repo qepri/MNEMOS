@@ -12,7 +12,7 @@ services:
       - "5000:5000"
     environment:
       - FLASK_ENV=development
-      - DATABASE_URL=postgresql://raguser:ragpass@db:5432/ragdb
+      - DATABASE_URL=postgresql://mnemos_user:mnemos_pass@db:5432/mnemos_db
       - REDIS_URL=redis://redis:6379/0
       # Ensure python doesn't buffer output so we see logs in realtime
       - PYTHONUNBUFFERED=1
@@ -51,7 +51,7 @@ services:
     build: .
     command: celery -A app.celery_app worker --loglevel=info
     environment:
-      - DATABASE_URL=postgresql://raguser:ragpass@db:5432/ragdb
+      - DATABASE_URL=postgresql://mnemos_user:mnemos_pass@db:5432/mnemos_db
       - REDIS_URL=redis://redis:6379/0
       - PYTHONUNBUFFERED=1
       - OLLAMA_NUM_CTX=2048
@@ -111,7 +111,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=postgresql://raguser:ragpass@db:5432/ragdb
+      - DATABASE_URL=postgresql://mnemos_user:mnemos_pass@db:5432/mnemos_db
       - PYTHONUNBUFFERED=1
     depends_on:
       db:
@@ -129,15 +129,15 @@ services:
     command: >
       postgres  -c shared_buffers=512MB  -c work_mem=32MB  -c maintenance_work_mem=256MB
     environment:
-      - POSTGRES_USER=raguser
-      - POSTGRES_PASSWORD=ragpass
-      - POSTGRES_DB=ragdb
+      - POSTGRES_USER=mnemos_user
+      - POSTGRES_PASSWORD=mnemos_pass
+      - POSTGRES_DB=mnemos_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5433:5432"
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U raguser -d ragdb" ]
+      test: [ "CMD-SHELL", "pg_isready -U mnemos_user -d mnemos_db" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -151,6 +151,16 @@ services:
       - "6380:6379"
     volumes:
       - redis_data:/data
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - ADMINER_DEFAULT_SERVER=db
+    depends_on:
+      - db
 
 volumes:
   postgres_data:

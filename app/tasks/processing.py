@@ -186,13 +186,16 @@ def process_document_task(self, document_id: str):
 def download_model_task(self, model_name):
     """
     Celery task for downloading a model in the background.
-    This allows the API to return immediately while the download runs in the background.
     """
     try:
         base_url = settings.OLLAMA_BASE_URL.replace("/v1", "")
+        logger.info(f"Initiating background model download for: {model_name}")
 
         # Track download progress
         last_progress = None
+        
+        # Use simple json parsing to check for errors
+        import json
 
         with requests.post(
             f"{base_url}/api/pull",
@@ -200,13 +203,31 @@ def download_model_task(self, model_name):
             stream=True,
             timeout=1800  # 30 minutes timeout for the download
         ) as r:
-            r.raise_for_status()
+            if r.status_code != 200:
+                logger.error(f"Ollama API returned non-200 status: {r.status_code} - {r.text}")
+                r.raise_for_status()
 
             # Process the response and send updates as the download progresses
             for line in r.iter_lines():
                 if line:
                     try:
                         progress_str = line.decode('utf-8')
+                        progress_data = json.loads(progress_str)
+                        
+                        # VERBOSE LOGGING:
+                        # Log specific milestones or errors to server console
+                        if 'error' in progress_data:
+                            error_msg = progress_data['error']
+                            logger.error(f"Ollama reported error during pull for {model_name}: {error_msg}")
+                            raise Exception(f"Ollama API Error: {error_msg}")
+                            
+                        status = progress_data.get('status', '')
+                        
+                        # Log unique statuses to show progress in server logs
+                        # Avoid logging every single percentage tick to keep logs readable but informative
+                        if 'completed' in status or 'pulling manifest' in status or 'verifying' in status:
+                             logger.info(f"[Pull {model_name}] {status}")
+                             
                         # Update the task state with progress
                         self.update_state(
                             state='PROGRESS',
@@ -217,12 +238,17 @@ def download_model_task(self, model_name):
                             }
                         )
                         last_progress = progress_str
+                    except json.JSONDecodeError:
+                        logger.warning(f"Could not parse progress line as JSON: {line}")
                     except Exception as e:
+                        # Re-raise explicit API errors
+                        if "Ollama API Error" in str(e):
+                            raise e
                         logger.error(f"Error processing progress line: {e}")
 
-        logger.info(f"Model download completed for {model_name}")
+        logger.info(f"Model download completed successfully for {model_name}")
         return {'status': 'success', 'model_name': model_name, 'last_progress': last_progress}
 
     except Exception as e:
-        logger.error(f"Error downloading model {model_name}: {e}")
+        logger.error(f"TASK FAILED: Error downloading model {model_name}: {e}")
         return {'status': 'error', 'model_name': model_name, 'error': str(e)}

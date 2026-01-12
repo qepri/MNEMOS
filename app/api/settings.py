@@ -399,7 +399,7 @@ def load_downloads_file():
 
 def save_downloads_file(data):
     try:
-        with open(DOWNLOADS_FILE, 'w') as f:
+        with open(ACTIVE_DOWNLOADS_FILE, 'w') as f:
             json.dump(data, f)
     except Exception as e:
         logging.error(f"Error saving downloads file: {e}")

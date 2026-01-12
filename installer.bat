@@ -144,5 +144,11 @@ echo.
 echo ===================================================
 echo    Application is running in the background.
 echo    Access it at: http://localhost:5000
+echo    Database Viewer (Adminer): http://localhost:8080/?pgsql=db^&username=mnemos_user^&db=mnemos_db^&ns=public
+echo      System: PostgreSQL
+echo      Server: db
+echo      Username: mnemos_user
+echo      Password: mnemos_pass
+echo      Database: mnemos_db
 echo ===================================================
 pause
