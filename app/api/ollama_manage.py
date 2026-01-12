@@ -88,15 +88,30 @@ def start_ollama():
         try:
             container = client.containers.get(CONTAINER_NAME)
             
-            # --- Network Check Fix ---
             # Ensure it is on the correct network (dev_default)
             # If not, we must recreate it, otherwise worker can't reach it.
             networks = container.attrs['NetworkSettings']['Networks']
             if 'dev_default' not in networks:
-                print(f"Container '{CONTAINER_NAME}' found but on wrong network(s): {list(networks.keys())}. Recreating on 'dev_default'...")
-                container.remove(force=True)
-                raise docker.errors.NotFound("Force recreation due to network mismatch")
-            # -------------------------
+                if networks:
+                    # Just pick the first network that isn't 'bridge' or 'host' or 'none' if possible
+                    # Fallback to the first network found if no suitable one is identified
+                    net_name = next((n for n in networks if n not in ['bridge', 'host', 'none']), list(networks.keys())[0])
+
+                    # Disconnect and Recreate
+                    try:
+                        container.stop()
+                        container.remove()
+                        result = _create_and_start_ollama_container(client)
+                        if result.get('status') == 'started':
+                            return jsonify({'status': 'recreated', 'message': f"Recreated on network dev_default", 'id': result.get('id')})
+                        else:
+                            return jsonify(result) # Propagate error or other status
+                    except Exception as e:
+                        return jsonify({'error': f"Failed to recreate container due to network mismatch: {e}"}), 500
+                else:
+                    # If no networks are attached, force recreation
+                    container.remove(force=True)
+                    raise docker.errors.NotFound("Force recreation due to no network attached")
 
             if container.status == 'running':
                 return jsonify({'status': 'running', 'message': 'Already running'})
@@ -107,7 +122,6 @@ def start_ollama():
                 return jsonify({'status': 'started'})
             except docker.errors.APIError as e:
                 # If start fails (e.g. network not found 404), remove and recreate
-                print(f"Failed to start existing container: {e}. Recreating...")
                 container.remove(force=True)
                 raise docker.errors.NotFound("Force recreation") # Trigger creation block below
 
@@ -149,5 +163,4 @@ def start_ollama():
                  raise e
 
     except Exception as e:
-        print(f"Start error: {e}")
         return jsonify({'error': str(e)}), 500

@@ -80,7 +80,6 @@ def upload_document():
     db.session.commit()
     logger.info(f"Document created with ID: {doc.id}")
     
-    # Encolar tarea
     process_document_task.delay(str(doc.id))
     logger.info(f"Task enqueued for document {doc.id}")
     

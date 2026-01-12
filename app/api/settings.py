@@ -14,23 +14,45 @@ bp = Blueprint('settings', __name__, url_prefix='/api/settings')
 def get_models():
     """List available models from Ollama."""
     try:
-        # Use the internal docker URL
-        base_url = settings.OLLAMA_BASE_URL.replace("/v1", "") # Strip /v1 for native API
+        base_url = settings.OLLAMA_BASE_URL.replace("/v1", "")
+
+        try:
+            # Check server
+            r = requests.get(base_url, timeout=3)
+            is_running = r.status_code == 200
+
+            # Detect vision capability
+            if is_running:
+                # Basic vision detection logic
+                r_tags = requests.get(f"{base_url}/api/tags", timeout=5)
+                if r_tags.status_code == 200:
+                    models = r_tags.json().get('models', [])
+                    for m in models:
+                        m_name = m.get('name', '').lower()
+                        # Known vision models/families
+                        if any(x in m_name for x in ['llava', 'bakllava', 'moondream', 'yi-vl', 'qwen-vl']):
+                            has_vision = True
+                            break
+                    else:
+                        has_vision = False
+                else:
+                    has_vision = False
+            else:
+                has_vision = False
+        except requests.exceptions.RequestException:
+            is_running = False
+            has_vision = False
+
         resp = requests.get(f"{base_url}/api/tags", timeout=5)
         resp.raise_for_status()
         
         data = resp.json()
         models = data.get('models', [])
         
-        # Enrich with capability flags
         for m in models:
             families = m.get('details', {}).get('families', []) or []
             name_lower = m.get('name', '').lower()
             
-            # Detect vision capability
-            # 1. 'clip' family (LLaVA uses this)
-            # 2. 'mllm' family (sometimes used)
-            # 3. Known vision model names
             is_vision = 'clip' in families or 'mllm' in families
             if not is_vision:
                  if 'llava' in name_lower or 'moondream' in name_lower or 'minicpm' in name_lower or 'vision' in name_lower:
@@ -363,16 +385,14 @@ import os
 import json
 from celery.result import AsyncResult
 
-# KISS Persistence for Active Downloads
-# KISS Persistence for Active Downloads
-# Save in 'app' directory which is mounted to host, ensuring persistence across restarts
-DOWNLOADS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'active_downloads.json')
+# Persistence for Active Downloads
+ACTIVE_DOWNLOADS_FILE = os.path.join(os.path.dirname(__file__), '..', 'active_downloads.json')
 
 def load_downloads_file():
-    if not os.path.exists(DOWNLOADS_FILE):
+    if not os.path.exists(ACTIVE_DOWNLOADS_FILE):
         return {}
     try:
-        with open(DOWNLOADS_FILE, 'r') as f:
+        with open(ACTIVE_DOWNLOADS_FILE, 'r') as f:
             return json.load(f)
     except:
         return {}
@@ -724,7 +744,7 @@ def set_current_model():
         # For now just save model.
         db.session.commit()
     except Exception as e:
-        print(f"Error persisting model selection: {e}")
+        pass
         
     return jsonify({
         "success": True,

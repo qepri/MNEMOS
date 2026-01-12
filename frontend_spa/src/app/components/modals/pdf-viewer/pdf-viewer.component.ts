@@ -34,7 +34,7 @@ export class PdfViewerComponent {
         const doc = this.currentDoc();
         if (!doc) return undefined;
         const src = ApiEndpoints.DOCUMENT_CONTENT(doc.id);
-        console.log('PDF Viewer Src:', src);
+
         return src;
     });
 
@@ -43,7 +43,7 @@ export class PdfViewerComponent {
     }
 
     onPdfLoaded(event: any) {
-        console.log('PDF Loaded successfully', event);
+
         const term = this.searchTerm();
         if (term) {
             // Delay slightly to ensure rendering

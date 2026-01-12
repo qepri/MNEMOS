@@ -33,7 +33,6 @@ def chat():
     # Load user preferences
     prefs = db.session.query(UserPreferences).first()
     if not prefs:
-        # Create default preferences if none exist
         prefs = UserPreferences(
             use_conversation_context=True,
             max_context_messages=10
@@ -48,13 +47,11 @@ def chat():
         if not conversation:
             return jsonify({"error": "Conversation not found"}), 404
     else:
-        # Create new conversation
         title = question[:40] + "..." if len(question) > 40 else question
         conversation = Conversation(title=title)
         db.session.add(conversation)
         db.session.commit()
 
-    # Save User Message
     user_msg = Message(
         conversation_id=conversation.id,
         role='user',
@@ -98,7 +95,6 @@ def chat():
         images=images
     )
 
-    # Save Assistant Message
     assistant_msg = Message(
         conversation_id=conversation.id,
         role='assistant',
@@ -107,7 +103,6 @@ def chat():
     )
     db.session.add(assistant_msg)
 
-    # Update conversation timestamp
     conversation.updated_at = db.func.now()
     db.session.commit()
 
