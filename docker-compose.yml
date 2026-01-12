@@ -27,7 +27,7 @@ services:
       - ./config:/app/config:rw
       - ./.env:/app/.env:ro
       - ./migrations:/app/migrations:rw
-      - ./ollama_models/import:/app/ollama_import:ro
+      - ./ollama_models/import:/app/ollama_import:rw
       - uploads_data:/app/uploads
       - whisper_cache:/root/.cache/whisper
       - hf_cache:/root/.cache/huggingface
@@ -67,6 +67,7 @@ services:
       - uploads_data:/app/uploads
       - whisper_cache:/root/.cache/whisper
       - hf_cache:/root/.cache/huggingface
+      - ./ollama_models/import:/app/ollama_import:rw
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       db:

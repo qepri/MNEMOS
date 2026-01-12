@@ -127,18 +127,46 @@
                                                 [checked]="settingsService.currentModel() === model.name"
                                                 (change)="handleSetCurrentModel(model.name)"
                                                 class="radio radio-sm radio-accent">
-                                            <h3
-                                                class="font-mono text-primary text-sm sm:text-base text-primary font-semibold truncate">
+                                            <h3>
                                                 {{ model.name }}
                                             </h3>
+                                            @if (model.description) {
+                                            <p class="text-xs text-secondary mt-0.5 mb-1 line-clamp-2">
+                                                {{ model.description }}
+                                            </p>
+                                            }
                                             @if (settingsService.currentModel() === model.name) {
                                             <span class="badge badge-success">Active</span>
                                             }
                                         </div>
-                                        <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-secondary">
-                                            <span>Size: {{ (model.size / 1024 / 1024 / 1024) | number:'1.1-2' }}
-                                                GB</span>
-                                            <span>Modified: {{ model.modified_at | date }}</span>
+                                        <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-secondary mb-1">
+                                            <span class="flex items-center gap-1" title="Model Size">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                                </svg>
+                                                {{ (model.size / 1024 / 1024 / 1024) | number:'1.1-2' }} GB
+                                            </span>
+                                            @if (model.details?.parameter_size) {
+                                            <span class="badge badge-sm badge-ghost gap-1">
+                                                {{ model.details?.parameter_size }}
+                                            </span>
+                                            }
+                                            @if (model.details?.quantization_level) {
+                                            <span class="badge badge-sm badge-ghost gap-1" title="Quantization">
+                                                {{ model.details?.quantization_level }}
+                                            </span>
+                                            }
+                                            @if (model.details?.family) {
+                                            <span class="badge badge-sm badge-ghost gap-1 bg-opacity-50">
+                                                {{ model.details?.family }}
+                                            </span>
+                                            }
+                                        </div>
+                                        <div class="text-xs text-secondary opacity-70">
+                                            Modified: {{ model.modified_at | date:'medium' }}
                                         </div>
                                     </div>
                                     <button (click)="handleDeleteModel(model.name)"
@@ -231,8 +259,17 @@
                             <div class="flex gap-2">
                                 <button (click)="handlePullModel(model.ollama_name || model.name)"
                                     class="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-dark transition-colors text-sm font-medium">
-                                    Pull Model
+                                    Pull (Ollama)
                                 </button>
+                                @if (model.full_name && model.full_name.includes('/')) {
+                                <button (click)="openGgufModal(model.full_name)"
+                                    class="px-4 py-2 bg-secondary text-base-100 rounded-lg hover:bg-secondary-focus transition-colors text-sm font-medium"
+                                    title="Download specific GGUF file directly">
+                                    GGUF
+                                </button>
+                                }
+
+
                                 @if (model.hf_url) {
                                 <a [href]="model.hf_url" target="_blank"
                                     class="px-3 py-2 bg-base-200 text-base-content hover:bg-base-300 rounded-lg flex items-center justify-center transition-colors"
@@ -648,5 +685,97 @@
         </div>
     </div>
     <div class="modal-backdrop" (click)="closePromptModal()"></div>
+</div>
+}
+
+<!-- Modal: GGUF File Selection (Hardware Aware) -->
+@if (isGgufModalOpen()) {
+<div class="modal modal-open">
+    <div class="modal-box bg-panel border border-divider rounded-2xl p-0 max-w-4xl">
+        <div class="p-4 sm:p-6 border-b border-divider flex justify-between items-center">
+            <div>
+                <h3 class="text-lg font-semibold">Select GGUF File</h3>
+                @if (hardwareInfo(); as hw) {
+                <div class="text-xs text-secondary mt-1 flex gap-3">
+                    <span [class.text-success]="hw.vram_available > 0" title="Video RAM (GPU)">
+                        VRAM: {{ (hw.vram_available / 1024 / 1024 / 1024).toFixed(1) }} GB free
+                    </span>
+                    <span title="System RAM">
+                        RAM: {{ (hw.ram_available / 1024 / 1024 / 1024).toFixed(1) }} GB free
+                    </span>
+                    @if (hw.gpu_name) {
+                    <span class="opacity-75">({{ hw.gpu_name }})</span>
+                    }
+                </div>
+                }
+            </div>
+            <button (click)="closeGgufModal()" class="btn-icon">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <div class="p-0 overflow-y-auto max-h-[60vh]">
+            @if (loadingGgufFiles()) {
+            <div class="p-8 text-center space-y-3">
+                <span class="loading loading-spinner loading-lg text-accent"></span>
+                <p class="text-secondary">Fetching file list from Hugging Face...</p>
+            </div>
+            } @else {
+            <table class="w-full text-left text-sm">
+                <thead class="bg-base-200 text-secondary font-medium">
+                    <tr>
+                        <th class="p-4">Filename</th>
+                        <th class="p-4">Quantization</th>
+                        <th class="p-4">Size</th>
+                        <th class="p-4">Compatibility</th>
+                        <th class="p-4 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-divider">
+                    @for (file of ggufFiles(); track file.filename) {
+                    <tr class="hover:bg-hover transition-colors">
+                        <td class="p-4 font-mono text-xs sm:text-sm truncate max-w-xs" title="{{file.filename}}">{{
+                            file.filename }}</td>
+                        <td class="p-4">
+                            <span class="badge badge-sm"
+                                [class.badge-accent]="file.quantization.includes('Q4') || file.quantization.includes('Q5')"
+                                [class.badge-ghost]="!file.quantization.includes('Q')">{{ file.quantization }}</span>
+                        </td>
+                        <td class="p-4 text-secondary">{{ file.size_mb.toFixed(0) }} MB</td>
+                        <td class="p-4">
+                            @if (hardwareInfo(); as hw) {
+                            @if ((file.size_mb * 1024 * 1024) < hw.vram_available) { <span
+                                class="badge badge-success badge-sm gap-1">GPU Fast</span>
+                                } @else if ((file.size_mb * 1024 * 1024) < hw.ram_available) { <span
+                                    class="badge badge-warning badge-sm gap-1">CPU Only</span>
+                                    } @else {
+                                    <span class="badge badge-error badge-sm gap-1">Low RAM</span>
+                                    }
+                                    } @else {
+                                    <span class="text-xs text-secondary">Checking...</span>
+                                    }
+                        </td>
+                        <td class="p-4 text-right">
+                            <button (click)="handlePullGguf(file)" class="btn-sm btn-primary rounded-lg">
+                                Download
+                            </button>
+                        </td>
+                    </tr>
+                    }
+                    @if (ggufFiles().length === 0) {
+                    <tr>
+                        <td colspan="5" class="p-8 text-center text-secondary">
+                            No .gguf files found in this repository.
+                        </td>
+                    </tr>
+                    }
+                </tbody>
+            </table>
+            }
+        </div>
+    </div>
+    <div class="modal-backdrop" (click)="closeGgufModal()"></div>
 </div>
 }

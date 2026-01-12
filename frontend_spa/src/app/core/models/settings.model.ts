@@ -12,6 +12,7 @@ export interface OllamaModel {
     quantization_level?: string;
   };
   vision?: boolean;
+  description?: string;
 }
 
 export interface ModelsResponse {

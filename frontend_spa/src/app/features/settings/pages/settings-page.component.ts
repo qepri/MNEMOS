@@ -477,4 +477,61 @@ export class SettingsPage implements OnInit {
         if (!confirm('Delete this prompt?')) return;
         await this.settingsService.deleteSystemPrompt(id);
     }
+
+    // GGUF Direct Download
+    // GGUF Direct Download
+    isGgufModalOpen = signal<boolean>(false);
+    ggufFiles = signal<{ filename: string, size_mb: number, quantization: string }[]>([]);
+    loadingGgufFiles = signal<boolean>(false);
+    selectedRepoId = signal<string | null>(null);
+    hardwareInfo = signal<{ ram_available: number, vram_available: number, gpu_name: string | null } | null>(null);
+
+    async openGgufModal(repoId: string) {
+        this.selectedRepoId.set(repoId);
+        this.ggufFiles.set([]);
+        this.loadingGgufFiles.set(true);
+        this.isGgufModalOpen.set(true);
+        this.hardwareInfo.set(null);
+
+        try {
+            const [files, hw] = await Promise.all([
+                this.settingsService.listRepoFiles(repoId),
+                this.settingsService.getHardwareInfo()
+            ]);
+            this.ggufFiles.set(files);
+            this.hardwareInfo.set(hw);
+        } catch (error) {
+            this.toastr.error('Failed to load file list from Hugging Face');
+            this.closeGgufModal();
+        } finally {
+            this.loadingGgufFiles.set(false);
+        }
+    }
+
+    closeGgufModal() {
+        this.isGgufModalOpen.set(false);
+        this.selectedRepoId.set(null);
+    }
+
+    async handlePullGguf(file: any) {
+        const repo = this.selectedRepoId();
+        if (!repo) return;
+
+        // Construct a friendly name: "qwen2.5-7b-instruct-q4"
+        // Simple heuristic: repo name + quantization
+        const shortName = repo.split('/').pop()?.toLowerCase() || 'model';
+        const modelName = `${shortName}-${file.quantization.toLowerCase()}`;
+
+        if (!confirm(`Download ${file.filename} (${file.size_mb.toFixed(0)} MB) as "${modelName}"?`)) return;
+
+        try {
+            await this.settingsService.pullModelGguf(repo, file.filename, modelName);
+            this.toastr.success(`Download started for ${modelName}`, 'Download Queued');
+            this.closeGgufModal();
+            // Switch to models tab to see progress? Or active downloads?
+            // Actually stay here is fine.
+        } catch (error) {
+            this.toastr.error('Failed to start download');
+        }
+    }
 }

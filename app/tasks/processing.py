@@ -13,6 +13,8 @@ import logging
 import time
 from uuid import UUID
 import requests
+import json
+from app.utils.hf_downloader import HFDownloader
 
 # Configure Logger for Worker
 logger = logging.getLogger(__name__)
@@ -252,3 +254,57 @@ def download_model_task(self, model_name):
     except Exception as e:
         logger.error(f"TASK FAILED: Error downloading model {model_name}: {e}")
         return {'status': 'error', 'model_name': model_name, 'error': str(e)}
+
+@celery_app.task(bind=True)
+def download_gguf_task(self, repo_id, filename, model_name):
+    """
+    Download a GGUF file from HF and import it into Ollama.
+    """
+    logger.info(f"Starting GGUF download: {repo_id}/{filename} as {model_name}")
+    try:
+        def progress_callback(current, total):
+            if total > 0:
+                percent = (current / total) * 100
+                # Throttle updates slightly to avoid spamming Redis
+                self.update_state(
+                    state='PROGRESS',
+                    meta={
+                        'status': 'downloading',
+                        'progress': percent,
+                        'current': current,
+                        'total': total,
+                        'model_name': model_name
+                    }
+                )
+
+        # 1. Download
+        dest_path = HFDownloader.download_file(repo_id, filename, progress_callback)
+        logger.info(f"Download complete: {dest_path}")
+
+        # 2. Import to Ollama
+        self.update_state(state='PROGRESS', meta={'status': 'importing', 'model_name': model_name})
+        
+        base_url = settings.OLLAMA_BASE_URL.replace("/v1", "")
+        # The path must be what the Ollama container sees
+        ollama_path = f"/root/.ollama/import/{filename}"
+        modelfile = f"FROM {ollama_path}"
+        
+        logger.info(f"Creating model {model_name} from {ollama_path}")
+        
+        # Stream the creation response
+        with requests.post(f"{base_url}/api/create", json={"name": model_name, "modelfile": modelfile}, stream=True, timeout=600) as r:
+            if r.status_code != 200:
+                raise Exception(f"Ollama Create Error: {r.text}")
+                
+            for line in r.iter_lines():
+                if line:
+                    data = json.loads(line)
+                    status = data.get('status', '')
+                    self.update_state(state='PROGRESS', meta={'status': f"importing: {status}", 'model_name': model_name})
+
+        logger.info(f"Successfully imported {model_name}")
+        return {'status': 'success', 'model_name': model_name}
+
+    except Exception as e:
+        logger.error(f"GGUF Task failed: {e}")
+        return {'status': 'failure', 'error': str(e)}

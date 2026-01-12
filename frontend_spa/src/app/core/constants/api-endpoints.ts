@@ -31,6 +31,11 @@ export const ApiEndpoints = {
   SETTINGS_CONNECTION_DELETE: (id: string) => `/api/settings/connections/${id}`,
   SETTINGS_CONNECTION_ACTIVE: '/api/settings/connections/active',
 
+  SETTINGS_FILES: (repoId: string) => `/api/settings/files/${repoId}`,
+  SETTINGS_PULL_GGUF: '/api/settings/pull_gguf',
+  SETTINGS_DOWNLOADS: '/api/settings/downloads',
+
+
   // Ollama Service
   SETTINGS_OLLAMA_STATUS: '/api/settings/ollama/status',
   SETTINGS_OLLAMA_INSTALL: '/api/settings/ollama/install',

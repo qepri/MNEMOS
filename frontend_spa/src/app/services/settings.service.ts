@@ -353,6 +353,57 @@ export class SettingsService {
     }
   }
 
+  async listRepoFiles(repoId: string): Promise<{ filename: string, size_mb: number, quantization: string }[]> {
+    try {
+      const response = await firstValueFrom(
+        this.http.get<{ files: any[] }>(ApiEndpoints.SETTINGS_FILES(repoId))
+      );
+      return response.files;
+    } catch (error) {
+      console.error('Failed to list repo files', error);
+      throw error;
+    }
+  }
+
+  async pullModelGguf(repoId: string, filename: string, modelName: string): Promise<ModelPullResponse> {
+    try {
+      return await firstValueFrom(
+        this.http.post<ModelPullResponse>(ApiEndpoints.SETTINGS_PULL_GGUF, {
+          repo_id: repoId,
+          filename: filename,
+          model_name: modelName
+        })
+      );
+    } catch (error) {
+      console.error('Failed to pull GGUF model', error);
+      throw error;
+    }
+  }
+
+  async getActiveDownloads(): Promise<{ tasks: any[] }> {
+    try {
+      return await firstValueFrom(
+        this.http.get<{ tasks: any[] }>(ApiEndpoints.SETTINGS_DOWNLOADS)
+      );
+    } catch (error) {
+      console.error('Failed to get active downloads', error);
+      return { tasks: [] };
+    }
+  }
+
+  async getHardwareInfo(): Promise<{ ram_total: number, ram_available: number, vram_total: number, vram_available: number, gpu_name: string | null }> {
+    try {
+      return await firstValueFrom(
+        this.http.get<any>(ApiEndpoints.SETTINGS_HARDWARE)
+      );
+    } catch (error) {
+      console.error('Failed to get hardware info', error);
+      // Return zeroes if failed
+      return { ram_total: 0, ram_available: 0, vram_total: 0, vram_available: 0, gpu_name: null };
+    }
+  }
+
+
   // Memories
   memories = signal<MemoriesResponse | null>(null);
 

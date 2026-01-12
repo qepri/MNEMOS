@@ -11,58 +11,78 @@ from datetime import datetime
 bp = Blueprint('settings', __name__, url_prefix='/api/settings')
 
 @bp.route('/models', methods=['GET'])
+
 def get_models():
     """List available models from Ollama."""
     try:
         base_url = settings.OLLAMA_BASE_URL.replace("/v1", "")
 
-        try:
-            # Check server
-            r = requests.get(base_url, timeout=3)
-            is_running = r.status_code == 200
+        # Static descriptions for common models to enhance UI
+        MODEL_DESCRIPTIONS = {
+            'llama3': 'Meta Llama 3: The most capable openly available LLM to date.',
+            'qwen2.5': 'Qwen2.5: A comprehensive series of language models by Alibaba Cloud, optimized for code and reasoning.',
+            'mistral': 'Mistral: A high-performance 7B model that outperforms Llama 2 13B on all benchmarks.',
+            'gemma': 'Gemma: A family of lightweight, state-of-the-art open models from Google.',
+            'phi': 'Phi: A small language model by Microsoft that achieves performance comparable to much larger models.',
+            'hermes': 'Hermes: A series of uncensored, instruct-tuned models focused on creative writing and roleplay.'
+        }
 
-            # Detect vision capability
+        try:
+            # Single call to get tags
+            resp = requests.get(f"{base_url}/api/tags", timeout=5)
+            # If successful, we consider the server running
+            is_running = resp.status_code == 200
+            
             if is_running:
-                # Basic vision detection logic
-                r_tags = requests.get(f"{base_url}/api/tags", timeout=5)
-                if r_tags.status_code == 200:
-                    models = r_tags.json().get('models', [])
-                    for m in models:
-                        m_name = m.get('name', '').lower()
-                        # Known vision models/families
-                        if any(x in m_name for x in ['llava', 'bakllava', 'moondream', 'yi-vl', 'qwen-vl']):
-                            has_vision = True
+                data = resp.json()
+                models = data.get('models', [])
+                
+                # Enhance models with descriptions and detailed vision check
+                for m in models:
+                    families = m.get('details', {}).get('families', []) or []
+                    name_lower = m.get('name', '').lower()
+                    
+                    # Vision detection
+                    is_vision = 'clip' in families or 'mllm' in families
+                    if not is_vision:
+                        if any(x in name_lower for x in ['llava', 'bakllava', 'moondream', 'minicpm', 'vision']):
+                            is_vision = True
+                    # In-place update for internal logic if needed, but we return 'models' list
+                    
+                    # Inject description
+                    m['description'] = "Local Ollama Model" # Default
+                    for key, desc in MODEL_DESCRIPTIONS.items():
+                        if key in name_lower:
+                            m['description'] = desc
                             break
-                    else:
-                        has_vision = False
-                else:
-                    has_vision = False
+
+                has_vision = any('vision' in m.get('name', '').lower() or 
+                               ('details' in m and ('clip' in m['details'].get('families', []) or 'mllm' in m['details'].get('families', [])))
+                               for m in models)
             else:
+                models = []
                 has_vision = False
+
         except requests.exceptions.RequestException:
             is_running = False
             has_vision = False
+            models = []
 
-        resp = requests.get(f"{base_url}/api/tags", timeout=5)
-        resp.raise_for_status()
-        
-        data = resp.json()
-        models = data.get('models', [])
-        
-        for m in models:
-            families = m.get('details', {}).get('families', []) or []
-            name_lower = m.get('name', '').lower()
-            
-            is_vision = 'clip' in families or 'mllm' in families
-            if not is_vision:
-                 if 'llava' in name_lower or 'moondream' in name_lower or 'minicpm' in name_lower or 'vision' in name_lower:
-                     is_vision = True
-            
-            m['vision'] = is_vision
-            
-        return jsonify({"models": models})
+        return jsonify({
+            'status': 'success',
+            'is_running': is_running,
+            'has_vision': has_vision,
+            'models': models
+        })
+
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Error listing models: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'models': []
+        }), 500
+
 
 @bp.route('/models', methods=['DELETE'])
 def delete_model():
@@ -379,7 +399,8 @@ def get_fallback_catalog(query=None):
 
     return jsonify({"models": catalog, "total": len(catalog), "fallback": True})
 
-from app.tasks.processing import download_model_task
+from app.tasks.processing import download_model_task, download_gguf_task
+from app.utils.hf_downloader import HFDownloader
 import uuid
 import os
 import json
@@ -419,6 +440,35 @@ def remove_active_download(task_id):
     if task_id in data:
         del data[task_id]
         save_downloads_file(data)
+
+@bp.route('/downloads', methods=['GET'])
+def get_active_downloads():
+    """Get list of active downloads."""
+    data = load_downloads_file()
+    tasks = []
+    
+    # Check status of each task
+    for task_id, info in data.items():
+        res = AsyncResult(task_id, app=celery_app)
+        
+        # Start with stored info
+        task_info = info.copy()
+        
+        if res.state == 'PROGRESS':
+             meta = res.info or {}
+             if isinstance(meta, dict):
+                 task_info['status'] = meta.get('status', 'downloading')
+                 task_info['progress'] = meta.get('progress', 0)
+        elif res.state == 'SUCCESS':
+            task_info['status'] = 'completed'
+            task_info['progress'] = 100
+        elif res.state == 'FAILURE':
+            task_info['status'] = 'failed'
+            task_info['error'] = str(res.info)
+            
+        tasks.append(task_info)
+        
+    return jsonify({"tasks": tasks})
 
 @bp.route('/pull', methods=['POST'])
 def pull_model():
@@ -581,14 +631,44 @@ import json
 
 @bp.route('/hardware', methods=['GET'])
 def get_hardware_info():
-    """Get system hardware info (RAM)."""
+    """Get system hardware info (RAM & VRAM)."""
+    import subprocess
+    
+    info = {
+        "ram_total": 0,
+        "ram_available": 0,
+        "vram_total": 0,
+        "vram_available": 0,
+        "gpu_name": None
+    }
+    
     try:
+        # RAM
         mem = psutil.virtual_memory()
-        return jsonify({
-            "ram_total": mem.total,
-            "ram_available": mem.available,
-            "ram_percent": mem.percent
-        })
+        info["ram_total"] = mem.total
+        info["ram_available"] = mem.available
+        
+        # VRAM (NVIDIA)
+        try:
+            # Check for nvidia-smi
+            result = subprocess.run(
+                ['nvidia-smi', '--query-gpu=name,memory.total,memory.free', '--format=csv,noheader,nounits'], 
+                capture_output=True, text=True, timeout=2
+            )
+            if result.returncode == 0:
+                lines = result.stdout.strip().split('\n')
+                if lines:
+                    # Take first GPU
+                    parts = lines[0].split(',')
+                    if len(parts) >= 3:
+                        info['gpu_name'] = parts[0].strip()
+                        # Convert MB to Bytes for consistency with psutil
+                        info['vram_total'] = int(parts[1].strip()) * 1024 * 1024
+                        info['vram_available'] = int(parts[2].strip()) * 1024 * 1024
+        except Exception:
+            pass # No GPU or error checking
+            
+        return jsonify(info)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -974,3 +1054,34 @@ def delete_system_prompt(prompt_id):
     return jsonify({"success": True})
 
 
+
+@bp.route('/files/<path:repo_id>', methods=['GET'])
+def list_repo_files(repo_id):
+    """List GGUF files for a given HF repo."""
+    try:
+        files = HFDownloader.list_gguf_files(repo_id)
+        return jsonify({"files": files})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@bp.route('/pull_gguf', methods=['POST'])
+def pull_model_gguf():
+    """Trigger a direct GGUF download and import."""
+    data = request.json
+    repo_id = data.get('repo_id')
+    filename = data.get('filename')
+    model_name = data.get('model_name')
+    
+    if not all([repo_id, filename, model_name]):
+        return jsonify({"error": "Missing required fields: repo_id, filename, model_name"}), 400
+
+    task = download_gguf_task.delay(repo_id, filename, model_name)
+    
+    # Track it
+    add_active_download(task.id, model_name)
+    
+    return jsonify({
+        "status": "started",
+        "task_id": task.id,
+        "model": model_name
+    })
