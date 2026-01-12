@@ -92,6 +92,7 @@ services:
       - "11435:11434"
     volumes:
       - ./ollama_models:/root/.ollama
+      - ./ollama_models/import:/root/.ollama/import
     deploy:
       resources:
         reservations:

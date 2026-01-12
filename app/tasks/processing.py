@@ -14,6 +14,7 @@ import time
 from uuid import UUID
 import requests
 import json
+import docker
 from app.utils.hf_downloader import HFDownloader
 
 # Configure Logger for Worker
@@ -284,23 +285,37 @@ def download_gguf_task(self, repo_id, filename, model_name):
         # 2. Import to Ollama
         self.update_state(state='PROGRESS', meta={'status': 'importing', 'model_name': model_name})
         
-        base_url = settings.OLLAMA_BASE_URL.replace("/v1", "")
-        # The path must be what the Ollama container sees
+        # Use Docker SDK to run CLI command directly in the Ollama container
+        try:
+            client = docker.from_env()
+            container = client.containers.get('mnemos-ollama')
+        except Exception as docker_e:
+             raise Exception(f"Docker connection failed: {docker_e}")
+
         ollama_path = f"/root/.ollama/import/{filename}"
-        modelfile = f"FROM {ollama_path}"
+        # Sanitize model name for filename
+        modelfile_name = f"Modelfile_{model_name.replace(':', '_').replace('/', '_')}"
+        modelfile_path = f"/root/.ollama/{modelfile_name}"
         
-        logger.info(f"Creating model {model_name} from {ollama_path}")
+        logger.info(f"Creating Modelfile inside container: {modelfile_path}")
+        # Create Modelfile
+        exit_code, output = container.exec_run(f'sh -c "echo \'FROM {ollama_path}\' > {modelfile_path}"')
+        if exit_code != 0:
+            raise Exception(f"Failed to create Modelfile: {output.decode()}")
+
+        logger.info(f"Running ollama create {model_name}...")
         
-        # Stream the creation response
-        with requests.post(f"{base_url}/api/create", json={"name": model_name, "modelfile": modelfile}, stream=True, timeout=600) as r:
-            if r.status_code != 200:
-                raise Exception(f"Ollama Create Error: {r.text}")
+        # Stream the CLI output
+        exec_stream = container.exec_run(f"ollama create {model_name} -f {modelfile_path}", stream=True)
+        
+        for chunk in exec_stream.output:
+            line = chunk.decode().strip()
+            if line:
+                logger.info(f"Ollama Import: {line}")
+                self.update_state(state='PROGRESS', meta={'status': f"importing: {line[:50]}", 'model_name': model_name})
                 
-            for line in r.iter_lines():
-                if line:
-                    data = json.loads(line)
-                    status = data.get('status', '')
-                    self.update_state(state='PROGRESS', meta={'status': f"importing: {status}", 'model_name': model_name})
+        # Cleanup Modelfile
+        container.exec_run(f"rm {modelfile_path}")
 
         logger.info(f"Successfully imported {model_name}")
         return {'status': 'success', 'model_name': model_name}
