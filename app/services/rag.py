@@ -175,9 +175,11 @@ Provide detailed and comprehensive answers."""
 
         # Check if we have ANY context (chunks or web)
         if not rag_context:
-             # If using vision (images present), we might NOT need text context. 
-             # So we don't bail out strictly if images are present.
-             if not images:
+             # If using vision (images present) OR it's a vanilla chat (no docs requested, no web search), 
+             # we allow proceeding without context.
+             is_vanilla = (not document_ids) and (not web_search)
+             
+             if not images and not is_vanilla:
                  return {
                      "answer": "No relevant documents or web results found for this query.",
                      "sources": [],
@@ -205,12 +207,17 @@ Provide detailed and comprehensive answers."""
                 context_warning = f"Conversation history is getting long ({len(conversation_history)} messages). Consider starting a new conversation for better performance."
 
         # 4. Use custom or default system prompt
-        # 4. Use custom or default system prompt
         if not system_prompt:
-            system_prompt = """You are a helpful assistant that answers questions based ONLY on the provided context.
-        If the information is not in the context, say so.
-        Always cite the sources using the strict format: [Source: filename] when relevant.
-        Provide detailed and comprehensive answers. Use markdown (bold, lists, headers) to structure your response."""
+            if rag_context:
+                # RAG Mode default prompt
+                system_prompt = """You are a helpful assistant that answers questions based ONLY on the provided context.
+If the information is not in the context, say so.
+Always cite the sources using the strict format: [Source: filename] when relevant.
+Provide detailed and comprehensive answers. Use markdown (bold, lists, headers) to structure your response."""
+            else:
+                # Vanilla / Vision Mode default prompt
+                system_prompt = """You are a helpful assistant. Answer the user's questions to the best of your ability.
+Provide detailed and comprehensive answers. Use markdown (bold, lists, headers) to structure your response."""
 
         # Inject User Memories
         from app.models.user_preferences import UserPreferences

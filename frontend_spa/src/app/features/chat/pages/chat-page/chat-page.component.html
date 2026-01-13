@@ -157,6 +157,18 @@
 
 
 
+                        <!-- Vanilla Mode Toggle -->
+                        <button (click)="toggleVanillaMode()"
+                            class="flex-shrink-0 p-2 rounded-lg transition-colors relative group"
+                            [class.text-accent]="isVanillaMode()" [class.bg-accent-subtle]="isVanillaMode()"
+                            [class.text-secondary]="!isVanillaMode()" [class.hover:text-primary]="!isVanillaMode()"
+                            [class.hover:bg-hover]="!isVanillaMode()" title="Vanilla Chat (No Context)">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </button>
+
                         <!-- Web Search Toggle -->
                         <button (click)="isWebSearchEnabled.set(!isWebSearchEnabled())"
                             class="flex-shrink-0 p-2 rounded-lg transition-colors relative group"

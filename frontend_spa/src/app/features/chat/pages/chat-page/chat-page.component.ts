@@ -111,6 +111,16 @@ export class ChatPage {
     return false;
   });
 
+  isVanillaMode = computed(() => {
+    return !this.isWebSearchEnabled() && this.documentsService.selectedCount() === 0;
+  });
+
+  toggleVanillaMode() {
+    this.isWebSearchEnabled.set(false);
+    this.documentsService.clearSelection();
+    this.toastr.info('Switched to Chat Only mode', 'Vanilla Mode');
+  }
+
   chatTitle = computed(() => {
     const convId = this.chatService.currentConversationId();
     if (!convId) return '// NEW_CONVERSATION';
