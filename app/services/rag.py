@@ -86,23 +86,25 @@ Output ONLY the queries, one per line. Do not include numbering or bullets."""
         web_search: bool = False,
         images: List[str] = None
     ) -> Dict:
-        """Executes full RAG flow with optional conversation context.
+        """Executes full RAG flow with optional conversation context."""
+        import time
+        import logging
+        
+        # Setup basic logging
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger(__name__)
 
-        Args:
-            question: User's current question
-            document_ids: Optional list of document IDs to search
-            top_k: Number of similar chunks to retrieve
-            conversation_history: List of previous Message objects for context
-            system_prompt: Custom system prompt (uses default if None)
+        start_time = time.time()
+        logger.info(f"--- START RAG QUERY: '{question}' ---")
 
-        Returns:
-            Dict with 'answer', 'sources', and 'context_warning' keys
-        """
         # 1. Search relevant chunks
-        # 1. Search relevant chunks ONLY if documents are selected
         chunks = []
+        t0 = time.time()
         if document_ids and len(document_ids) > 0:
             chunks = self.search_similar_chunks(question, document_ids, top_k)
+            logger.info(f"[Retrieval] Found {len(chunks)} chunks in {time.time() - t0:.2f}s")
+        else:
+            logger.info("[Retrieval] Skipped (No docs selected)")
 
         # 2. Build RAG context
         context_parts = []
@@ -151,6 +153,9 @@ Output ONLY the queries, one per line. Do not include numbering or bullets."""
             from app.services.web_search import WebSearchService
             search_service = WebSearchService()
             
+            t_web = time.time()
+            logger.info("[Web] Generating search queries...")
+            
             # Agentic Step: Generate optimized queries
             search_queries = self._generate_search_queries(question, conversation_history)
             
@@ -172,6 +177,8 @@ Output ONLY the queries, one per line. Do not include numbering or bullets."""
 If the information is not in the context, say so.
 Always cite the sources using the format: [Source: filename] or [Web Source: Title].
 Provide detailed and comprehensive answers."""
+            
+            logger.info(f"[Web] Finished in {time.time() - t_web:.2f}s. Sources: {len(all_web_context)}")
 
         # Check if we have ANY context (chunks or web)
         if not rag_context:
@@ -180,6 +187,7 @@ Provide detailed and comprehensive answers."""
              is_vanilla = (not document_ids) and (not web_search)
              
              if not images and not is_vanilla:
+                 logger.warning("[RAG] No context found and not in vanilla mode. Aborting.")
                  return {
                      "answer": "No relevant documents or web results found for this query.",
                      "sources": [],
@@ -228,6 +236,7 @@ Provide detailed and comprehensive answers. Use markdown (bold, lists, headers) 
              if memories:
                  mem_text = "\n".join([f"- {m.content}" for m in memories])
                  system_prompt += f"\n\nUser Profile / Memories:\n{mem_text}"
+                 logger.info(f"[Memory] Injected {len(memories)} user memories.")
 
         # 5. Build final user prompt with all context
         user_prompt_parts = []
@@ -243,12 +252,25 @@ Provide detailed and comprehensive answers. Use markdown (bold, lists, headers) 
 
         user_prompt = "\n".join(user_prompt_parts)
 
+        # Log Context Stats
+        ctx_len = len(rag_context) if rag_context else 0
+        hist_len = len(conversation_context) if conversation_context else 0
+        logger.info(f"[Context] Docs/Web: {ctx_len} chars | History: {hist_len} chars | Prompt Total: {len(user_prompt)} chars")
+
         # 6. Generate response with LLM
+        logger.info("[LLM] Sending request to model...")
+        t_llm = time.time()
+        
         response = self.llm.chat(
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
             images=images
         )
+        
+        elapsed_llm = time.time() - t_llm
+        total_time = time.time() - start_time
+        logger.info(f"[LLM] Response received in {elapsed_llm:.2f}s.")
+        logger.info(f"--- FINISHED RAG QUERY in {total_time:.2f}s ---")
 
         return {
             "answer": response,
