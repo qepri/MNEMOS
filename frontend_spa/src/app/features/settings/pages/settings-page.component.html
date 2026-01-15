@@ -443,6 +443,49 @@
                         </div>
                     </div>
 
+                    <!-- Web Search Configuration -->
+                    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                        <h2 class="text-lg font-semibold mb-4">Web Search Configuration</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Search Provider</label>
+                                <select [(ngModel)]="settingsService.chatPreferences()!.web_search_provider"
+                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                    <option value="duckduckgo">DuckDuckGo (Free, No Key)</option>
+                                    <option value="tavily">Tavily (Optimized for Agents)</option>
+                                    <option value="brave">Brave Search (Privacy Focused)</option>
+                                </select>
+                            </div>
+
+                            @if (settingsService.chatPreferences()!.web_search_provider === 'tavily') {
+                            <div class="anime-fade-in">
+                                <label class="block text-sm font-medium mb-2">Tavily API Key</label>
+                                <input type="password" [(ngModel)]="settingsService.chatPreferences()!.tavily_api_key"
+                                    placeholder="tvly-..."
+                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                <p class="text-xs text-secondary mt-1">
+                                    Get key from <a href="https://tavily.com" target="_blank"
+                                        class="link hover:text-accent">tavily.com</a>
+                                </p>
+                            </div>
+                            }
+
+                            @if (settingsService.chatPreferences()!.web_search_provider === 'brave') {
+                            <div class="anime-fade-in">
+                                <label class="block text-sm font-medium mb-2">Brave Search API Key</label>
+                                <input type="password"
+                                    [(ngModel)]="settingsService.chatPreferences()!.brave_search_api_key"
+                                    placeholder="BSA..."
+                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                <p class="text-xs text-secondary mt-1">
+                                    Get key from <a href="https://brave.com/search/api/" target="_blank"
+                                        class="link hover:text-accent">brave.com</a>
+                                </p>
+                            </div>
+                            }
+                        </div>
+                    </div>
+
                     <!-- Document Processing (RAG) -->
                     <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
                         <h2 class="text-lg font-semibold mb-4">Document Processing (RAG)</h2>

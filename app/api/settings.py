@@ -869,7 +869,10 @@ def get_chat_settings():
         "memory_provider": getattr(prefs, 'memory_provider', 'ollama'),
         "memory_llm_model": getattr(prefs, 'memory_llm_model', 'llama3:8b'),
         "max_memories": getattr(prefs, 'max_memories', 50),
-        "active_connection_id": str(prefs.active_connection_id) if prefs.active_connection_id else None
+        "active_connection_id": str(prefs.active_connection_id) if prefs.active_connection_id else None,
+        "web_search_provider": getattr(prefs, 'web_search_provider', 'duckduckgo'),
+        "tavily_api_key": getattr(prefs, 'tavily_api_key', ''),
+        "brave_search_api_key": getattr(prefs, 'brave_search_api_key', '')
     })
 
 
@@ -962,6 +965,14 @@ def save_chat_settings():
             # Also update the ModelManager singleton to reflect immediate change
             from app.services.model_manager import model_manager
             model_manager.set_model(new_model)
+
+    # Web Search Config
+    if 'web_search_provider' in data:
+        prefs.web_search_provider = data['web_search_provider']
+    if 'tavily_api_key' in data:
+        prefs.tavily_api_key = data['tavily_api_key']
+    if 'brave_search_api_key' in data:
+        prefs.brave_search_api_key = data['brave_search_api_key']
 
     prefs.updated_at = datetime.utcnow()
     db.session.commit()

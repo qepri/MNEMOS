@@ -37,7 +37,13 @@ class UserPreferences(db.Model):
     memory_enabled = db.Column(db.Boolean, default=False, nullable=False)
     memory_provider = db.Column(db.String(50), default='ollama', nullable=False)
     memory_llm_model = db.Column(db.String(255), nullable=True) # e.g. 'llama3:8b'
+    memory_llm_model = db.Column(db.String(255), nullable=True) # e.g. 'llama3:8b'
     max_memories = db.Column(db.Integer, default=50, nullable=False)
+
+    # Web Search Config
+    web_search_provider = db.Column(db.String(50), default='duckduckgo', nullable=False)
+    tavily_api_key = db.Column(db.String(255), nullable=True)
+    brave_search_api_key = db.Column(db.String(255), nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -65,6 +71,9 @@ class UserPreferences(db.Model):
             'memory_provider': self.memory_provider,
             'memory_llm_model': self.memory_llm_model,
             'max_memories': self.max_memories,
+            'web_search_provider': self.web_search_provider,
+            'tavily_api_key': self.tavily_api_key,
+            'brave_search_api_key': self.brave_search_api_key,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }

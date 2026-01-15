@@ -45,6 +45,9 @@ export interface ChatPreferences {
   memory_llm_model?: string;
   max_memories?: number;
   active_connection_id?: string;
+  web_search_provider?: 'duckduckgo' | 'tavily' | 'brave';
+  tavily_api_key?: string;
+  brave_search_api_key?: string;
 }
 
 export interface LLMConnection {
