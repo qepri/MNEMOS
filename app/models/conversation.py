@@ -32,6 +32,7 @@ class Message(db.Model):
     sources = db.Column(JSONB, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     images = db.Column(JSONB, nullable=True)
+    audio_path = db.Column(db.String(512), nullable=True)
 
     def to_dict(self):
         return {
@@ -41,5 +42,6 @@ class Message(db.Model):
             'content': self.content,
             'sources': self.sources,
             'images': self.images,
+            'audio_path': self.audio_path,
             'created_at': self.created_at.isoformat()
         }

@@ -23,6 +23,8 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+app/static/audio/
+
 # Virtual Environment
 venv/
 env/

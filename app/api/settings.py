@@ -872,7 +872,14 @@ def get_chat_settings():
         "active_connection_id": str(prefs.active_connection_id) if prefs.active_connection_id else None,
         "web_search_provider": getattr(prefs, 'web_search_provider', 'duckduckgo'),
         "tavily_api_key": getattr(prefs, 'tavily_api_key', ''),
-        "brave_search_api_key": getattr(prefs, 'brave_search_api_key', '')
+        "brave_search_api_key": getattr(prefs, 'brave_search_api_key', ''),
+        "deepgram_api_key": getattr(prefs, 'deepgram_api_key', ''),
+        "tts_provider": getattr(prefs, 'tts_provider', 'browser'),
+        "stt_provider": getattr(prefs, 'stt_provider', 'browser'),
+        "tts_voice": getattr(prefs, 'tts_voice', None),
+        "tts_enabled": getattr(prefs, 'tts_enabled', False),
+        "openai_tts_model": getattr(prefs, 'openai_tts_model', 'tts-1'),
+        "openai_stt_model": getattr(prefs, 'openai_stt_model', 'whisper-1')
     })
 
 
@@ -973,6 +980,22 @@ def save_chat_settings():
         prefs.tavily_api_key = data['tavily_api_key']
     if 'brave_search_api_key' in data:
         prefs.brave_search_api_key = data['brave_search_api_key']
+    if 'deepgram_api_key' in data:
+        prefs.deepgram_api_key = data['deepgram_api_key']
+
+    # Voice Config
+    if 'tts_provider' in data:
+        prefs.tts_provider = data['tts_provider']
+    if 'stt_provider' in data:
+        prefs.stt_provider = data['stt_provider']
+    if 'tts_voice' in data:
+        prefs.tts_voice = data['tts_voice']
+    if 'tts_enabled' in data:
+        prefs.tts_enabled = data['tts_enabled']
+    if 'openai_tts_model' in data:
+        prefs.openai_tts_model = data['openai_tts_model']
+    if 'openai_stt_model' in data:
+        prefs.openai_stt_model = data['openai_stt_model']
 
     prefs.updated_at = datetime.utcnow()
     db.session.commit()

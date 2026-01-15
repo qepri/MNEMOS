@@ -5,6 +5,7 @@ import { ChatService } from '@services/chat.service';
 import { DocumentsService } from '@services/documents.service';
 import { ConversationsService } from '@services/conversations.service';
 import { SettingsService } from '@services/settings.service';
+import { VoiceService } from '@services/voice.service';
 import { ModalService } from '../../../../services/modal.service';
 import { MessageBubbleComponent, ImageModalComponent } from '@components/index';
 import { LlmSelectionModalComponent } from '@components/modals';
@@ -31,6 +32,7 @@ export class ChatPage {
   settingsService = inject(SettingsService);
   modalService = inject(ModalService);
   toastr = inject(ToastrService);
+  voiceService = inject(VoiceService); // Inject VoiceService
 
   // UI State
   activeTab = signal<'chats' | 'documents'>('chats');
@@ -43,6 +45,7 @@ export class ChatPage {
 
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef;
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+  @ViewChild('messageInput') messageInput!: ElementRef<HTMLTextAreaElement>; // ViewChild for input
 
   // Computed
   filteredConversations = computed(() => {
@@ -129,6 +132,20 @@ export class ChatPage {
     return conv ? `// ${conv.title.toUpperCase()}` : '// CONVERSATION';
   });
 
+  isTtsEnabled = computed(() => {
+    return !!this.settingsService.chatPreferences()?.tts_enabled;
+  });
+
+  toggleTts() {
+    const current = this.isTtsEnabled();
+    this.settingsService.saveChatPreferences({ tts_enabled: !current });
+    if (!current) {
+      this.toastr.info('Voice responses enabled', 'TTS On');
+    } else {
+      this.toastr.info('Voice responses disabled', 'TTS Off');
+    }
+  }
+
   constructor() {
     // Auto-scroll effect
     effect(() => {
@@ -146,6 +163,23 @@ export class ChatPage {
       document.documentElement.setAttribute('data-theme', themeName);
       localStorage.setItem('theme', this.theme());
     });
+
+    // Sync Voice Transcript to Input
+    effect(() => {
+      const text = this.voiceService.transcript();
+      if (text && this.messageInput?.nativeElement) {
+        this.messageInput.nativeElement.value = text;
+        this.autoResize(this.messageInput.nativeElement);
+      }
+    });
+  }
+
+  toggleRecording() {
+    if (this.voiceService.isListening()) {
+      this.voiceService.stopListening();
+    } else {
+      this.voiceService.startListening();
+    }
   }
 
   // Chat Actions

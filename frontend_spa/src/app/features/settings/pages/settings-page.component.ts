@@ -23,7 +23,7 @@ export class SettingsPage implements OnInit {
     chatSelector = viewChild<LlmSelectorComponent>('chatSelector');
     memorySelector = viewChild<LlmSelectorComponent>('memorySelector');
 
-    activeTab = signal<'models' | 'discover' | 'import' | 'chat'>('models');
+    activeTab = signal<'models' | 'discover' | 'import' | 'chat' | 'voice'>('models');
 
     // Proxy for Memory Selector
     // Maps memory_* fields to llm_* fields so LlmSelectorComponent works as is
@@ -285,7 +285,7 @@ export class SettingsPage implements OnInit {
         }
     }
 
-    switchTab(tab: 'models' | 'discover' | 'import' | 'chat') {
+    switchTab(tab: 'models' | 'discover' | 'import' | 'chat' | 'voice') {
         this.activeTab.set(tab);
         if (tab === 'import') {
             this.scanImports();

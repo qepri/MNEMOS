@@ -3,12 +3,16 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { ApiEndpoints } from '@core/constants/api-endpoints';
 import { ChatRequest, ChatResponse, Message } from '@core/models';
+import { SettingsService } from './settings.service';
+import { VoiceService } from './voice.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ChatService {
   private http = inject(HttpClient);
+  private settingsService = inject(SettingsService);
+  private voiceService = inject(VoiceService);
 
   // State
   messages = signal<Message[]>([]);
@@ -98,6 +102,12 @@ export class ChatService {
           : msg
       )
     );
+
+    // TTS
+    const prefs = this.settingsService.chatPreferences();
+    if (prefs?.tts_enabled) {
+      this.voiceService.speak(content);
+    }
   }
 
   clearMessages() {

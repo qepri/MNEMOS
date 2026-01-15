@@ -48,6 +48,13 @@ export interface ChatPreferences {
   web_search_provider?: 'duckduckgo' | 'tavily' | 'brave';
   tavily_api_key?: string;
   brave_search_api_key?: string;
+  tts_provider?: string;
+  stt_provider?: string;
+  tts_voice?: string;
+  tts_enabled?: boolean;
+  openai_tts_model?: string;
+  openai_stt_model?: string;
+  deepgram_api_key?: string;
 }
 
 export interface LLMConnection {

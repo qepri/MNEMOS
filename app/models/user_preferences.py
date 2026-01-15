@@ -45,6 +45,15 @@ class UserPreferences(db.Model):
     tavily_api_key = db.Column(db.String(255), nullable=True)
     brave_search_api_key = db.Column(db.String(255), nullable=True)
 
+    # Voice Settings
+    deepgram_api_key = db.Column(db.String(255), nullable=True)
+    tts_provider = db.Column(db.String(50), default='browser', nullable=False)
+    stt_provider = db.Column(db.String(50), default='browser', nullable=False)
+    tts_voice = db.Column(db.String(255), nullable=True)
+    tts_enabled = db.Column(db.Boolean, default=False, nullable=False)
+    openai_tts_model = db.Column(db.String(50), default='tts-1', nullable=True)
+    openai_stt_model = db.Column(db.String(50), default='whisper-1', nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -74,6 +83,13 @@ class UserPreferences(db.Model):
             'web_search_provider': self.web_search_provider,
             'tavily_api_key': self.tavily_api_key,
             'brave_search_api_key': self.brave_search_api_key,
+            'deepgram_api_key': self.deepgram_api_key,
+            'tts_provider': self.tts_provider,
+            'stt_provider': self.stt_provider,
+            'tts_voice': self.tts_voice,
+            'tts_enabled': self.tts_enabled,
+            'openai_tts_model': self.openai_tts_model,
+            'openai_stt_model': self.openai_stt_model,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }

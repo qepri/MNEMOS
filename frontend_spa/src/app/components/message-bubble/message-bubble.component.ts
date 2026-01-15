@@ -7,6 +7,8 @@ import { MarkdownDisplayComponent } from '../markdown/markdown-display.component
 import { ModalService } from '@services/modal.service';
 import { ApiEndpoints } from '@core/constants/api-endpoints';
 
+import { VoiceService } from '@services/voice.service';
+
 @Component({
   selector: 'app-message-bubble',
   standalone: true,
@@ -123,6 +125,12 @@ import { ApiEndpoints } from '@core/constants/api-endpoints';
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
             </button>
           }
+           <!-- Play Audio (Assistant Only) -->
+          @if (message().role === 'assistant' && !isEditing()) {
+             <button (click)="playAudio()" class="p-1 text-secondary hover:text-primary hover:bg-hover rounded transition-colors" title="Play">
+               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </button>
+          }
         </div>
       </div>
     </div>
@@ -149,6 +157,7 @@ export class MessageBubbleComponent {
   onEdit = output<string>(); // Emits new content
 
   private modalService = inject(ModalService);
+  private voiceService = inject(VoiceService);
 
   // State
   isEditing = signal(false);
@@ -237,5 +246,9 @@ export class MessageBubbleComponent {
         this.openSourceModal(source);
       }
     }
+  }
+
+  playAudio() {
+    this.voiceService.playMessageAudio(this.message().id);
   }
 }

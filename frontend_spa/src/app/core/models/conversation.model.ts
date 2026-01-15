@@ -12,6 +12,7 @@ export interface Message {
   content: string;
   sources?: MessageSource[];
   images?: string[];
+  audio_path?: string;
   created_at: string;
   status?: 'generating' | 'completed' | 'error';
   search_queries?: string[];

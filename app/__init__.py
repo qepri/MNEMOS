@@ -40,6 +40,9 @@ def create_app():
     
     from app.api.memory import bp as memory_bp
     app.register_blueprint(memory_bp, url_prefix='/api/memory')
+
+    from app.api.voice import voice_bp
+    app.register_blueprint(voice_bp, url_prefix='/api/voice')
     
     from sqlalchemy import text
     from sqlalchemy.exc import SQLAlchemyError
@@ -65,6 +68,22 @@ def create_app():
                  db.session.commit()
                  
                  db.session.execute(text("ALTER TABLE llm_connections ADD COLUMN IF NOT EXISTS models JSONB DEFAULT '[]'"))
+                 db.session.commit()
+                 
+                 # Voice Settings Migration
+                 db.session.execute(text("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS tts_provider VARCHAR(50) DEFAULT 'browser' NOT NULL"))
+                 db.session.execute(text("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS stt_provider VARCHAR(50) DEFAULT 'browser' NOT NULL"))
+                 db.session.execute(text("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS tts_voice VARCHAR(255)"))
+                 db.session.execute(text("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS tts_enabled BOOLEAN DEFAULT FALSE NOT NULL"))
+                 db.session.execute(text("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS openai_tts_model VARCHAR(50) DEFAULT 'tts-1'"))
+                 db.session.execute(text("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS openai_stt_model VARCHAR(50) DEFAULT 'whisper-1'"))
+                 
+                 # Step 2: Add Deepgram Key
+                 db.session.execute(text("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS deepgram_api_key VARCHAR(255)"))
+                 
+                 # Chat Audio Persistence
+                 db.session.execute(text("ALTER TABLE messages ADD COLUMN IF NOT EXISTS audio_path VARCHAR(512)"))
+                 
                  db.session.commit()
             except Exception as e:
                  # Ignore if it fails (e.g. invalid state), logs will show
