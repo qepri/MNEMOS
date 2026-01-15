@@ -181,6 +181,30 @@
                             </svg>
                         </button>
 
+                        <!-- Zenia / Voice Mode Toggle -->
+                        <button (click)="toggleVoiceMode()"
+                            class="flex-shrink-0 p-2 rounded-lg transition-colors relative group"
+                            [class.text-purple-500]="voiceService.handsFreeMode()"
+                            [class.bg-purple-500]="voiceService.handsFreeMode()"
+                            [class.bg-opacity-10]="voiceService.handsFreeMode()"
+                            [class.text-secondary]="!voiceService.handsFreeMode()"
+                            [class.hover:text-primary]="!voiceService.handsFreeMode()"
+                            [class.hover:bg-hover]="!voiceService.handsFreeMode()"
+                            [title]="voiceService.handsFreeMode() ? 'Disable Zenia Mode' : 'Enable Zenia Mode'">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z">
+                                </path>
+                            </svg>
+                            @if (voiceService.handsFreeMode()) {
+                            <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                                <span
+                                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-500"></span>
+                            </span>
+                            }
+                        </button>
+
                         <!-- Attach Button -->
                         <button (click)="triggerFileInput()" [class.opacity-50]="!visionEnabled()"
                             class="flex-shrink-0 p-2 text-secondary hover:text-primary hover:bg-hover rounded-lg transition-colors"
@@ -286,3 +310,9 @@
     <app-image-modal [isOpen]="modalService.isImageViewerOpen()" [imageUrl]="modalService.currentImageUrl"
         [showNav]="modalService.images().length > 1" (close)="modalService.closeImageViewer()"
         (next)="modalService.nextImage()" (prev)="modalService.prevImage()" />
+
+    <!-- Voice Visualizer Overlay -->
+    @if (voiceService.handsFreeMode()) {
+    <app-voice-visualizer></app-voice-visualizer>
+    }
+</div>

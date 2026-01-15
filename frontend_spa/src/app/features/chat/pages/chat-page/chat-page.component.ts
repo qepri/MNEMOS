@@ -9,6 +9,7 @@ import { VoiceService } from '@services/voice.service';
 import { ModalService } from '../../../../services/modal.service';
 import { MessageBubbleComponent, ImageModalComponent } from '@components/index';
 import { LlmSelectionModalComponent } from '@components/modals';
+import { VoiceVisualizerComponent } from '@components/voice-visualizer/voice-visualizer.component';
 import { ToastrService } from 'ngx-toastr';
 
 @Component({
@@ -19,7 +20,8 @@ import { ToastrService } from 'ngx-toastr';
     FormsModule,
     MessageBubbleComponent,
     LlmSelectionModalComponent,
-    ImageModalComponent
+    ImageModalComponent,
+    VoiceVisualizerComponent
   ],
   templateUrl: './chat-page.component.html',
   styleUrl: './chat-page.component.css'
@@ -167,9 +169,37 @@ export class ChatPage {
     // Sync Voice Transcript to Input
     effect(() => {
       const text = this.voiceService.transcript();
-      if (text && this.messageInput?.nativeElement) {
+      if (text && this.messageInput?.nativeElement && !this.voiceService.handsFreeMode()) {
         this.messageInput.nativeElement.value = text;
         this.autoResize(this.messageInput.nativeElement);
+      }
+    });
+
+    // Listen for Voice Commands (Zenia Mode)
+    effect(() => {
+      const command = this.voiceService.onCommandDetected();
+      if (command) {
+        this.handleSendMessage(command);
+      }
+    });
+
+    // Auto-TTS for AI Responses in Hands-Free Mode
+    effect(() => {
+      const messages = this.chatService.messages();
+      const lastMsg = messages[messages.length - 1];
+
+      if (this.voiceService.handsFreeMode() && lastMsg && lastMsg.role === 'assistant') {
+        // We need to check if this is a NEW message or if we just turned on the mode.
+        // A simple check is if we are currently 'processing' or if the message is very recent?
+        // Ideally, we replicate 'isSpeaking' logic or just trust that speaking idempotent-ish
+
+        // Better check: Only speak if not already speaking and content exists
+        // AND if the voice service state is expecting a response (processing)
+        // This prevents reading old history when toggling mode.
+
+        if (this.voiceService.vadState() === 'processing' && !this.voiceService.isSpeaking()) {
+          this.voiceService.speak(lastMsg.content);
+        }
       }
     });
   }
@@ -179,6 +209,16 @@ export class ChatPage {
       this.voiceService.stopListening();
     } else {
       this.voiceService.startListening();
+    }
+  }
+
+  toggleVoiceMode() {
+    const newState = !this.voiceService.handsFreeMode();
+    this.voiceService.toggleHandsFree(newState);
+    if (newState) {
+      this.toastr.success("Zenia is listening...", "Voice Mode Active");
+    } else {
+      this.toastr.info("Voice Mode Disabled");
     }
   }
 
