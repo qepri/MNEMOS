@@ -1,0 +1,9 @@
+{% if conversations %}
+{% for conversation in conversations %}
+{% include 'partials/conversation_item.html' %}
+{% endfor %}
+{% else %}
+<div class="text-center p-4 text-xs text-base-content/50">
+    No se encontraron conversaciones.
+</div>
+{% endif %}

@@ -1,0 +1,28 @@
+@if (downloads().length > 0) {
+<div class="bg-panel border border-divider rounded-xl p-4 mb-6">
+    <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">
+        <span class="loading loading-spinner loading-xs text-accent"></span>
+        Active Downloads
+    </h3>
+
+    <div class="space-y-4">
+        @for (task of downloads(); track task.task_id) {
+        <div class="bg-input rounded-lg p-3">
+            <div class="flex justify-between items-center mb-2">
+                <span class="font-medium text-sm">{{ task.model_name }}</span>
+                <span class="text-xs text-secondary capitalize">{{ task.status }}</span>
+            </div>
+
+            <div class="w-full bg-base-300 rounded-full h-2 mb-1">
+                <div class="bg-accent h-2 rounded-full transition-all duration-500"
+                    [style.width.%]="task.progress || 0"></div>
+            </div>
+
+            <div class="flex justify-end">
+                <span class="text-xs font-mono text-secondary">{{ task.progress?.toFixed(1) || 0 }}%</span>
+            </div>
+        </div>
+        }
+    </div>
+</div>
+}

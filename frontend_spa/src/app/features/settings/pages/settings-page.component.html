@@ -1,0 +1,1033 @@
+<div class="h-full flex flex-col bg-base text-primary overflow-hidden">
+    <!-- Header -->
+    <header class="flex-none bg-sidebar border-b border-divider z-40">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <a routerLink="/" class="flex items-center gap-2 text-primary hover:text-accent transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                        <span class="font-medium hidden sm:inline">Back to Chat</span>
+                    </a>
+                </div>
+                <h1 class="text-xl font-bold text-primary">Settings</h1>
+                <div class="w-9"></div> <!-- Spacer for balance -->
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto w-full">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+            <!-- Tabs Navigation -->
+            <div class="mb-6 border-b border-divider overflow-x-auto">
+                <nav class="flex gap-6 min-w-max">
+                    <button (click)="switchTab('models')" [class.border-accent]="activeTab() === 'models'"
+                        [class.text-primary]="activeTab() === 'models'"
+                        [class.text-secondary]="activeTab() !== 'models'"
+                        class="px-1 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap hover:text-primary"
+                        [style.border-color]="activeTab() !== 'models' ? 'transparent' : ''">
+                        Installed Models
+                    </button>
+                    <button (click)="switchTab('discover')" [class.border-accent]="activeTab() === 'discover'"
+                        [class.text-primary]="activeTab() === 'discover'"
+                        [class.text-secondary]="activeTab() !== 'discover'"
+                        class="px-1 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap hover:text-primary"
+                        [style.border-color]="activeTab() !== 'discover' ? 'transparent' : ''">
+                        Discover Models
+                    </button>
+                    <button (click)="switchTab('import')" [class.border-accent]="activeTab() === 'import'"
+                        [class.text-primary]="activeTab() === 'import'"
+                        [class.text-secondary]="activeTab() !== 'import'"
+                        class="px-1 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap hover:text-primary"
+                        [style.border-color]="activeTab() !== 'import' ? 'transparent' : ''">
+                        Import GGUF
+                    </button>
+                    <button (click)="switchTab('chat')" [class.border-accent]="activeTab() === 'chat'"
+                        [class.text-primary]="activeTab() === 'chat'" [class.text-secondary]="activeTab() !== 'chat'"
+                        class="px-1 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap hover:text-primary"
+                        [style.border-color]="activeTab() !== 'chat' ? 'transparent' : ''">
+                        Chat Settings
+                    </button>
+                    <button (click)="switchTab('voice')" [class.border-accent]="activeTab() === 'voice'"
+                        [class.text-primary]="activeTab() === 'voice'" [class.text-secondary]="activeTab() !== 'voice'"
+                        class="px-1 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap hover:text-primary"
+                        [style.border-color]="activeTab() !== 'voice' ? 'transparent' : ''">
+                        Voice Settings
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="space-y-6">
+
+                <!-- ... (existing tabs) ... -->
+
+                <!-- Tab: Voice Settings -->
+                @if (activeTab() === 'voice' && settingsService.chatPreferences()) {
+                <div class="space-y-6 anime-fade-in">
+
+                    <!-- Voice Overview / Enable -->
+                    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 class="text-lg font-semibold">Voice Conversations</h2>
+                                <p class="text-xs text-secondary mt-1">Enable spoken responses from the assistant.</p>
+                            </div>
+                            <input type="checkbox" [(ngModel)]="settingsService.chatPreferences()!.tts_enabled"
+                                class="toggle toggle-accent" />
+                        </div>
+                    </div>
+
+                    <!-- Voice Providers -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                        <!-- STT -->
+                        <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                            <h2 class="text-lg font-semibold mb-4">Speech-to-Text (Hearing)</h2>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Provider</label>
+                                    <select [(ngModel)]="settingsService.chatPreferences()!.stt_provider"
+                                        class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                        <option value="browser">Browser Native (Free)</option>
+                                        <option value="openai">OpenAI Whisper (API)</option>
+                                        <option value="groq">Groq (Fast API)</option>
+                                        <option value="deepgram">Deepgram (Free Tier)</option>
+                                    </select>
+                                    <p class="text-xs text-secondary mt-1">
+                                        @if (settingsService.chatPreferences()!.stt_provider === 'browser') {
+                                        Uses your browser's built-in speech recognition.
+                                        } @else if (settingsService.chatPreferences()!.stt_provider === 'openai') {
+                                        High accuracy, requires API Key.
+                                        } @else if (settingsService.chatPreferences()!.stt_provider === 'groq') {
+                                        Extremely fast, uses Groq Cloud.
+                                        } @else if (settingsService.chatPreferences()!.stt_provider === 'deepgram') {
+                                        Fast and accurate, requires Deepgram Key.
+                                        }
+                                    </p>
+                                </div>
+
+                                @if (settingsService.chatPreferences()!.stt_provider === 'openai') {
+                                <div class="anime-fade-in">
+                                    <label class="block text-sm font-medium mb-2">OpenAI Model</label>
+                                    <input type="text" [(ngModel)]="settingsService.chatPreferences()!.openai_stt_model"
+                                        class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent mb-2">
+
+                                    <label class="block text-sm font-medium mb-2">API Key</label>
+                                    <input type="password"
+                                        [(ngModel)]="settingsService.chatPreferences()!.openai_api_key"
+                                        placeholder="sk-..."
+                                        class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                    <p class="text-xs text-secondary mt-1">Uses the same key as LLM if set there.</p>
+                                </div>
+                                }
+
+                                @if (settingsService.chatPreferences()!.stt_provider === 'groq') {
+                                <div class="anime-fade-in">
+                                    <p class="text-sm text-secondary mb-2">
+                                        Uses the <strong>Groq API Key</strong> set in Chat Settings > AI Provider.
+                                    </p>
+                                    <label class="block text-sm font-medium mb-2">Groq Key (Optional Override)</label>
+                                    <input type="password" [(ngModel)]="settingsService.chatPreferences()!.groq_api_key"
+                                        placeholder="gsk-..."
+                                        class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                </div>
+                                }
+
+                                @if (settingsService.chatPreferences()!.stt_provider === 'deepgram') {
+                                <div class="anime-fade-in">
+                                    <label class="block text-sm font-medium mb-2">Deepgram API Key</label>
+                                    <input type="password"
+                                        [(ngModel)]="settingsService.chatPreferences()!.deepgram_api_key"
+                                        placeholder="Token..."
+                                        class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- TTS -->
+                        <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                            <h2 class="text-lg font-semibold mb-4">Text-to-Speech (Speaking)</h2>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Provider</label>
+                                    <select [(ngModel)]="settingsService.chatPreferences()!.tts_provider"
+                                        class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                        <option value="browser">Browser Native (Free)</option>
+                                        <option value="openai">OpenAI TTS (API)</option>
+                                        <option value="deepgram">Deepgram (Fast & Natural)</option>
+                                    </select>
+                                </div>
+
+                                @if (settingsService.chatPreferences()!.tts_provider === 'openai') {
+                                <div class="anime-fade-in">
+                                    <label class="block text-sm font-medium mb-2">Voice</label>
+                                    <select [(ngModel)]="settingsService.chatPreferences()!.tts_voice"
+                                        class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent mb-2">
+                                        <option value="alloy">Alloy</option>
+                                        <option value="echo">Echo</option>
+                                        <option value="fable">Fable</option>
+                                        <option value="onyx">Onyx</option>
+                                        <option value="nova">Nova</option>
+                                        <option value="shimmer">Shimmer</option>
+                                    </select>
+
+                                    <label class="block text-sm font-medium mb-2">API Key</label>
+                                    <input type="password"
+                                        [(ngModel)]="settingsService.chatPreferences()!.openai_api_key"
+                                        placeholder="sk-..."
+                                        class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                </div>
+                                }
+
+                                @if (settingsService.chatPreferences()!.tts_provider === 'deepgram') {
+                                <div class="anime-fade-in">
+                                    <label class="block text-sm font-medium mb-2">Voice (Model)</label>
+                                    <select [(ngModel)]="settingsService.chatPreferences()!.tts_voice"
+                                        class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent mb-2">
+                                        <option value="aura-asteria-en">Asteria (Female)</option>
+                                        <option value="aura-luna-en">Luna (Female)</option>
+                                        <option value="aura-stella-en">Stella (Female)</option>
+                                        <option value="aura-athena-en">Athena (Female)</option>
+                                        <option value="aura-hera-en">Hera (Female)</option>
+                                        <option value="aura-orion-en">Orion (Male)</option>
+                                        <option value="aura-arcas-en">Arcas (Male)</option>
+                                        <option value="aura-perseus-en">Perseus (Male)</option>
+                                        <option value="aura-angus-en">Angus (Male)</option>
+                                        <option value="aura-orpheus-en">Orpheus (Male)</option>
+                                        <option value="aura-helios-en">Helios (Male)</option>
+                                        <option value="aura-zeus-en">Zeus (Male)</option>
+                                        <option value="aura-2-estrella-es">Estrella (Mexican Spanish)</option>
+                                    </select>
+
+                                    <label class="block text-sm font-medium mb-2">Deepgram Key</label>
+                                    <input type="password"
+                                        [(ngModel)]="settingsService.chatPreferences()!.deepgram_api_key"
+                                        placeholder="Token..."
+                                        class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Save Button -->
+                    <div class="flex justify-end">
+                        <button (click)="handleSaveChatPreferences()" class="btn-primary px-6">
+                            Save Settings
+                        </button>
+                    </div>
+                </div>
+                }
+
+                <!-- Active Downloads (Global) -->
+                @if (activeDownloadsList().length > 0) {
+                <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6 animation-fade-in mb-6">
+                    <h2 class="text-lg font-semibold mb-4">Active Downloads</h2>
+                    <div class="space-y-4">
+                        @for (download of activeDownloadsList(); track download.task_id) {
+                        <div class="flex items-center gap-3">
+                            <div class="flex-1">
+                                <app-progress-bar [label]="download.model || download.model_name"
+                                    [progress]="download.progress !== undefined ? download.progress : (download.total ? (download.completed / download.total * 100) : 0)"
+                                    [status]="download.status === 'success' ? 'completed' : (download.status === 'failure' ? 'error' : (download.status === 'revoked' ? 'error' : 'downloading'))"
+                                    [message]="download.status">
+                                </app-progress-bar>
+                            </div>
+                            <button (click)="handleDeletePull(download.task_id)" title="Cancel/Clear Download"
+                                class="btn-icon text-secondary hover:text-error hover:bg-error hover:bg-opacity-10 p-2 rounded-lg transition-colors mt-6">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                        }
+                    </div>
+                </div>
+                }
+
+                <!-- Tab: Installed Models -->
+                @if (activeTab() === 'models') {
+                <div class="space-y-6 anime-fade-in">
+
+                    <!-- Hardware Info -->
+                    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                        <h2 class="text-lg font-semibold mb-4">System Resources</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div class="bg-input rounded-lg p-4 col-span-3">
+                                <div class="text-xs text-secondary mb-1">Models Installed</div>
+                                <div class="text-2xl font-bold text-accent">{{
+                                    settingsService.models()?.models?.length
+                                    || 0 }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Active Model -->
+                    <div class="bg-accent-subtle border border-accent rounded-xl p-4">
+                        <div class="flex items-center gap-2 text-accent">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span class="text-sm font-medium">Active Model: <strong>{{
+                                    settingsService.currentModel() ||
+                                    'None' }}</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- Models List -->
+                    <div class="bg-panel border border-divider rounded-xl overflow-hidden">
+                        <div class="p-4 sm:p-6 border-b border-divider">
+                            <h2 class="text-lg font-semibold">Your Models</h2>
+                        </div>
+                        <div class="divide-y divide-divider">
+                            @for (model of settingsService.models()?.models; track model.name) {
+                            <div class="p-4 sm:p-6 hover:bg-hover transition-colors">
+                                <div class="flex items-start justify-between gap-4">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <input type="radio" name="model-select"
+                                                [checked]="settingsService.currentModel() === model.name"
+                                                (change)="handleSetCurrentModel(model.name)"
+                                                class="radio radio-sm radio-accent">
+                                            <h3>
+                                                {{ model.name }}
+                                            </h3>
+                                            @if (model.description) {
+                                            <p class="text-xs text-secondary mt-0.5 mb-1 line-clamp-2">
+                                                {{ model.description }}
+                                            </p>
+                                            }
+                                            @if (settingsService.currentModel() === model.name) {
+                                            <span class="badge badge-success">Active</span>
+                                            }
+                                        </div>
+                                        <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-secondary mb-1">
+                                            <span class="flex items-center gap-1" title="Model Size">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                                </svg>
+                                                {{ (model.size / 1024 / 1024 / 1024) | number:'1.1-2' }} GB
+                                            </span>
+                                            @if (model.details?.parameter_size) {
+                                            <span class="badge badge-sm badge-ghost gap-1">
+                                                {{ model.details?.parameter_size }}
+                                            </span>
+                                            }
+                                            @if (model.details?.quantization_level) {
+                                            <span class="badge badge-sm badge-ghost gap-1" title="Quantization">
+                                                {{ model.details?.quantization_level }}
+                                            </span>
+                                            }
+                                            @if (model.details?.family) {
+                                            <span class="badge badge-sm badge-ghost gap-1 bg-opacity-50">
+                                                {{ model.details?.family }}
+                                            </span>
+                                            }
+                                        </div>
+                                        <div class="text-xs text-secondary opacity-70">
+                                            Modified: {{ model.modified_at | date:'medium' }}
+                                        </div>
+                                    </div>
+                                    <button (click)="handleDeleteModel(model.name)"
+                                        class="btn-icon text-error hover:bg-error hover:bg-opacity-10 p-2 rounded-lg transition-colors">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            }
+                            @if (!settingsService.models()?.models?.length) {
+                            <div class="p-8 text-center text-secondary">
+                                No models installed. Go to "Discover Models" to find one.
+                            </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                }
+
+                <!-- Tab: Discover Models -->
+                @if (activeTab() === 'discover') {
+                <div class="space-y-6 anime-fade-in">
+                    <!-- Search & Filter -->
+                    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <input type="text" placeholder="Search models..." [(ngModel)]="searchQuery"
+                                (keyup.enter)="searchLibrary()"
+                                class="flex-1 px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm">
+                            <button (click)="searchLibrary()" class="btn-primary">Search</button>
+                        </div>
+                    </div>
+
+                    <!-- Models Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        @if (isSearching()) {
+                        <!-- Skeleton Loader -->
+                        @for (i of [1,2,3,4,5,6]; track i) {
+                        <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="space-y-2 w-full">
+                                    <div class="h-5 w-3/4 bg-divider rounded pulse"></div>
+                                    <div class="h-3 w-1/2 bg-divider rounded pulse"></div>
+                                </div>
+                                <div class="h-5 w-16 bg-divider rounded-full pulse"></div>
+                            </div>
+                            <div class="space-y-2 mb-4">
+                                <div class="h-3 w-full bg-divider rounded pulse"></div>
+                                <div class="h-3 w-5/6 bg-divider rounded pulse"></div>
+                            </div>
+                            <div class="flex justify-between mb-4">
+                                <div class="h-3 w-16 bg-divider rounded pulse"></div>
+                                <div class="h-3 w-16 bg-divider rounded pulse"></div>
+                            </div>
+                            <div class="flex gap-2">
+                                <div class="h-9 w-full bg-divider rounded-lg pulse"></div>
+                            </div>
+                        </div>
+                        }
+                        } @else {
+                        @for (model of searchResults(); track model.name) {
+                        <div
+                            class="bg-panel border border-divider rounded-xl p-4 sm:p-6 hover:border-accent transition-colors">
+                            <div class="flex items-start justify-between mb-3">
+                                <div>
+                                    <h3 class="font-mono font-semibold text-base mb-1 text-base-content">{{
+                                        model.name
+                                        }}</h3>
+                                    <p class="text-xs text-base-content/80">{{ model.author }} • {{ model.params }}
+                                    </p>
+                                </div>
+                                <span class="badge" [class.badge-success]="!model.is_hf_only"
+                                    [class.badge-warning]="model.is_hf_only">
+                                    {{ model.is_hf_only ? 'HF Only' : 'Compatible' }}
+                                </span>
+                            </div>
+                            <p class="text-sm text-base-content/80 mb-4 line-clamp-2">
+                                {{ model.description }}
+                            </p>
+                            <div class="flex items-center justify-between text-xs text-base-content/80 mb-4">
+                                <span>Size: {{ model.size_gb }} GB</span>
+                                <span>Min RAM: {{ model.min_ram_gb }} GB</span>
+                            </div>
+                            <div class="flex gap-2 mb-4 flex-wrap">
+                                @for (tag of model.tags; track tag) {
+                                <span class="px-2 py-1 bg-accent-subtle text-accent rounded text-xs">{{ tag
+                                    }}</span>
+                                }
+                            </div>
+
+                            <div class="flex gap-2">
+                                <button (click)="handlePullModel(model.ollama_name || model.name)"
+                                    class="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-dark transition-colors text-sm font-medium">
+                                    Pull (Ollama)
+                                </button>
+                                @if (model.full_name && model.full_name.includes('/')) {
+                                <button (click)="openGgufModal(model.full_name)"
+                                    class="px-4 py-2 bg-secondary text-base-100 rounded-lg hover:bg-secondary-focus transition-colors text-sm font-medium"
+                                    title="Download specific GGUF file directly">
+                                    GGUF
+                                </button>
+                                }
+
+
+                                @if (model.hf_url) {
+                                <a [href]="model.hf_url" target="_blank"
+                                    class="px-3 py-2 bg-base-200 text-base-content hover:bg-base-300 rounded-lg flex items-center justify-center transition-colors"
+                                    title="View on Hugging Face">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path
+                                            d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z M13.5 13.5h-3v-3h3v3z M15 12c0-1.66-1.34-3-3-3s-3 1.34-3 3 1.34 3 3 3 3-1.34 3-3z" />
+                                        <!-- Note: Using a generic icon or we could try to find an HF SVG icon path -->
+                                        <path
+                                            d="M2 9a2 2 0 012-2h1.5l1 2 2.5-1.5L9 2H2v7zm16 4.5l-2.5-1.5-1 2H13l-1.5 2.5-2-1.5-2.5 1.5-1.5-2.5L2 14v8h20v-8.5l-3.5 2-2.5-2z"
+                                            opacity="0.5" />
+                                        <!-- Just using a generic 'external link' style or similar if I don't have exact HF icon -->
+                                        <path
+                                            d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z" />
+                                    </svg>
+                                </a>
+                                }
+                            </div>
+                        </div>
+                        }
+                        @if (searchResults().length === 0) {
+                        <div class="col-span-2 text-center py-10 text-secondary">
+                            Search for models to discover new capabilities.
+                        </div>
+                        }
+                        }
+                    </div>
+                </div>
+                }
+
+                <!-- Tab: Import -->
+                @if (activeTab() === 'import') {
+                <div class="space-y-6 anime-fade-in">
+                    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                        <h2 class="text-lg font-semibold mb-4">Import GGUF Files</h2>
+                        <h3 class="card-title text-lg mb-4">Import GGUF Files</h3>
+                        <p class="text-sm text-secondary mb-6">
+                            Import custom GGUF model files. You can upload a file directly or scan the imports folder.
+                        </p>
+
+                        <div class="flex gap-2 mb-6">
+                            <button (click)="scanImports()" class="btn-primary flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                Scan for GGUF Files
+                            </button>
+
+                            <button class="btn-secondary flex items-center gap-2" (click)="fileInput.click()">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                </svg>
+                                Upload GGUF
+                            </button>
+                            <input #fileInput type="file" accept=".gguf" class="hidden" style="display: none;"
+                                (change)="handleFileUpload($event)">
+                        </div>
+
+                        <div class="space-y-3">
+                            @for (file of importFiles(); track file) {
+                            <div class="bg-input rounded-lg p-4">
+                                <div class="flex items-start justify-between gap-4 mb-3">
+                                    <div class="flex-1">
+                                        <p class="font-mono text-sm mb-1">{{ file }}</p>
+                                        <p class="text-xs" [ngClass]="getImportStatus(file).class">
+                                            {{ getImportStatus(file).text }}
+                                        </p>
+                                    </div>
+                                    <input type="radio" name="import-file" [value]="file"
+                                        (change)="selectImportFile(file)" [checked]="selectedImportFile() === file"
+                                        class="radio radio-sm radio-accent">
+                                </div>
+                                @if (selectedImportFile() === file) {
+                                <div class="flex gap-2">
+                                    <input type="text" placeholder="Model name (e.g., llama3:8b)"
+                                        [(ngModel)]="importModelName"
+                                        class="flex-1 px-3 py-2 bg-panel border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm border">
+                                    <button (click)="handleImportModel()" class="btn-primary text-sm">Import
+                                        Model</button>
+                                </div>
+                                }
+                            </div>
+                            }
+                            @if (importFiles().length === 0) {
+                            <div class="text-center text-secondary py-4">
+                                No .gguf files found. Place them in the import folder and click Scan.
+                            </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                }
+
+                <!-- Tab: Chat Settings -->
+                @if (activeTab() === 'chat') {
+                @if (settingsService.chatPreferences()) {
+                <div class="space-y-6 anime-fade-in">
+
+                    <!-- AI Provider Configuration -->
+                    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                        <h2 class="text-lg font-semibold mb-4">AI Provider</h2>
+                        <app-llm-selector #chatSelector [preferences]="settingsService.chatPreferences()" #llmSelector>
+                        </app-llm-selector>
+
+                        <!-- Ollama Service Management (Keep separate as it's specific to managing the service, not selecting it) -->
+                        @if (llmSelector.selectedProvider() === 'ollama') {
+                        <div class="mt-6 p-4 bg-base-200 rounded-lg border border-divider">
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="text-sm font-medium">Ollama Service Status</h3>
+                                @if (ollamaStatus().status === 'running') {
+                                <span class="badge badge-success">Running</span>
+                                } @else if (ollamaStatus().status === 'stopped' || ollamaStatus().status ===
+                                'installed_but_not_created') {
+                                <span class="badge badge-warning">Stopped</span>
+                                } @else if (ollamaStatus().status === 'not_installed') {
+                                <span class="badge badge-error">Not Installed</span>
+                                } @else if (ollamaStatus().status === 'error' || ollamaStatus().status ===
+                                'docker_error') {
+                                <span class="badge badge-error">Unavailable</span>
+                                } @else {
+                                <span class="badge badge-ghost">Checking...</span>
+                                }
+                            </div>
+
+                            @if (ollamaInstallProgress()) {
+                            <div class="space-y-2">
+                                <div class="flex justify-between text-xs">
+                                    <span>{{ ollamaInstallProgress()?.message }}</span>
+                                    @if (ollamaInstallProgress()?.progress) {
+                                    <span>{{ ollamaInstallProgress()?.progress | number:'1.0-0' }}%</span>
+                                    }
+                                </div>
+                                <progress class="progress progress-accent w-full"
+                                    [value]="ollamaInstallProgress()?.progress" max="100"></progress>
+                            </div>
+                            } @else {
+                            @if (ollamaStatus().status === 'running') {
+                            <p class="text-xs text-base-content/60 mb-2">Service is active and ready to use.</p>
+                            } @else if (ollamaStatus().status === 'stopped' || ollamaStatus().status ===
+                            'installed_but_not_created') {
+                            <button (click)="handleStartOllamaService()" class="btn-primary w-full text-sm">Start
+                                Ollama Service</button>
+                            } @else if (ollamaStatus().status === 'not_installed') {
+                            <button (click)="handleInstallOllamaService()" class="btn-primary w-full text-sm">Install
+                                Ollama Service</button>
+                            <p class="text-xs text-base-content/60 mt-2 text-center">This will download the Ollama
+                                Docker image (~500MB).</p>
+                            } @else if (ollamaStatus().status === 'error' || ollamaStatus().status ===
+                            'docker_error') {
+                            <div class="text-xs text-error mb-2">
+                                Unable to connect to Docker or Ollama service. Ensure Docker is running.
+                            </div>
+                            <button (click)="checkOllamaStatus()" class="btn-secondary w-full text-sm">Retry
+                                Connection</button>
+                            }
+                            }
+                        </div>
+                        }
+                    </div>
+
+                    <!-- Conversation Context -->
+                    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 class="text-lg font-semibold">Conversation Context</h2>
+                                <p class="text-xs text-secondary mt-1">Include previous messages in conversation</p>
+                            </div>
+                            <input type="checkbox"
+                                [(ngModel)]="settingsService.chatPreferences()!.use_conversation_context"
+                                class="toggle toggle-accent" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Context Window (0-20 messages)</label>
+                            <input type="range" min="0" max="20"
+                                [(ngModel)]="settingsService.chatPreferences()!.max_context_messages"
+                                class="range range-accent range-sm mb-2">
+                            <div class="flex justify-between text-xs text-secondary">
+                                <span>0</span>
+                                <span>10</span>
+                                <span>20</span>
+                            </div>
+                            <div class="text-center text-sm font-bold text-accent">{{
+                                settingsService.chatPreferences()!.max_context_messages }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Web Search Configuration -->
+                    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                        <h2 class="text-lg font-semibold mb-4">Web Search Configuration</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Search Provider</label>
+                                <select [(ngModel)]="settingsService.chatPreferences()!.web_search_provider"
+                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                    <option value="duckduckgo">DuckDuckGo (Free, No Key)</option>
+                                    <option value="tavily">Tavily (Optimized for Agents)</option>
+                                    <option value="brave">Brave Search (Privacy Focused)</option>
+                                </select>
+                            </div>
+
+                            @if (settingsService.chatPreferences()!.web_search_provider === 'tavily') {
+                            <div class="anime-fade-in">
+                                <label class="block text-sm font-medium mb-2">Tavily API Key</label>
+                                <input type="password" [(ngModel)]="settingsService.chatPreferences()!.tavily_api_key"
+                                    placeholder="tvly-..."
+                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                <p class="text-xs text-secondary mt-1">
+                                    Get key from <a href="https://tavily.com" target="_blank"
+                                        class="link hover:text-accent">tavily.com</a>
+                                </p>
+                            </div>
+                            }
+
+                            @if (settingsService.chatPreferences()!.web_search_provider === 'brave') {
+                            <div class="anime-fade-in">
+                                <label class="block text-sm font-medium mb-2">Brave Search API Key</label>
+                                <input type="password"
+                                    [(ngModel)]="settingsService.chatPreferences()!.brave_search_api_key"
+                                    placeholder="BSA..."
+                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                <p class="text-xs text-secondary mt-1">
+                                    Get key from <a href="https://brave.com/search/api/" target="_blank"
+                                        class="link hover:text-accent">brave.com</a>
+                                </p>
+                            </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Document Processing (RAG) -->
+                    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                        <h2 class="text-lg font-semibold mb-4">Document Processing (RAG)</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Transcription Provider</label>
+                                <select [(ngModel)]="settingsService.chatPreferences()!.transcription_provider"
+                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent mb-4">
+                                    <option value="local">Local (Whisper)</option>
+                                    <option value="groq">Groq Cloud API</option>
+                                </select>
+
+                                <label class="block text-sm font-medium mb-2">Whisper Model</label>
+                                @if (settingsService.chatPreferences()!.transcription_provider === 'groq') {
+                                <select [(ngModel)]="settingsService.chatPreferences()!.whisper_model"
+                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                    <option value="whisper-large-v3">Whisper Large V3</option>
+                                    <option value="whisper-large-v3-turbo">Whisper Large V3 Turbo</option>
+                                </select>
+                                <p class="text-xs text-secondary mt-1">Uses Groq API Key set in LLM section.</p>
+                                } @else {
+                                <select [(ngModel)]="settingsService.chatPreferences()!.whisper_model"
+                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                    <option value="base">Base (Fast)</option>
+                                    <option value="small">Small (Recommended)</option>
+                                    <option value="medium">Medium (Accurate, GPU required)</option>
+                                    <option value="large-v3">Large v3 (Best, Slow)</option>
+                                </select>
+                                }
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Chunk Size</label>
+                                    <input type="number" [(ngModel)]="settingsService.chatPreferences()!.chunk_size"
+                                        min="128" max="2048"
+                                        class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Chunk Overlap</label>
+                                    <input type="number" [(ngModel)]="settingsService.chatPreferences()!.chunk_overlap"
+                                        min="0" max="512"
+                                        class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Long Term Memory -->
+                    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 class="text-lg font-semibold">Long Term Memory</h2>
+                                <p class="text-xs text-secondary mt-1">Remember permanent facts about you across
+                                    conversations.</p>
+                            </div>
+                            <input type="checkbox" [(ngModel)]="settingsService.chatPreferences()!.memory_enabled"
+                                class="toggle toggle-accent" />
+                        </div>
+
+                        @if (settingsService.chatPreferences()!.memory_enabled) {
+                        <div class="space-y-6 animation-fade-in">
+                            <!-- Memory Usage -->
+                            @if (settingsService.memories()) {
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-secondary">Memory Usage</span>
+                                    <span class="font-medium">{{ settingsService.memories()?.usage?.current }} / {{
+                                        settingsService.memories()?.usage?.max }} items</span>
+                                </div>
+                                <progress class="progress progress-accent w-full"
+                                    [value]="settingsService.memories()?.usage?.current"
+                                    [max]="settingsService.memories()?.usage?.max"></progress>
+                            </div>
+                            }
+
+                            <!-- Configuration -->
+                            <div class="grid grid-cols-1 gap-6">
+                                <!-- Memory LLM Selector -->
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Detailed Extraction
+                                        Configuration</label>
+                                    <app-llm-selector #memorySelector [preferences]="memoryLlmPreferences()" />
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Capacity Limit</label>
+                                    <input type="number" [(ngModel)]="settingsService.chatPreferences()!.max_memories"
+                                        class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                    <p class="text-xs text-secondary mt-1">Maximum number of memories to store.</p>
+                                </div>
+                            </div>
+
+                            <!-- Manage Memories -->
+                            <div class="pt-2 border-t border-divider">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h3 class="font-medium text-sm">Stored Memories</h3>
+                                    <button (click)="settingsService.loadMemories()"
+                                        class="btn-icon text-secondary hover:text-primary">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                <div
+                                    class="bg-input rounded-lg border border-divider max-h-60 overflow-y-auto divide-y divide-divider">
+                                    @for (mem of settingsService.memories()?.memories; track mem.id) {
+                                    <div
+                                        class="p-3 flex items-start justify-between gap-3 hover:bg-hover transition-colors group">
+                                        <p class="text-sm text-base-content/90">{{ mem.content }}</p>
+                                        <button (click)="settingsService.deleteMemory(mem.id)"
+                                            class="opacity-0 group-hover:opacity-100 transition-opacity text-secondary hover:text-error p-1">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    }
+                                    @if (!settingsService.memories()?.memories?.length) {
+                                    <div
+                                        class="p-6 text-center text-secondary text-sm flex flex-col items-center gap-2">
+                                        <svg class="w-8 h-8 opacity-20" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                        </svg>
+                                        <p>No memories extracted yet.</p>
+                                        <p class="text-xs">Chat normally and facts will appear here.</p>
+                                    </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        }
+                    </div>
+
+                    <!-- System Prompts -->
+                    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-lg font-semibold">System Prompts</h2>
+                            <button (click)="openPromptModal()" class="btn-primary text-sm flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 4v16m8-8H4" />
+                                </svg>
+                                New Prompt
+                            </button>
+                        </div>
+                        <div class="space-y-2">
+                            @for (prompt of settingsService.systemPrompts(); track prompt.id) {
+                            <div class="bg-input rounded-lg p-4">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="flex items-start gap-3 flex-1 min-w-0">
+                                        <input type="radio" name="prompt-select" [value]="prompt.id"
+                                            [checked]="settingsService.chatPreferences()!.selected_system_prompt_id === prompt.id"
+                                            (change)="settingsService.chatPreferences()!.selected_system_prompt_id = prompt.id"
+                                            class="radio radio-sm radio-accent mt-1">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <h3 class="text-sm font-semibold truncate">{{ prompt.title }}</h3>
+                                                @if (settingsService.chatPreferences()!.selected_system_prompt_id
+                                                ===
+                                                prompt.id) {
+                                                <span class="badge badge-success text-xs">Active</span>
+                                                }
+                                                @if (prompt.is_default) {
+                                                <span
+                                                    class="px-2 py-0.5 bg-accent-subtle text-accent rounded text-xs">Default</span>
+                                                }
+                                            </div>
+                                            <p class="text-xs text-secondary line-clamp-2">
+                                                {{ prompt.content }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    @if (!prompt.is_default) {
+                                    <div class="flex gap-1">
+                                        <button (click)="openPromptModal(prompt)" class="btn-icon">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                        </button>
+                                        <button (click)="handleDeletePrompt(prompt.id)"
+                                            class="btn-icon text-error hover:bg-error hover:bg-opacity-10">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    }
+                                </div>
+                            </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Save Button -->
+                    <div class="flex justify-end">
+                        <button (click)="handleSaveChatPreferences()" class="btn-primary px-6">
+                            Save Settings
+                        </button>
+                    </div>
+                </div>
+                } @else {
+                <div class="p-8 text-center bg-panel border border-divider rounded-xl anime-fade-in">
+                    <svg class="w-12 h-12 text-error mx-auto mb-4 opacity-50" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <h3 class="text-lg font-semibold text-primary mb-2">Unable to load Chat Settings</h3>
+                    <p class="text-secondary max-w-md mx-auto mb-6">
+                        Could not connect to the backend service. Please ensure the backend server and database are
+                        running.
+                    </p>
+                    <button (click)="settingsService.loadChatPreferences()" class="btn-primary gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Retry Connection
+                    </button>
+                </div>
+                }
+                }
+
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Modal: New/Edit Prompt -->
+@if (isPromptModalOpen()) {
+<div class="modal modal-open">
+    <div class="modal-box bg-panel border border-divider rounded-2xl p-0 max-w-2xl">
+        <div class="p-4 sm:p-6 border-b border-divider">
+            <h3 class="text-lg font-semibold">{{ editingPromptId() ? 'Edit' : 'New' }} System Prompt</h3>
+        </div>
+        <div class="p-4 sm:p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-2">Prompt Name</label>
+                <input type="text" placeholder="e.g., Code Expert" [(ngModel)]="promptForm().title"
+                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2">System Prompt</label>
+                <textarea rows="6" placeholder="Enter the system prompt..." [(ngModel)]="promptForm().content"
+                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent resize-none"></textarea>
+            </div>
+        </div>
+        <div class="flex gap-2 p-4 sm:p-6 border-t border-divider">
+            <button (click)="closePromptModal()" class="flex-1 btn-secondary">
+                Cancel
+            </button>
+            <button (click)="handleSavePrompt()" class="flex-1 btn-primary">
+                Save Prompt
+            </button>
+        </div>
+    </div>
+    <div class="modal-backdrop" (click)="closePromptModal()"></div>
+</div>
+}
+
+<!-- Modal: GGUF File Selection (Hardware Aware) -->
+@if (isGgufModalOpen()) {
+<div class="modal modal-open">
+    <div class="modal-box bg-panel border border-divider rounded-2xl p-0 max-w-4xl">
+        <div class="p-4 sm:p-6 border-b border-divider flex justify-between items-center">
+            <div>
+                <h3 class="text-lg font-semibold">Select GGUF File</h3>
+                @if (hardwareInfo(); as hw) {
+                <div class="text-xs text-secondary mt-1 flex gap-3">
+                    <span [class.text-success]="hw.vram_available > 0" title="Video RAM (GPU)">
+                        VRAM: {{ (hw.vram_available / 1024 / 1024 / 1024).toFixed(1) }} GB free
+                    </span>
+                    <span title="System RAM">
+                        RAM: {{ (hw.ram_available / 1024 / 1024 / 1024).toFixed(1) }} GB free
+                    </span>
+                    @if (hw.gpu_name) {
+                    <span class="opacity-75">({{ hw.gpu_name }})</span>
+                    }
+                </div>
+                }
+            </div>
+            <button (click)="closeGgufModal()" class="btn-icon">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <div class="p-0 overflow-y-auto max-h-[60vh]">
+            @if (loadingGgufFiles()) {
+            <div class="p-8 text-center space-y-3">
+                <span class="loading loading-spinner loading-lg text-accent"></span>
+                <p class="text-secondary">Fetching file list from Hugging Face...</p>
+            </div>
+            } @else {
+            <table class="w-full text-left text-sm">
+                <thead class="bg-base-200 text-secondary font-medium">
+                    <tr>
+                        <th class="p-4">Filename</th>
+                        <th class="p-4">Quantization</th>
+                        <th class="p-4">Size</th>
+                        <th class="p-4">Compatibility</th>
+                        <th class="p-4 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-divider">
+                    @for (file of ggufFiles(); track file.filename) {
+                    <tr class="hover:bg-hover transition-colors">
+                        <td class="p-4 font-mono text-xs sm:text-sm truncate max-w-xs" title="{{file.filename}}">{{
+                            file.filename }}</td>
+                        <td class="p-4">
+                            <span class="badge badge-sm"
+                                [class.badge-accent]="file.quantization.includes('Q4') || file.quantization.includes('Q5')"
+                                [class.badge-ghost]="!file.quantization.includes('Q')">{{ file.quantization }}</span>
+                        </td>
+                        <td class="p-4 text-secondary">{{ file.size_mb.toFixed(0) }} MB</td>
+                        <td class="p-4">
+                            @if (hardwareInfo(); as hw) {
+                            @if ((file.size_mb * 1024 * 1024) < hw.vram_available) { <span
+                                class="badge badge-success badge-sm gap-1">GPU Fast</span>
+                                } @else if ((file.size_mb * 1024 * 1024) < hw.ram_available) { <span
+                                    class="badge badge-warning badge-sm gap-1">CPU Only</span>
+                                    } @else {
+                                    <span class="badge badge-error badge-sm gap-1">Low RAM</span>
+                                    }
+                                    } @else {
+                                    <span class="text-xs text-secondary">Checking...</span>
+                                    }
+                        </td>
+                        <td class="p-4 text-right">
+                            <button (click)="handlePullGguf(file)" class="btn-sm btn-primary rounded-lg">
+                                Download
+                            </button>
+                        </td>
+                    </tr>
+                    }
+                    @if (ggufFiles().length === 0) {
+                    <tr>
+                        <td colspan="5" class="p-8 text-center text-secondary">
+                            No .gguf files found in this repository.
+                        </td>
+                    </tr>
+                    }
+                </tbody>
+            </table>
+            }
+        </div>
+    </div>
+    <div class="modal-backdrop" (click)="closeGgufModal()"></div>
+</div>
+}

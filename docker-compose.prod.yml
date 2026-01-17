@@ -1,0 +1,111 @@
+services:
+  app:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://mnemos_user:mnemos_pass@db:5432/mnemos_db
+      - REDIS_URL=redis://redis:6379/0
+      - PYTHONUNBUFFERED=1
+      - OLLAMA_NUM_CTX=2048
+      - EMBEDDING_PROVIDER=local
+      - EMBEDDING_DEVICE=cpu
+      - EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+      - EMBEDDING_DIMENSION=384
+    volumes:
+      - ./app:/app/app:rw
+      - ./config:/app/config:rw
+      - ./.env:/app/.env:ro
+      - ./ollama_models/import:/app/ollama_import:rw
+      - uploads_data:/app/uploads
+      - whisper_cache:/root/.cache/whisper
+    depends_on:
+      - db
+      - redis
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  worker:
+    build: .
+    command: celery -A app.celery_app worker --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://mnemos_user:mnemos_pass@db:5432/mnemos_db
+      - REDIS_URL=redis://redis:6379/0
+      - PYTHONUNBUFFERED=1
+      - OLLAMA_NUM_CTX=2048
+      - EMBEDDING_PROVIDER=local
+      - EMBEDDING_DEVICE=cpu
+      - EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+      - EMBEDDING_DIMENSION=384
+    volumes:
+      - ./app:/app/app:rw
+      - ./config:/app/config:rw
+      - ./.env:/app/.env:ro
+      - ./ollama_models/import:/app/ollama_import:rw
+      - uploads_data:/app/uploads
+      - whisper_cache:/root/.cache/whisper
+    depends_on:
+      - db
+      - redis
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11435:11434"
+    volumes:
+      - ./ollama_models:/root/.ollama
+    # GPU section removed for maximum compatibility in one-click install
+    environment:
+      - OLLAMA_FLASH_ATTENTION=0
+      - OLLAMA_GPU_LAYERS=-1
+      - OLLAMA_MAX_LOADED_MODELS=1
+    restart: always
+
+  mcp:
+    build: .
+    command: python -m app.mcp_server.server
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://mnemos_user:mnemos_pass@db:5432/mnemos_db
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - db
+    volumes:
+      - ./app:/app/app:rw
+      - ./config:/app/config:rw
+
+  db:
+    image: pgvector/pgvector:pg16
+    command: >
+      postgres  -c shared_buffers=512MB  -c work_mem=32MB  -c maintenance_work_mem=256MB
+    environment:
+      - POSTGRES_USER=mnemos_user
+      - POSTGRES_PASSWORD=mnemos_pass
+      - POSTGRES_DB=mnemos_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U mnemos_user -d mnemos_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: [ "redis-server", "--appendonly", "yes" ]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  uploads_data:
+  whisper_cache:
+  redis_data:

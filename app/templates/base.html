@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<script>
+    // Initialize theme from local storage
+    if (localStorage.getItem('theme') === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+        document.documentElement.setAttribute('data-theme', 'black');
+    }
+</script>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MNEMOS</title>
+
+    <!-- CSS Dependencies -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.10.0/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <!-- Marked.js for Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        tailwind.config = {
+            plugins: [require('@tailwindcss/typography')],
+        }
+    </script>
+</head>
+
+<body class="bg-gray-100 min-h-screen text-base-content font-sans">
+
+    {% block content %}{% endblock %}
+
+    <!-- Toast notifications container if needed -->
+    <div id="toast-container" class="toast toast-end"></div>
+
+    <!-- Source Modal -->
+    <dialog id="source_modal" class="modal">
+        <div class="modal-box w-11/12 max-w-2xl">
+            <h3 class="font-bold text-lg" id="modal-title">Source Title</h3>
+            <p class="py-4 whitespace-pre-wrap text-sm" id="modal-content"></p>
+            <div class="modal-action">
+                <form method="dialog">
+                    <button class="btn">Close</button>
+                </form>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
+
+    <script>
+        function showSourceModal(title, content) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-content').textContent = content;
+            document.getElementById('source_modal').showModal();
+        }
+    </script>
+</body>
+
+</html>
