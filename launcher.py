@@ -111,9 +111,10 @@ def check_podman():
     return code == 0
 
 def install_podman():
-    """Installs Podman Desktop silently."""
-    installer_path = os.path.join(os.getcwd(), PODMAN_INSTALLER_NAME)
-    installer_path = os.path.join(os.getcwd(), PODMAN_INSTALLER_NAME)
+    """Installs Podman (CLI/Engine) silently."""
+    # We want the CLI installer, not the Desktop GUI, so we can run machine init immediately
+    installer_filename = "podman-installer.exe"
+    installer_path = os.path.join(os.getcwd(), installer_filename)
     
     if not os.path.exists(installer_path):
         # Fetch the latest release from GitHub API
@@ -121,16 +122,18 @@ def install_podman():
             import urllib.request
             import json
             
-            print("Fetching latest Podman Desktop version info...")
-            api_url = "https://api.github.com/repos/containers/podman-desktop/releases/latest"
+            print("Fetching latest Podman version info...")
+            # Use 'containers/podman' repo for the engine/CLI installer
+            api_url = "https://api.github.com/repos/containers/podman/releases/latest"
             with urllib.request.urlopen(api_url) as response:
                 release_data = json.loads(response.read().decode())
                 
-            # Find the Windows installer asset (usually ends with -setup-x64.exe)
+            # Find the Windows installer asset
             download_url = None
             for asset in release_data.get("assets", []):
                 name = asset.get("name", "").lower()
-                if "setup" in name and "x64" in name and name.endswith(".exe"):
+                # Look for 'podman-installer-windows' or similar .exe
+                if "windows" in name and name.endswith(".exe") and "installer" in name:
                     download_url = asset.get("browser_download_url")
                     print(f"Found latest installer: {name}")
                     break
@@ -148,21 +151,110 @@ def install_podman():
                 if total_size > 0:
                     print_progress_bar(downloaded, total_size, prefix='Progress:', suffix='Complete', length=40)
             
+            print(f"Downloading to: {installer_path}")
             urllib.request.urlretrieve(download_url, installer_path, report)
             print("\nDownload complete.")
         except Exception as e:
             messagebox.showerror("Download Error", f"Failed to download Podman installer:\n{e}\n\nPlease install Podman Desktop manually from https://podman-desktop.io")
             return False
 
-    print("Installing Podman Desktop...")
-    # /S for silent install, /allusers for system-wide
-    # Note: Podman Desktop installer might need elevation, which we should have if we are admin
-    # Stream output here too, though silent install might not say much
-    code, out, err = run_command(f'"{installer_path}" /S /allusers', stream_output=True)
+    print("Installing Podman...")
+    # Podman CLI installer (based on Inno/WiX) flags
+    # /install /quiet /norestart are common for the new .exe wrapper
+    
+    abs_installer_path = os.path.abspath(installer_path)
+    print(f"Installer Path: {abs_installer_path}")
+    
+    if not os.path.exists(abs_installer_path):
+        messagebox.showerror("Error", f"Installer file missing!\nExpected at: {abs_installer_path}")
+        return False
+        
+    cmd = [abs_installer_path, "/install", "/quiet", "/norestart"]
+    print(f"Executing: {cmd}")
+    
+    code, out, err = run_command(cmd, shell=False, stream_output=True)
+    
     if code != 0:
         messagebox.showerror("Error", f"Podman installation failed:\n{err}\n{out}")
         return False
+        
+    # Poll for the executable to ensure installation is truly done
+    print("Waiting for Podman executable to appear...")
+    found_path = None
+    common_paths = [
+        r"C:\Program Files\RedHat\Podman\podman.exe",
+        r"C:\Program Files\Podman\podman.exe",
+        # Check user local paths too if possible, but usually it's system wide with /allusers
+    ]
+    
+    import time
+    for i in range(30): # Wait up to 60 seconds
+        for p in common_paths:
+            if os.path.exists(p):
+                found_path = os.path.dirname(p)
+                print(f"Found Podman at: {found_path}")
+                break
+        if found_path:
+            break
+        time.sleep(2)
+        print(".", end="", flush=True)
+    print() # Newline
+        
+    if found_path:
+        # Force add to PATH immediately
+        if found_path not in os.environ['PATH']:
+            os.environ['PATH'] += f";{found_path}"
+            print(f"Forced added to PATH: {found_path}")
+    else:
+        print("Warning: Could not find podman.exe in common locations. Relying on registry...")
+
+    # Refresh PATH immediately from registry as well
+    refresh_path()
+    
+    # Final check
+    code, _, _ = run_command("podman --version")
+    if code != 0:
+        messagebox.showerror("Error", "Podman installed but 'podman' command still not working.\nPlease restart the application or your computer.")
+        return False
+        
     return True
+
+def refresh_path():
+    """
+    Refreshes os.environ['PATH'] from the Windows Registry.
+    This enables usage of newly installed tools (like Podman) without restarting the app.
+    """
+    try:
+        import winreg
+        
+        # Get System PATH
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 0, winreg.KEY_READ) as key:
+            system_path, _ = winreg.QueryValueEx(key, 'Path')
+            
+        # Get User PATH
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Environment', 0, winreg.KEY_READ) as key:
+            user_path, _ = winreg.QueryValueEx(key, 'Path')
+            
+        # Combine them (System + User)
+        new_path = system_path + ";" + user_path
+        
+        # Update current process environment
+        os.environ['PATH'] = new_path
+        print("Environment PATH refreshed.")
+        
+        # Also specifically check for common Podman paths and force add them if missing
+        # This is a fallback if the registry update hasn't propagated or Podman installs weirdly
+        common_paths = [
+            r"C:\Program Files\RedHat\Podman",
+            r"C:\Program Files\Podman",
+        ]
+        for p in common_paths:
+            if os.path.exists(p) and p not in os.environ['PATH']:
+                os.environ['PATH'] += f";{p}"
+                print(f"Added fallback path: {p}")
+                
+    except Exception as e:
+        print(f"Warning: Failed to refresh PATH: {e}")
 
 def start_podman_machine():
     """Ensures the Podman machine is running."""
@@ -240,21 +332,21 @@ def main():
             sys.exit(0) # Restarting...
         else:
             print("WSL2 setup failed or cancelled.")
-            sys.exit(1)
+            pause_exit(1)
 
     # 2. Check Podman
     if not check_podman():
         print("Podman not detected.")
         if not install_podman():
-            sys.exit(1)
+            pause_exit(1)
             
     # 3. Start Podman Machine
     if not start_podman_machine():
-        sys.exit(1)
+        pause_exit(1)
 
     # 4. Start App
     if not start_app():
-        sys.exit(1)
+        pause_exit(1)
 
     # 5. Open Browser
     if wait_for_app():
@@ -271,6 +363,16 @@ def main():
         print("Stopping app...")
         run_command("docker-compose down") # or podman-compose
 
+def pause_exit(code=1):
+    input("\nPress Enter to exit...")
+    sys.exit(code)
+
 if __name__ == "__main__":
     # Hide console if packaged (optional, but for now we keep it for logs)
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(f"\n[FATAL ERROR]: {e}")
+        import traceback
+        traceback.print_exc()
+        pause_exit(1)

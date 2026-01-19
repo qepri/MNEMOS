@@ -19,6 +19,18 @@ def create_shortcut(target_path, shortcut_path, working_dir):
     )
     subprocess.run(["powershell", "-Command", ps_cmd], check=True)
 
+def kill_running_process(process_name):
+    """Kills the process if it is running."""
+    try:
+        cmd = f"taskkill /F /IM {process_name}"
+        # We don't care about the output or if it fails (process not found)
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True)
+        # Give it a moment to release file locks
+        import time
+        time.sleep(1)
+    except Exception:
+        pass
+
 def install():
     # 1. Setup Paths
     install_dir = Path(os.environ["LOCALAPPDATA"]) / APP_NAME
@@ -30,8 +42,12 @@ def install():
     
     print(f"Installing to {install_dir}...")
     
+    # 2. Kill existing process if running to avoid [WinError 5] Access is denied
+    kill_running_process(EXE_NAME)
+    
     try:
-        # 2. Cleanup existing
+        # 3. Cleanup existing
+
         if install_dir.exists():
             shutil.rmtree(install_dir)
         install_dir.mkdir(parents=True)
@@ -63,7 +79,9 @@ def install():
              
         create_shortcut(str(exe_path), str(shortcut_path), str(install_dir))
         
-        messagebox.showinfo("Success", f"{APP_NAME} installed successfully!\nA shortcut has been created on your desktop.")
+        create_shortcut(str(exe_path), str(shortcut_path), str(install_dir))
+        
+        messagebox.showinfo("Installation Complete", f"{APP_NAME} files have been installed to your system.\n\nThe application will now launch to perform FIRST TIME INITIALIZATION (Setting up Podman, etc).\n\nPlease wait for the initialization to complete.")
         
         # 5. Launch
         subprocess.Popen([str(exe_path)], cwd=str(install_dir))
