@@ -29,17 +29,45 @@ def is_admin():
     except:
         return False
 
-def run_command(command, shell=True):
+def print_progress_bar(iteration, total, prefix='', suffix='', decimals=1, length=50, fill='█', printEnd="\r"):
+    """
+    Call in a loop to create terminal progress bar
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end=printEnd)
+    # Print New Line on Complete
+    if iteration == total: 
+        print()
+
+def run_command(command, shell=True, stream_output=False):
     """Runs a command and returns (returncode, stdout, stderr)"""
-    process = subprocess.Popen(
-        command, 
-        stdout=subprocess.PIPE, 
-        stderr=subprocess.PIPE, 
-        shell=shell, 
-        text=True
-    )
-    stdout, stderr = process.communicate()
-    return process.returncode, stdout, stderr
+    if stream_output:
+        process = subprocess.Popen(
+            command, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.STDOUT, # Merge stderr into stdout for streaming
+            shell=shell, 
+            text=True
+        )
+        output_lines = []
+        for line in process.stdout:
+            print(line, end="") # Stream to console
+            output_lines.append(line)
+        
+        process.wait()
+        return process.returncode, "".join(output_lines), ""
+    else:
+        process = subprocess.Popen(
+            command, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE, 
+            shell=shell, 
+            text=True
+        )
+        stdout, stderr = process.communicate()
+        return process.returncode, stdout, stderr
 
 def check_wsl2():
     """Checks if WSL2 is enabled."""
@@ -116,9 +144,9 @@ def install_podman():
             # Create a progress reporter
             def report(block_num, block_size, total_size):
                 downloaded = block_num * block_size
+                if downloaded > total_size: downloaded = total_size
                 if total_size > 0:
-                    percent = downloaded * 100 / total_size
-                    print(f"\rDownloading: {percent:.1f}%", end="")
+                    print_progress_bar(downloaded, total_size, prefix='Progress:', suffix='Complete', length=40)
             
             urllib.request.urlretrieve(download_url, installer_path, report)
             print("\nDownload complete.")
@@ -129,9 +157,10 @@ def install_podman():
     print("Installing Podman Desktop...")
     # /S for silent install, /allusers for system-wide
     # Note: Podman Desktop installer might need elevation, which we should have if we are admin
-    code, out, err = run_command(f'"{installer_path}" /S /allusers')
+    # Stream output here too, though silent install might not say much
+    code, out, err = run_command(f'"{installer_path}" /S /allusers', stream_output=True)
     if code != 0:
-        messagebox.showerror("Error", f"Podman installation failed:\n{err}")
+        messagebox.showerror("Error", f"Podman installation failed:\n{err}\n{out}")
         return False
     return True
 
@@ -142,16 +171,17 @@ def start_podman_machine():
     
     # If no machine exists, init one
     if "podman-machine-default" not in out:
-        print("Initializing Podman machine (this may take a while)...")
-        code, out, err = run_command("podman machine init")
+        print("Initializing Podman machine (this works best with decent internet)...")
+        # Stream output so user sees the download progress of the Fedora image
+        code, out, err = run_command("podman machine init", stream_output=True)
         if code != 0:
-            messagebox.showerror("Error", f"Failed to init Podman machine:\n{err}")
+            messagebox.showerror("Error", f"Failed to init Podman machine:\n{out}")
             return False
 
     # Start if not running
     # We can just try to start it, if it's already running it will say so (or we can check status)
-    print("Starting Podman machine...")
-    code, out, err = run_command("podman machine start")
+    print("Starting Podman machine (this may take a moment)...")
+    code, out, err = run_command("podman machine start", stream_output=True)
     # Ignore "already running" errors
     return True
 
@@ -173,7 +203,9 @@ def start_app():
     # Set HOST_PROJECT_PATH for volume mounting in sibling containers
     os.environ["HOST_PROJECT_PATH"] = os.getcwd()
     
-    code, out, err = run_command(cmd)
+    print(f"Running: {cmd}")
+    # Stream output to show Docker steps like 'Pulling...', 'Building...'
+    code, out, err = run_command(cmd, stream_output=True)
     
     if code != 0:
         messagebox.showerror("Error", f"Failed to start application:\n{err}\n{out}")
