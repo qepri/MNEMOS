@@ -11,7 +11,17 @@ from tkinter import messagebox, Tk
 APP_NAME = "MNEMOS Context Daemon"
 PODMAN_INSTALLER_NAME = "podman-desktop-setup.exe" # We will expect this in the same dir
 COMPOSE_FILE = "docker-compose.prod.yml" # Podman supports docker-compose.yml
-PORT = 5000
+PORT = 5200
+
+# Fix path when running as compiled exe
+if getattr(sys, 'frozen', False):
+    # If the application is run as a bundle, the PyInstaller bootloader
+    # extends the sys module by a flag frozen=True and sets the app 
+    # path into variable _MEIPASS'.
+    application_path = os.path.dirname(sys.executable)
+    os.chdir(application_path)
+else:
+    application_path = os.path.dirname(os.path.abspath(__file__))
 
 def is_admin():
     try:
@@ -75,13 +85,50 @@ def check_podman():
 def install_podman():
     """Installs Podman Desktop silently."""
     installer_path = os.path.join(os.getcwd(), PODMAN_INSTALLER_NAME)
+    installer_path = os.path.join(os.getcwd(), PODMAN_INSTALLER_NAME)
+    
     if not os.path.exists(installer_path):
-        # In a real scenario, we might download it here if missing
-        messagebox.showerror("Error", f"Podman installer not found: {installer_path}")
-        return False
+        # Fetch the latest release from GitHub API
+        try:
+            import urllib.request
+            import json
+            
+            print("Fetching latest Podman Desktop version info...")
+            api_url = "https://api.github.com/repos/containers/podman-desktop/releases/latest"
+            with urllib.request.urlopen(api_url) as response:
+                release_data = json.loads(response.read().decode())
+                
+            # Find the Windows installer asset (usually ends with -setup-x64.exe)
+            download_url = None
+            for asset in release_data.get("assets", []):
+                name = asset.get("name", "").lower()
+                if "setup" in name and "x64" in name and name.endswith(".exe"):
+                    download_url = asset.get("browser_download_url")
+                    print(f"Found latest installer: {name}")
+                    break
+            
+            if not download_url:
+                raise Exception("Could not find a Windows installer asset in the latest release.")
+
+            print(f"Downloading Podman Installer from {download_url}...")
+            print("This may take a few minutes depending on your connection.")
+        
+            # Create a progress reporter
+            def report(block_num, block_size, total_size):
+                downloaded = block_num * block_size
+                if total_size > 0:
+                    percent = downloaded * 100 / total_size
+                    print(f"\rDownloading: {percent:.1f}%", end="")
+            
+            urllib.request.urlretrieve(download_url, installer_path, report)
+            print("\nDownload complete.")
+        except Exception as e:
+            messagebox.showerror("Download Error", f"Failed to download Podman installer:\n{e}\n\nPlease install Podman Desktop manually from https://podman-desktop.io")
+            return False
 
     print("Installing Podman Desktop...")
     # /S for silent install, /allusers for system-wide
+    # Note: Podman Desktop installer might need elevation, which we should have if we are admin
     code, out, err = run_command(f'"{installer_path}" /S /allusers')
     if code != 0:
         messagebox.showerror("Error", f"Podman installation failed:\n{err}")

@@ -233,7 +233,7 @@
                         <div class="flex items-center gap-3">
                             <div class="flex-1">
                                 <app-progress-bar [label]="download.model || download.model_name"
-                                    [progress]="download.progress !== undefined ? download.progress : (download.total ? (download.completed / download.total * 100) : 0)"
+                                    [progress]="download.progress !== undefined ? download.progress : ((download.total && download.completed) ? (download.completed / download.total * 100) : 0)"
                                     [status]="download.status === 'success' ? 'completed' : (download.status === 'failure' ? 'error' : (download.status === 'revoked' ? 'error' : 'downloading'))"
                                     [message]="download.status">
                                 </app-progress-bar>
@@ -600,6 +600,35 @@
                                 Connection</button>
                             }
                             }
+                        </div>
+                        }
+
+                        <!-- Ollama Advanced Settings -->
+                        @if (llmSelector.selectedProvider() === 'ollama') {
+                        <div class="mt-6">
+                            <h3 class="text-sm font-medium mb-2">Ollama Advanced Settings</h3>
+                            <div class="bg-base-200 rounded-lg p-4 border border-divider">
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="text-sm font-medium">Context Window (Tokens)</label>
+                                    <span class="text-xs font-mono bg-base-100 px-2 py-1 rounded border border-divider">
+                                        {{ settingsService.chatPreferences()!.ollama_num_ctx || 2048 }}
+                                    </span>
+                                </div>
+                                <input type="range" min="2048" max="16384" step="1024"
+                                    [(ngModel)]="settingsService.chatPreferences()!.ollama_num_ctx"
+                                    class="range range-accent range-sm mb-2">
+                                <div class="flex justify-between text-xs text-secondary px-1">
+                                    <span>2048 (Fast)</span>
+                                    <span>4096 (Standard)</span>
+                                    <span>8192 (Large)</span>
+                                    <span>16384 (Massive)</span>
+                                </div>
+                                <p class="text-xs text-secondary mt-2">
+                                    Higher values allow more text history but consume more VRAM.
+                                    <br><strong>Recommended:</strong> 2048 for 6GB GPU, 8192 for 24GB GPU.
+                                    <br><em>Requires restart of chat session to take effect.</em>
+                                </p>
+                            </div>
                         </div>
                         }
                     </div>

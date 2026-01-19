@@ -1,4 +1,11 @@
 services:
+  frontend:
+    build: ./frontend_spa
+    ports:
+      - "5200:80"
+    depends_on:
+      - app
+
   app:
     build: .
     ports:

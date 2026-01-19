@@ -42,6 +42,9 @@ class LLMClient:
         s_groq_key = settings.GROQ_API_KEY
         s_cerebras_key = getattr(settings, 'CEREBRAS_API_KEY', None)
         
+        # Ollama Settings
+        self.ollama_num_ctx = db_prefs.ollama_num_ctx if db_prefs else settings.OLLAMA_NUM_CTX
+        
         # Initialize Client based on Provider
         if self.provider == LLMProvider.OPENAI:
             key = api_key or d_openai_key or s_openai_key
@@ -238,7 +241,7 @@ class LLMClient:
                 extra_body = {}
                 if self.provider == LLMProvider.OLLAMA:
                      extra_body["options"] = {
-                         "num_ctx": settings.OLLAMA_NUM_CTX
+                         "num_ctx": getattr(self, 'ollama_num_ctx', 2048) or settings.OLLAMA_NUM_CTX
                      }
 
                 response = self.client.chat.completions.create(

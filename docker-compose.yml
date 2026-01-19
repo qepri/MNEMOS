@@ -103,10 +103,11 @@ services:
               capabilities: [ gpu ]
     environment:
       - OLLAMA_HOST="0.0.0.0"
-      - OLLAMA_FLASH_ATTENTION=0
+      - OLLAMA_FLASH_ATTENTION=1
       - OLLAMA_GPU_LAYERS=-1
       - CUDA_VISIBLE_DEVICES=0
       - OLLAMA_MAX_LOADED_MODELS=1
+      - OLLAMA_NUM_CTX=2048
     restart: no
 
   mcp:

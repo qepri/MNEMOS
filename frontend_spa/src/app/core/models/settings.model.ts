@@ -55,6 +55,7 @@ export interface ChatPreferences {
   openai_tts_model?: string;
   openai_stt_model?: string;
   deepgram_api_key?: string;
+  ollama_num_ctx?: number;
 }
 
 export interface LLMConnection {

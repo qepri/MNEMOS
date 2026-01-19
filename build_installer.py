@@ -2,62 +2,91 @@ import os
 import subprocess
 import shutil
 import sys
+from pathlib import Path
 
-def install_requirements():
+def install_utils():
     subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
 
-def build_exe():
-    print("Building launcher.exe...")
-    # --onefile: Bundle everything into one exe
-    # --name: Name of the exe
-    # --uac-admin: Request admin permissions (needed for WSL setup)
+def build_launcher():
+    print(">>> Building Stage 1: Mnemos.exe (Launcher)...")
+    # This is the inner exe that runs the app
     cmd = [
         "pyinstaller",
         "--noconfirm",
         "--onefile",
-        "--console", # Keep console for now to see logs, switch to --windowed for final
-        "--name", "RAG_App_Installer",
+        "--console", 
+        "--name", "Mnemos",
         "--uac-admin", 
         "launcher.py"
     ]
     subprocess.check_call(cmd)
 
-def create_dist_folder():
-    dist_dir = "RAG_App_Dist"
-    if os.path.exists(dist_dir):
-        shutil.rmtree(dist_dir)
-    os.makedirs(dist_dir)
-
-    # Copy Exe
-    shutil.copy(os.path.join("dist", "RAG_App_Installer.exe"), dist_dir)
+def build_installer():
+    print(">>> Building Stage 2: Setup_Mnemos.exe (Installer)...")
     
-    # Copy Config & App Code
-    # In a real 'one-file' install, we might want to bundle these INSIDE the exe 
-    # or have the exe extract them. For now, we'll keep them side-by-side.
-    items_to_copy = [
-        "app",
-        "config",
+    # 1. Prepare Content Directory
+    # We will put everything into a 'bundled' folder that PyInstaller will include
+    dist_dir = Path("dist") / "bundled"
+    if dist_dir.exists():
+        shutil.rmtree(dist_dir)
+    dist_dir.mkdir(parents=True)
+
+    # Copy Launcher
+    shutil.copy(Path("dist") / "Mnemos.exe", dist_dir / "Mnemos.exe")
+
+    # Copy App Configs & Code
+    # Note: We copy files *into* 'bundled' so they are extracted into 'bundled' folder inside _MEIPASS
+    files_to_copy = [
         "docker-compose.yml",
         "docker-compose.prod.yml",
         ".env.example",
         "requirements.txt",
-        "Dockerfile"
+        "Dockerfile",
+        "entrypoint.sh"
     ]
     
-    for item in items_to_copy:
-        src = item
-        dst = os.path.join(dist_dir, item)
-        if os.path.isdir(src):
-            shutil.copytree(src, dst)
-        elif os.path.exists(src):
-            shutil.copy(src, dst)
-            
-    print(f"Build complete! Output in {dist_dir}")
+    dirs_to_copy = [
+        "app",
+        "config",
+        "migrations",
+        "frontend_spa"
+    ]
+
+    for item in files_to_copy:
+        if os.path.exists(item):
+            shutil.copy(item, dist_dir / item)
+    
+    for item in dirs_to_copy:
+        if os.path.exists(item):
+            tgt = dist_dir / item
+            # Ignore node_modules to keep installer size check reasonable
+            # and ignore local virtual environments if any
+            shutil.copytree(item, tgt, dirs_exist_ok=True, ignore=shutil.ignore_patterns("node_modules", ".git", "__pycache__", "venv", ".angular"))
+
+    # 2. Build the Installer Exe
+    # We use --add-data to include the 'bundled' folder
+    # Format: source;dest (Windows)
+    add_data = f"dist/bundled;bundled"
+    
+    cmd = [
+        "pyinstaller",
+        "--noconfirm",
+        "--onefile",
+        "--console", # Keep console for install logs
+        "--name", "Setup_Mnemos",
+        "--uac-admin",
+        "--add-data", add_data,
+        "install_script.py"
+    ]
+    subprocess.check_call(cmd)
+    
+    print(f"\n[SUCCESS] Installer created: {os.path.abspath('dist/Setup_Mnemos.exe')}")
+    print("Share this file with your users.")
 
 if __name__ == "__main__":
     try:
-        install_requirements()
-        build_exe()
-        create_dist_folder()
+        install_utils()
+        build_launcher()
+        build_installer()
     except Exception as e:
         print(f"Build failed: {e}")

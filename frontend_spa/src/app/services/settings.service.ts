@@ -152,6 +152,9 @@ export class SettingsService {
       const prefs = await firstValueFrom(
         this.http.get<ChatPreferences>(ApiEndpoints.SETTINGS_CHAT)
       );
+      if (prefs && !prefs.ollama_num_ctx) {
+        prefs.ollama_num_ctx = 2048;
+      }
       this.chatPreferences.set(prefs);
     } catch (error) {
       console.error('Failed to load chat preferences', error);
