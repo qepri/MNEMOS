@@ -443,24 +443,65 @@ export class SettingsPage implements OnInit {
         if (!this.selectedImportFile() || !this.importModelName()) return;
 
         const modelName = this.importModelName();
-        const taskId = `import-${Date.now()}`;
+        const filename = this.selectedImportFile();
 
-        // Optimistic UI: Add to active downloads to show progress/spinner
+        await this.importSingleModel(filename, modelName, true);
+
+        this.activeTab.set('models'); // Switch tab after single import
+    }
+
+    async handleBatchImport() {
+        const files = this.importFiles();
+        if (files.length === 0) return;
+
+        // Filter for non-imported files
+        const filesToImport = files.filter(f => this.getImportStatus(f).class !== 'text-success');
+
+        if (filesToImport.length === 0) {
+            this.toastr.info('All files are already imported.');
+            return;
+        }
+
+        if (!confirm(`Batch import ${filesToImport.length} models? This may take a while.`)) return;
+
+        this.toastr.info(`Starting batch import of ${filesToImport.length} files...`, 'Batch Started');
+
+        for (const file of filesToImport) {
+            // Auto-generate name
+            const modelName = file.replace(/\.gguf$/i, '').toLowerCase();
+
+            // Import without switching tabs or showing individual success toasts for every single one (maybe just status updates)
+            await this.importSingleModel(file, modelName, false);
+
+            // Small delay to allow UI to breathe
+            await new Promise(r => setTimeout(r, 1000));
+        }
+
+        this.toastr.success('Batch import completed!', 'Done');
+        await this.settingsService.loadModels();
+    }
+
+    private async importSingleModel(filename: string, modelName: string, switchTabs: boolean) {
+        const taskId = `import-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+        // Optimistic UI
         this.activeDownloads.update(d => ({
             ...d,
             [taskId]: {
                 task_id: taskId,
                 model: modelName,
-                status: 'importing', // Custom status, UI should handle 'importing' or generic string
+                status: 'importing',
                 progress: 0,
                 is_import: true
             }
         }));
 
-        this.toastr.info(`Importing ${modelName}...`, 'Import Started');
+        if (switchTabs) {
+            this.toastr.info(`Importing ${modelName}...`, 'Import Started');
+        }
 
         try {
-            await this.settingsService.importModel(this.selectedImportFile(), modelName);
+            await this.settingsService.importModel(filename, modelName);
 
             // Update to success
             this.activeDownloads.update(d => ({
@@ -468,11 +509,11 @@ export class SettingsPage implements OnInit {
                 [taskId]: { ...d[taskId], status: 'success', progress: 100, dismissScheduled: true }
             }));
 
-            this.toastr.success(`Successfully imported ${modelName}`, 'Import Complete');
-            this.importModelName.set('');
-
-            // Refresh models list
-            await this.settingsService.loadModels();
+            if (switchTabs) {
+                this.toastr.success(`Successfully imported ${modelName}`, 'Import Complete');
+                this.importModelName.set('');
+                await this.settingsService.loadModels();
+            }
 
             // Clean up task after delay
             setTimeout(() => {
@@ -483,17 +524,14 @@ export class SettingsPage implements OnInit {
                 });
             }, 5000);
 
-            this.switchTab('models');
-
         } catch (err: any) {
             console.error(err);
-            // Update to failure
             this.activeDownloads.update(d => ({
                 ...d,
                 [taskId]: { ...d[taskId], status: 'failure' }
             }));
             const msg = err.error?.error || 'Failed to import model';
-            this.toastr.error(msg, 'Import Failed');
+            this.toastr.error(`${modelName}: ${msg}`, 'Import Failed');
         }
     }
 

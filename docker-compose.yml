@@ -87,7 +87,7 @@ services:
 
   ollama:
     image: ollama/ollama:latest
-    container_name: mnemos-ollama
+    # container_name: mnemos-ollama
     # profiles: [ "manual" ]
     ports:
       - "11435:11434"

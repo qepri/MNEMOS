@@ -325,8 +325,10 @@ def download_gguf_task(self, repo_id, filename, model_name):
         
         # Use Docker SDK to run CLI command directly in the Ollama container
         try:
-            client = docker.from_env()
-            container = client.containers.get('mnemos-ollama')
+            from app.utils.docker_helpers import get_ollama_container
+            container = get_ollama_container()
+            if not container:
+                raise Exception("Ollama container not found")
         except Exception as docker_e:
              raise Exception(f"Docker connection failed: {docker_e}")
 

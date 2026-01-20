@@ -44,7 +44,7 @@ VALUES (
     gen_random_uuid(),
     'Mnemos Ollama', 
     'openai',
-    'http://mnemos-ollama:11434/v1',
+    'http://ollama:11434/v1',
     '["nous-hermes-2-mistral-7b-dpo-gguf-q4_0:latest", "qwen3-8b-hivemind:latest"]'::json,
     'qwen3-8b-hivemind:latest',
     NOW(),

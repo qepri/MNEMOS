@@ -726,10 +726,10 @@ def import_model():
 
     try:
         # Use Docker SDK to run ollama create inside the container
-        # This avoids the "path/permission" issues with the internal API
-        import docker
-        client = docker.from_env()
-        container = client.containers.get('mnemos-ollama')
+        from app.utils.docker_helpers import get_ollama_container
+        container = get_ollama_container()
+        if not container:
+             return jsonify({"error": "Ollama container not found"}), 500
         
         # 1. Write the Modelfile inside the container
         # The file is at /root/.ollama/import/{filename} inside OLLAMA container.
