@@ -175,8 +175,57 @@ def process_document_task(self, document_id: str):
             doc.processing_progress = 30  # Extraction done
             db.session.commit()
 
+
+
             # 2. Vectorize and Save Chunks
             embedder = EmbedderService()
+
+            # --- DETECT LANGUAGE (New Step) ---
+            try:
+                from langdetect import detect
+                # Sample first 2000 chars for detection
+                sample_text = " ".join([c["text"] for c in text_chunks[:5]])[:2000]
+                detected_code = detect(sample_text)
+                
+                # Map to Postgres Dictionaries
+                # Postgres supports: english, spanish, german, french, italian, etc.
+                # We map codes to standard names. Fallback handled by Trigger ('simple').
+                lang_map = {
+                    'en': 'english',
+                    'es': 'spanish',
+                    'de': 'german',
+                    'fr': 'french',
+                    'it': 'italian',
+                    'ru': 'russian',
+                    'pt': 'portuguese',
+                    'nl': 'dutch',
+                    'sv': 'swedish',
+                    'no': 'norwegian',
+                    'da': 'danish',
+                    'fi': 'finnish'
+                }
+                
+                # Check for Chinese variants
+                if detected_code.lower().startswith('zh'):
+                    # To support Chinese, we typically need pg_jieba. 
+                    # If not installed, our trigger maps unknown strings to 'simple'
+                    # so we pass 'chinese' (or 'simple') as the value.
+                    doc_language = 'simple' 
+                else:
+                    doc_language = lang_map.get(detected_code, 'simple')
+
+                logger.info(f"Detected language: {detected_code} -> {doc_language}")
+                
+                doc.language = doc_language
+                # Chunks will inherit this language in the loop below
+                
+                db.session.commit()
+            except Exception as e:
+                logger.error(f"Language detection failed: {e}. Defaulting to 'english'.")
+                # Default is typically english or simple
+                doc.language = 'simple'
+                doc_language = 'simple'
+
 
             texts_to_embed = [c["text"] for c in text_chunks]
             if texts_to_embed:
@@ -189,7 +238,7 @@ def process_document_task(self, document_id: str):
 
                 elapsed = time.time() - start_time
                 logger.info(f"Embeddings generated in {elapsed:.2f}s ({len(texts_to_embed)/elapsed:.1f} chunks/sec)")
-                doc.processing_progress = 80  # Embeddings done
+                doc.processing_progress = 70  # Embeddings done
                 db.session.commit()
 
                 # Save chunks to database
@@ -202,10 +251,50 @@ def process_document_task(self, document_id: str):
                         start_time=chunk_data.get("start"),
                         end_time=chunk_data.get("end"),
                         page_number=chunk_data.get("page"),
-                        embedding=embeddings[i]
+                        embedding=embeddings[i],
+                        language=doc_language # Explicitly set language so trigger works correctly
                     )
                     db.session.add(new_chunk)
                 logger.info(f"Saved {len(text_chunks)} chunks to database")
+                
+                # --- Generate Document Summary (Summary Indexing) ---
+                logger.info("Generating document summary...")
+                try:
+                    from app.services.llm_client import get_llm_client
+                    
+                    # Combine first N chunks to generate a decent summary (limit context)
+                    summary_context = "\n".join([c["text"] for c in text_chunks[:5]])[:10000]
+                    logger.info(f"Generating summary using context length: {len(summary_context)} chars")
+                    
+                    llm = get_llm_client()
+                    summary_prompt = f"""Summarize the following text in a detailed paragraph (200-300 words). 
+Focus on the main topics, key entities, and core arguments.
+Text:
+{summary_context}
+"""
+                    summary_text = llm.chat(
+                        system="You are an expert summarizer.",
+                        messages=[{"role": "user", "content": summary_prompt}]
+                    )
+                    
+                    logger.info(f"Summary generated: {summary_text}")
+                    
+                    doc.summary = summary_text
+                    # Language already set on Doc, so trigger will index this summary correctly.
+                    
+                    # Embed Summary
+                    logger.info("Embedding summary...")
+                    summary_vec = embedder.embed([summary_text])[0]
+                    doc.summary_embedding = summary_vec
+                    
+                    logger.info("Summary generated and embedded.")
+                    doc.processing_progress = 85
+                    db.session.commit()
+                    
+                except Exception as e:
+                    logger.error(f"Failed to generate summary: {e}")
+                    # Non-fatal
+                
                 doc.processing_progress = 95  # Saving done
                 db.session.commit()
 

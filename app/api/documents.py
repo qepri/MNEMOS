@@ -1,5 +1,5 @@
 import logging
-from flask import Blueprint, request, render_template, jsonify, send_from_directory
+from flask import Blueprint, request, render_template, jsonify, send_from_directory, Response
 from werkzeug.utils import secure_filename
 from app.models.document import Document
 from app.tasks.processing import process_document_task

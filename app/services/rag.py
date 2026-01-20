@@ -37,6 +37,48 @@ Output ONLY the queries, one per line. Do not include numbering or bullets."""
             print(f"Query generation failed: {e}")
             return [question] # Fallback to original question
 
+    
+    def _detect_query_language(self, text: str) -> str:
+        """Detects language of the query and maps to Postgres config."""
+        try:
+            from langdetect import detect
+            code = detect(text)
+            lang_map = {
+                'en': 'english', 'es': 'spanish', 'de': 'german', 'fr': 'french',
+                'it': 'italian', 'ru': 'russian', 'pt': 'portuguese', 'nl': 'dutch'
+            }
+            return lang_map.get(code, 'english')
+        except:
+            return 'english'
+
+    def search_similar_documents(self, query: str, top_k: int = 3) -> List[Document]:
+        """
+        Search for documents based on Summary Similarity (Hybrid).
+        """
+        from sqlalchemy import func, desc
+        
+        # 1. Embed Query
+        query_embedding = self.embedder.embed(query)
+        
+        # 2. Detect Language for Search
+        pg_lang = self._detect_query_language(query)
+        
+        # 3. Hybrid Search on Summary
+        # Similarity
+        similarity = 1 - Document.summary_embedding.cosine_distance(query_embedding)
+        
+        # Keyword (TS Rank) using dynamic language
+        kw_query = func.websearch_to_tsquery(pg_lang, query)
+        rank = func.ts_rank_cd(Document.summary_search_vector, kw_query)
+        
+        hybrid_score = (similarity * 0.8) + (rank * 0.2) # Summaries are semantic-heavy
+        
+        stmt = select(Document).add_columns(hybrid_score.label("score"))
+        stmt = stmt.order_by(desc(hybrid_score)).limit(top_k)
+        
+        results = self.db.execute(stmt).all()
+        return [row[0] for row in results]
+
     def search_similar_chunks(
         self, 
         query: str, 
@@ -50,6 +92,7 @@ Output ONLY the queries, one per line. Do not include numbering or bullets."""
         from sqlalchemy import func, desc
         
         query_embedding = self.embedder.embed(query)
+        pg_lang = self._detect_query_language(query)
         
         # 1. Similarity Score (1 - Distance)
         # Cosine distance is usually 0 (same) to 2 (opposite).
@@ -58,7 +101,7 @@ Output ONLY the queries, one per line. Do not include numbering or bullets."""
         
         # 2. Keyword Score (TS Rank)
         # websearch_to_tsquery handles natural language better than plain to_tsquery
-        kw_query = func.websearch_to_tsquery('spanish', query)
+        kw_query = func.websearch_to_tsquery(pg_lang, query)
         rank = func.ts_rank_cd(Chunk.search_vector, kw_query)
         
         # 3. Hybrid Score
@@ -158,10 +201,11 @@ Output ONLY the queries, one per line. Do not include numbering or bullets."""
             
             # Agentic Step: Generate optimized queries
             search_queries = self._generate_search_queries(question, conversation_history)
+            logger.info(f"[Web] Generated queries: {search_queries}")
             
             all_web_context = []
             for q in search_queries:
-                print(f"Executing Web Search: {q}")
+                logger.info(f"[Web] Executing Search: {q}")
                 web_results = search_service.search(q)
                 if web_results["context"]:
                     all_web_context.append(f"Query: {q}\n{web_results['context']}")

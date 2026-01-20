@@ -30,6 +30,7 @@ class Message(db.Model):
     role = db.Column(db.String(50), nullable=False) # 'user' or 'assistant'
     content = db.Column(db.Text, nullable=False)
     sources = db.Column(JSONB, nullable=True)
+    search_queries = db.Column(JSONB, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     images = db.Column(JSONB, nullable=True)
     audio_path = db.Column(db.String(512), nullable=True)
@@ -41,6 +42,7 @@ class Message(db.Model):
             'role': self.role,
             'content': self.content,
             'sources': self.sources,
+            'search_queries': self.search_queries,
             'images': self.images,
             'audio_path': self.audio_path,
             'created_at': self.created_at.isoformat()

@@ -58,6 +58,13 @@
                         [style.border-color]="activeTab() !== 'voice' ? 'transparent' : ''">
                         Voice Settings
                     </button>
+                    <button (click)="switchTab('plugins')" [class.border-accent]="activeTab() === 'plugins'"
+                        [class.text-primary]="activeTab() === 'plugins'"
+                        [class.text-secondary]="activeTab() !== 'plugins'"
+                        class="px-1 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap hover:text-primary"
+                        [style.border-color]="activeTab() !== 'plugins' ? 'transparent' : ''">
+                        Plugins
+                    </button>
                 </nav>
             </div>
 
@@ -222,6 +229,13 @@
                             Save Settings
                         </button>
                     </div>
+                </div>
+                }
+
+                <!-- Tab: Plugins -->
+                @if (activeTab() === 'plugins') {
+                <div class="space-y-6 anime-fade-in">
+                    <app-plugins-settings></app-plugins-settings>
                 </div>
                 }
 

@@ -9,10 +9,12 @@ import { LlmSelectorComponent } from '@shared/components/llm-selector/llm-select
 import { ToastrService } from 'ngx-toastr';
 import { AppRoutes } from '@core/constants/app-routes';
 
+import { PluginsSettingsComponent } from '../components/plugins-settings/plugins-settings.component';
+
 @Component({
     selector: 'app-settings-page',
     standalone: true,
-    imports: [CommonModule, RouterLink, FormsModule, ProgressBarComponent, LlmSelectorComponent],
+    imports: [CommonModule, RouterLink, FormsModule, ProgressBarComponent, LlmSelectorComponent, PluginsSettingsComponent],
     host: { class: 'flex flex-col h-full w-full' },
     templateUrl: './settings-page.component.html',
     styleUrl: './settings-page.component.css'
@@ -25,7 +27,7 @@ export class SettingsPage implements OnInit {
     chatSelector = viewChild<LlmSelectorComponent>('chatSelector');
     memorySelector = viewChild<LlmSelectorComponent>('memorySelector');
 
-    activeTab = signal<'models' | 'discover' | 'import' | 'chat' | 'voice'>('models');
+    activeTab = signal<'models' | 'discover' | 'import' | 'chat' | 'voice' | 'plugins'>('models');
 
     // Proxy for Memory Selector
     // Maps memory_* fields to llm_* fields so LlmSelectorComponent works as is
@@ -324,7 +326,7 @@ export class SettingsPage implements OnInit {
         }
     }
 
-    switchTab(tab: 'models' | 'discover' | 'import' | 'chat' | 'voice') {
+    switchTab(tab: 'models' | 'discover' | 'import' | 'chat' | 'voice' | 'plugins') {
         this.activeTab.set(tab);
         if (tab === 'import') {
             this.scanImports();

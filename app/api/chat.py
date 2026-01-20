@@ -99,7 +99,8 @@ def chat():
         conversation_id=conversation.id,
         role='assistant',
         content=result["answer"],
-        sources=result["sources"]
+        sources=result["sources"],
+        search_queries=result.get("search_queries", [])
     )
     db.session.add(assistant_msg)
 

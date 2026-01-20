@@ -87,6 +87,9 @@ def create_app():
                  # Chat Audio Persistence
                  db.session.execute(text("ALTER TABLE messages ADD COLUMN IF NOT EXISTS audio_path VARCHAR(512)"))
                  
+                 # Web Search Queries Persistence
+                 db.session.execute(text("ALTER TABLE messages ADD COLUMN IF NOT EXISTS search_queries JSONB"))
+                 
                  db.session.commit()
             except Exception as e:
                  # Ignore if it fails (e.g. invalid state), logs will show

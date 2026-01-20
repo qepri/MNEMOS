@@ -14,6 +14,7 @@ export interface Document {
   tag?: string;
   stars?: number;
   comment?: string;
+  summary?: string;
 
   // UI state
   selected?: boolean;

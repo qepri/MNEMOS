@@ -20,9 +20,12 @@ class Chunk(db.Model):
     # Embedding Dimension from settings
     embedding = Column(Vector(settings.EMBEDDING_DIMENSION)) 
     
-    # Full Text Search Vector (Postgres 12+)
-    # Using 'spanish' configuration as requested.
-    search_vector = Column(TSVECTOR, Computed("to_tsvector('spanish', content)", persisted=True))
+    # Multi-language Support
+    language = Column(String(50), default='english') # Inherited from Document
+    
+    # Full Text Search Vector
+    # Managed by DB Trigger: update_chunk_search_vector
+    search_vector = Column(TSVECTOR)
 
     metadata_ = Column(JSONB)
     
