@@ -264,3 +264,30 @@ class TranscriptionService:
         cls._model = whisper.load_model(target_model, device=settings.WHISPER_DEVICE)
         cls._current_model_name = target_model
         return cls._model
+
+    @staticmethod
+    def save_to_txt(segments: List[Dict], output_path: str):
+        """
+        Save segments to a text file with timestamps [MM:SS] Text.
+        """
+        try:
+            with open(output_path, 'w', encoding='utf-8') as f:
+                for segment in segments:
+                    start = segment.get('start', 0.0)
+                    # end = segment.get('end', 0.0) 
+                    text = segment.get('text', '').strip()
+                    
+                    # Format seconds to MM:SS
+                    m, s = divmod(int(start), 60)
+                    h, m = divmod(m, 60)
+                    
+                    if h > 0:
+                        timestamp = f"[{h:02d}:{m:02d}:{s:02d}]"
+                    else:
+                        timestamp = f"[{m:02d}:{s:02d}]"
+                        
+                    f.write(f"{timestamp} {text}\n")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to save transcription to txt: {e}")
+            return False

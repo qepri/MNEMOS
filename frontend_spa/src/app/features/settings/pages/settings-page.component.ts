@@ -7,6 +7,7 @@ import { ChatPreferences, SystemPrompt } from '@core/models';
 import { ProgressBarComponent } from '@shared/components/progress-bar/progress-bar.component';
 import { LlmSelectorComponent } from '@shared/components/llm-selector/llm-selector.component';
 import { ToastrService } from 'ngx-toastr';
+import { AppRoutes } from '@core/constants/app-routes';
 
 @Component({
     selector: 'app-settings-page',
@@ -19,6 +20,7 @@ import { ToastrService } from 'ngx-toastr';
 export class SettingsPage implements OnInit {
     settingsService = inject(SettingsService);
     toastr = inject(ToastrService);
+    protected readonly AppRoutes = AppRoutes;
     // Use template refs to distinguish
     chatSelector = viewChild<LlmSelectorComponent>('chatSelector');
     memorySelector = viewChild<LlmSelectorComponent>('memorySelector');

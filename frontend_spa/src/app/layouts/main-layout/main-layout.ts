@@ -1,5 +1,6 @@
 import { Component, signal, effect, inject, OnInit } from '@angular/core';
-import { RouterOutlet, RouterLink } from '@angular/router';
+import { AppRoutes } from '@core/constants/app-routes';
+import { RouterOutlet, RouterLink, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ModalService } from '../../services/modal.service';
@@ -22,12 +23,14 @@ import { Document } from '@core/models';
   styleUrl: './main-layout.css'
 })
 export class MainLayout implements OnInit {
+  router = inject(Router);
   modalService = inject(ModalService);
   documentsService = inject(DocumentsService);
   conversationsService = inject(ConversationsService);
   chatService = inject(ChatService);
   settingsService = inject(SettingsService);
   public toastr = inject(ToastrService);
+  protected readonly AppRoutes = AppRoutes;
 
   // State Signals
   theme = signal<'dark' | 'light'>('dark');
@@ -104,6 +107,9 @@ export class MainLayout implements OnInit {
       detail.related_document_ids.forEach(docId => {
         this.documentsService.toggleDocument(docId);
       });
+
+      // Navigate to chat if not already there
+      this.router.navigate(['/']);
     } catch (error) {
       console.error('Failed to load conversation', error);
     }
@@ -113,6 +119,7 @@ export class MainLayout implements OnInit {
     this.chatService.clearMessages();
     this.chatService.setConversationId(null);
     this.documentsService.clearSelection();
+    this.router.navigate(['/']);
   }
 
   async handleDeleteConversation(id: string, event: Event) {

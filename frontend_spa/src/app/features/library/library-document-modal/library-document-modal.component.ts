@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { Document } from '../../../core/models/document.model';
 import { Collection } from '../../../core/models/collection.model';
 import { DocumentPropertiesFormComponent } from './document-properties-form/document-properties-form.component';
@@ -32,7 +33,7 @@ import { DocumentPropertiesFormComponent } from './document-properties-form/docu
           <div class="w-1/2 flex flex-col gap-4 overflow-y-auto p-4 sm:p-6 border-r border-divider custom-scrollbar">
             
             <!-- Basic Info -->
-            <div class="bg-input rounded-lg divide-y divide-divider border border-divider">
+             <div class="bg-input rounded-lg divide-y divide-divider border border-divider">
               <div class="p-3 flex justify-between items-center">
                 <div class="text-xs text-secondary uppercase font-semibold">Type</div>
                 <div class="text-sm font-medium text-base-content">{{ document?.file_type | uppercase }}</div>
@@ -54,6 +55,27 @@ import { DocumentPropertiesFormComponent } from './document-properties-form/docu
                     </ng-container>
                  </div>
               </div>
+              
+               <div class="p-3 flex justify-between items-center" *ngIf="isAudioVideo()">
+                 <div class="text-xs text-secondary uppercase font-semibold">Transcription</div>
+                 
+                 <!-- Download Button -->
+                 <button *ngIf="hasTranscription()" (click)="downloadTranscription()" class="btn btn-xs btn-ghost text-primary hover:bg-primary/10 gap-1 h-8 min-h-0 px-2 font-normal">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                    </svg>
+                    Download .txt
+                 </button>
+
+                 <!-- Generate Button -->
+                 <button *ngIf="!hasTranscription()" 
+                        (click)="generateTranscription()" 
+                        [disabled]="isTranscribing"
+                        class="btn btn-xs btn-ghost text-secondary hover:text-primary gap-1 h-8 min-h-0 px-2 font-normal">
+                    <span *ngIf="isTranscribing" class="loading loading-spinner loading-xs"></span>
+                    {{ isTranscribing ? 'Generating...' : 'Generate' }}
+                 </button>
+              </div>
             </div>
 
             <!-- Comment -->
@@ -61,6 +83,8 @@ import { DocumentPropertiesFormComponent } from './document-properties-form/docu
                  <h4 class="text-xs text-secondary mb-2 uppercase font-semibold">Comment</h4>
                  <p class="text-sm whitespace-pre-wrap text-base-content">{{ document?.comment }}</p>
             </div>
+
+
 
              <!-- JSON Metadata (Debug/Advanced) -->
              <details class="group bg-input rounded-lg border border-divider">
@@ -97,9 +121,52 @@ export class LibraryDocumentModalComponent {
   @Output() onClose = new EventEmitter<void>();
   @Output() onSave = new EventEmitter<Partial<Document>>();
 
+  isTranscribing = false;
+
+  constructor(private http: HttpClient) { }
+
   getCollectionName(id?: string | null): string {
     if (!id) return 'Uncategorized';
     const col = this.collections.find(c => c.id === id);
     return col ? col.name : 'Unknown';
+  }
+
+  isAudioVideo(): boolean {
+    if (!this.document) return false;
+    return ['audio', 'video', 'youtube'].includes(this.document.file_type);
+  }
+
+  hasTranscription(): boolean {
+    // Check if metadata has transcription_file
+    // Cast to any because metadata property might be generic in model
+    const meta = this.document?.metadata as any;
+    return !!(meta && meta.transcription_file);
+  }
+
+  generateTranscription() {
+    if (!this.document) return;
+    this.isTranscribing = true;
+    this.http.post(`/api/documents/${this.document.id}/transcribe`, {}).subscribe({
+      next: (res: any) => {
+        this.isTranscribing = false;
+        // Update local document metadata to show download button immediately
+        if (this.document) {
+          const meta = this.document.metadata as any || {};
+          meta.transcription_file = res.file;
+          this.document = { ...this.document, metadata: meta };
+        }
+      },
+      error: (err: any) => {
+        this.isTranscribing = false;
+        console.error('Transcription failed', err);
+        alert('Transcription failed: ' + (err.error?.error || err.message));
+      }
+    });
+  }
+
+  downloadTranscription() {
+    if (!this.document) return;
+    // Trigger download by opening window
+    window.open(`/api/documents/${this.document.id}/transcription`, '_blank');
   }
 }

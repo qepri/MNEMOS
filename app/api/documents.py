@@ -180,3 +180,68 @@ def update_document(doc_id):
         logger.error(f"Error updating document: {e}")
         db.session.rollback()
         return jsonify({'error': 'Internal server error'}), 500
+
+@bp.route('/<string:doc_id>/transcribe', methods=['POST'])
+def generate_transcription(doc_id):
+    """Generates transcription for an existing audio/video document."""
+    from app.services.transcription import TranscriptionService
+    
+    doc = db.session.query(Document).get(doc_id)
+    if not doc:
+        return jsonify({'error': 'Document not found'}), 404
+        
+    # Check if we already have one
+    if doc.metadata_ and doc.metadata_.get('transcription_file'):
+         # If forced? For now, just return success
+         return jsonify({'status': 'exists', 'file': doc.metadata_['transcription_file']}), 200
+
+    if doc.file_type not in ['audio', 'video', 'youtube']:
+        return jsonify({'error': 'Document type not supported for transcription'}), 400
+
+    try:
+        # Determine path
+        full_path = os.path.join(settings.UPLOAD_FOLDER, doc.file_path)
+        
+        # Transcribe
+        transcriber = TranscriptionService()
+        segments = transcriber.transcribe(full_path)
+        
+        # Save
+        os.makedirs(settings.TRANSCRIPTION_FOLDER, exist_ok=True)
+        transcription_filename = f"{doc.id}_{doc.filename}_transcription.txt"
+        transcription_path = os.path.join(settings.TRANSCRIPTION_FOLDER, transcription_filename)
+        
+        if TranscriptionService.save_to_txt(segments, transcription_path):
+             current_meta = doc.metadata_ or {}
+             current_meta["transcription_file"] = transcription_filename
+             doc.metadata_ = current_meta
+             db.session.commit()
+             return jsonify({'status': 'completed', 'file': transcription_filename}), 200
+        else:
+             return jsonify({'error': 'Failed to save transcription file'}), 500
+             
+    except Exception as e:
+        logger.error(f"Error generating transcription: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/<string:doc_id>/transcription', methods=['GET'])
+def download_transcription(doc_id):
+    """Download the transcription file."""
+    doc = db.session.query(Document).get(doc_id)
+    if not doc:
+        return "", 404
+        
+    filename = None
+    if doc.metadata_ and doc.metadata_.get('transcription_file'):
+        filename = doc.metadata_['transcription_file']
+    
+    # Fallback check if file exists manually (e.g. migration)
+    if not filename:
+         potential_file = f"{doc.id}_transcription.txt"
+         if os.path.exists(os.path.join(settings.TRANSCRIPTION_FOLDER, potential_file)):
+             filename = potential_file
+
+    if not filename:
+        return "", 404
+        
+    return send_from_directory(settings.TRANSCRIPTION_FOLDER, filename, as_attachment=True)

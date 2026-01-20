@@ -66,6 +66,27 @@ def process_document_task(self, document_id: str):
                 logger.info(f"Transcribing audio: {full_path}")
                 segments = transcriber.transcribe(full_path)
                 
+                # Save transcription to file (Auto-save)
+                try:
+                    from sqlalchemy.orm.attributes import flag_modified
+                    
+                    os.makedirs(settings.TRANSCRIPTION_FOLDER, exist_ok=True)
+                    transcription_filename = f"{doc.id}_transcription.txt"
+                    transcription_path = os.path.join(settings.TRANSCRIPTION_FOLDER, transcription_filename)
+                    if TranscriptionService.save_to_txt(segments, transcription_path):
+                        logger.info(f"Saved transcription to {transcription_path}")
+                        
+                        # Force refresh metadata
+                        db.session.refresh(doc)
+                        current_meta = dict(doc.metadata_ or {})
+                        current_meta["transcription_file"] = transcription_filename
+                        doc.metadata_ = current_meta
+                        flag_modified(doc, "metadata_")
+                        
+                        db.session.commit()
+                except Exception as e:
+                    logger.error(f"Error saving transcription file: {e}")
+
                 # Merge small segments into meaningful chunks
                 chunker = ChunkerService()
                 text_chunks = chunker.chunk_transcript_segments(segments)
@@ -76,6 +97,23 @@ def process_document_task(self, document_id: str):
                 logger.info(f"Transcribing file: {full_path}")
                 segments = transcriber.transcribe(full_path)
                 
+                # Save transcription to file (Auto-save)
+                try:
+                    from sqlalchemy.orm.attributes import flag_modified
+                    os.makedirs(settings.TRANSCRIPTION_FOLDER, exist_ok=True)
+                    transcription_filename = f"{doc.id}_{doc.filename}_transcription.txt"
+                    transcription_path = os.path.join(settings.TRANSCRIPTION_FOLDER, transcription_filename)
+                    
+                    if TranscriptionService.save_to_txt(segments, transcription_path):
+                        logger.info(f"Saved transcription to {transcription_path}")
+                        current_meta = dict(doc.metadata_ or {})
+                        current_meta["transcription_file"] = transcription_filename
+                        doc.metadata_ = current_meta
+                        flag_modified(doc, "metadata_")
+                        db.session.commit()
+                except Exception as e:
+                    logger.error(f"Error saving transcription file: {e}")
+
                 # Merge small segments into meaningful chunks
                 chunker = ChunkerService()
                 text_chunks = chunker.chunk_transcript_segments(segments)

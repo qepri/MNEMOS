@@ -77,6 +77,7 @@ class Settings(BaseSettings):
     # In docker, mapped to /app/uploads
     # Default to a local 'uploads' directory for Windows dev
     UPLOAD_FOLDER: str = os.path.join(os.getcwd(), 'uploads') if os.name == 'nt' else "/app/uploads"
+    TRANSCRIPTION_FOLDER: str = os.path.join(UPLOAD_FOLDER, 'transcriptions')
     MAX_CONTENT_LENGTH: int = 50 * 1024 * 1024 * 1024  # 50GB
     
     class Config:
