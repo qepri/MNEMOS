@@ -686,6 +686,34 @@ def scan_imports():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@bp.route('/import/upload', methods=['POST'])
+def upload_gguf():
+    """Upload a GGUF model file."""
+    try:
+        import_dir = "/app/ollama_import"
+        if not os.path.exists(import_dir):
+            os.makedirs(import_dir)
+            
+        if 'file' not in request.files:
+            return jsonify({"error": "No file part"}), 400
+            
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "No selected file"}), 400
+            
+        if not file.filename.lower().endswith('.gguf'):
+            return jsonify({"error": "Only .gguf files are allowed"}), 400
+
+        filename = os.path.basename(file.filename) # sanitize?
+        save_path = os.path.join(import_dir, filename)
+        
+        # Save file (chunked to avoid memory issues)
+        file.save(save_path) # Flask's save uses shutil.copyfileobj which is efficient
+        
+        return jsonify({"success": True, "filename": filename})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @bp.route('/import', methods=['POST'])
 def import_model():
     """Import a GGUF model."""
@@ -695,30 +723,37 @@ def import_model():
     
     if not filename or not model_name:
         return jsonify({"error": "Filename and Model Name required"}), 400
-        
-    try:
-        base_url = settings.OLLAMA_BASE_URL.replace("/v1", "")
-        
-        # 1. We tell Ollama to create a model from this file.
-        # The file is at /root/.ollama/import/{filename} inside OLLAMA container.
-        # (Assuming we matched the volume mounts correctly)
-        
-        modelfile_content = f"FROM /root/.ollama/import/{filename}"
-        
-        payload = {
-            "name": model_name,
-            "modelfile": modelfile_content
-        }
-        
-        # Stream the creation process
-        def generate():
-            with requests.post(f"{base_url}/api/create", json=payload, stream=True, timeout=300) as r:
-                r.raise_for_status()
-                for chunk in r.iter_content(chunk_size=8192):
-                    if chunk:
-                        yield chunk
 
-        return generate(), {"Content-Type": "application/json"}
+    try:
+        # Use Docker SDK to run ollama create inside the container
+        # This avoids the "path/permission" issues with the internal API
+        import docker
+        client = docker.from_env()
+        container = client.containers.get('mnemos-ollama')
+        
+        # 1. Write the Modelfile inside the container
+        # The file is at /root/.ollama/import/{filename} inside OLLAMA container.
+        modelfile_path = f"/root/.ollama/import/{filename}.Modelfile"
+        model_path = f"/root/.ollama/import/{filename}"
+        
+        # We use sh -c to echo the content to a file
+        cmd_write = f"sh -c \"echo 'FROM {model_path}' > '{modelfile_path}'\""
+        write_res = container.exec_run(cmd_write)
+        
+        if write_res.exit_code != 0:
+            return jsonify({"error": f"Failed to write Modelfile: {write_res.output.decode()}"}), 500
+
+        # 2. Run ollama create
+        cmd_create = f"ollama create '{model_name}' -f '{modelfile_path}'"
+        
+        # Execute synchronously to avoid streaming format issues with frontend
+        # The frontend expects a single JSON response, not a stream of text/NDJSON
+        create_res = container.exec_run(cmd_create)
+        
+        if create_res.exit_code != 0:
+             return jsonify({"error": f"Failed to create model: {create_res.output.decode()}"}), 500
+                
+        return jsonify({"success": True, "details": create_res.output.decode()})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

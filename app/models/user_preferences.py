@@ -37,8 +37,10 @@ class UserPreferences(db.Model):
     memory_enabled = db.Column(db.Boolean, default=False, nullable=False)
     memory_provider = db.Column(db.String(50), default='ollama', nullable=False)
     memory_llm_model = db.Column(db.String(255), nullable=True) # e.g. 'llama3:8b'
-    memory_llm_model = db.Column(db.String(255), nullable=True) # e.g. 'llama3:8b'
     max_memories = db.Column(db.Integer, default=50, nullable=False)
+    
+    # Ollama Specifics
+    ollama_num_ctx = db.Column(db.Integer, default=2048, server_default='2048', nullable=False)
 
     # Web Search Config
     web_search_provider = db.Column(db.String(50), default='duckduckgo', nullable=False)
@@ -80,6 +82,7 @@ class UserPreferences(db.Model):
             'memory_provider': self.memory_provider,
             'memory_llm_model': self.memory_llm_model,
             'max_memories': self.max_memories,
+            'ollama_num_ctx': self.ollama_num_ctx,
             'web_search_provider': self.web_search_provider,
             'tavily_api_key': self.tavily_api_key,
             'brave_search_api_key': self.brave_search_api_key,

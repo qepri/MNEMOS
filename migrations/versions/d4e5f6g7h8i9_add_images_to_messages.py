@@ -18,7 +18,12 @@ depends_on = None
 
 def upgrade():
     # Add images column to messages table
-    op.add_column('messages', sa.Column('images', postgresql.JSONB(astext_type=sa.Text()), nullable=True))
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    existing_columns = [c['name'] for c in inspector.get_columns('messages')]
+
+    if 'images' not in existing_columns:
+        op.add_column('messages', sa.Column('images', postgresql.JSONB(astext_type=sa.Text()), nullable=True))
 
 
 def downgrade():

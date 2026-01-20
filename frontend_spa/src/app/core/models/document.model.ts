@@ -9,6 +9,11 @@ export interface Document {
   error_message?: string;
   created_at: string;
   updated_at?: string;
+  metadata?: any;
+  collection_id?: string | null;
+  tag?: string;
+  stars?: number;
+  comment?: string;
 
   // UI state
   selected?: boolean;

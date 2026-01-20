@@ -14,6 +14,10 @@ export const ApiEndpoints = {
   CONVERSATION_DETAIL: (id: string) => `/api/conversations/${id}`,
   CONVERSATION_DELETE: (id: string) => `/api/conversations/${id}`,
 
+  // Collections
+  COLLECTIONS: '/api/collections',
+  COLLECTION_DETAIL: (id: string) => `/api/collections/${id}`,
+
   // Settings
   SETTINGS_MODELS: '/api/settings/models',
   SETTINGS_CURRENT_MODEL: '/api/settings/current-model',

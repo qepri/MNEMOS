@@ -222,12 +222,37 @@ textarea {
    ============================================ */
 
 .modal {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease-in-out;
+
     background-color: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(4px);
 }
 
+.modal-open,
+.modal[open] {
+    pointer-events: auto;
+    opacity: 1;
+    visibility: visible;
+}
+
 .modal-box {
+    position: relative;
+    max-height: calc(100vh - 5em);
+    max-width: 32rem;
+    width: 91.666667%;
+    overflow-y: auto;
+    border-radius: 1rem;
     box-shadow: var(--shadow-xl);
+    pointer-events: auto;
 }
 
 /* ============================================

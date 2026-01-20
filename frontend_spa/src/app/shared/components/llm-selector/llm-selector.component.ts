@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SettingsService } from '@services/settings.service';
 import { ChatPreferences, LLMConnection } from '@core/models';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-llm-selector',
@@ -21,6 +22,7 @@ import { ChatPreferences, LLMConnection } from '@core/models';
 })
 export class LlmSelectorComponent {
   settingsService = inject(SettingsService);
+  toastr = inject(ToastrService);
 
   // Inputs: Allow initializing with preferences
   preferences = input<ChatPreferences | null>(null);
@@ -290,22 +292,24 @@ export class LlmSelectorComponent {
 
       if (id === 'new') {
         const newConn = await this.settingsService.createConnection({
-          ...payload,
-          api_key: this.connForm.apiKey() // Required for new
+          ...payload
         });
         // This sets the ID, but we also want to trigger the "selection" logic to populate form cleanly from source
         // effectively switching from "new" mode to "edit" mode of the created conn
         this.updateConnectionSelection(newConn.id);
+        this.toastr.success('Connection created successfully');
       } else {
         await this.settingsService.updateConnection(id, payload);
         // Don't reset form! We are still editing this connection.
         // Optionally refresh form from source to be sure
         const updatedConn = this.settingsService.llmConnections().find(c => c.id === id);
         if (updatedConn) this.populateForm(updatedConn);
+        this.toastr.success('Connection updated successfully');
       }
 
     } catch (e) {
       console.error("Failed to save connection", e);
+      this.toastr.error('Failed to save connection');
       throw e; // Re-throw to let parent handle it
     }
   }

@@ -12,6 +12,7 @@ def create_app():
     app.config["SQLALCHEMY_DATABASE_URI"] = settings.DATABASE_URL
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SECRET_KEY"] = settings.SECRET_KEY
+    app.config["MAX_CONTENT_LENGTH"] = settings.MAX_CONTENT_LENGTH
     app.config.from_prefixed_env()
 
     # Initialize extensions
@@ -29,8 +30,10 @@ def create_app():
     from app.api.settings import bp as settings_bp
     from app.api.connections import bp as connections_bp
     from app.api.ollama_manage import bp as ollama_manage_bp # Changed: Import ollama_manage_bp
+    from app.api.collections import bp as collections_bp
     
     app.register_blueprint(documents_bp)
+    app.register_blueprint(collections_bp)
     app.register_blueprint(chat_bp)
     app.register_blueprint(web_bp)
     app.register_blueprint(conversations_bp)

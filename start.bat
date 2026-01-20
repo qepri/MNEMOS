@@ -8,5 +8,6 @@ start "" cmd /c "ping 127.0.0.1 -n 21 > nul && start http://localhost:5200"
 :: Access App: http://localhost:5200 (Frontend) or http://localhost:5000 (Backend)
 :: Database Viewer: http://localhost:8080/?pgsql=db&username=mnemos_user&db=mnemos_db&ns=public
 ::   System: PostgreSQL, Server: db, User: mnemos_user, Pass: mnemos_pass, DB: mnemos_db 
+docker volume create ollama_models >nul 2>&1
 docker-compose -f docker-compose.yml up --build %*
 pause

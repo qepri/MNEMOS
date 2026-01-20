@@ -28,9 +28,19 @@ def detect_file_type(filename):
 
 @bp.route('/', methods=['GET'])
 def list_documents():
-    """Lista documentos - retorna partial HTML para HTMX."""
+    """Lista documentos - retorna partial HTML para HTMX o JSON."""
     logger.info("Listing documents")
-    documents = db.session.query(Document).order_by(Document.created_at.desc()).all()
+    
+    collection_id = request.args.get('collection_id')
+    query = db.session.query(Document)
+    
+    if collection_id:
+        if collection_id == 'null':
+             query = query.filter(Document.collection_id.is_(None))
+        else:
+             query = query.filter(Document.collection_id == collection_id)
+             
+    documents = query.order_by(Document.created_at.desc()).all()
     
     if request.headers.get('HX-Request') and not request.headers.get('HX-History-Restore-Request'):
         return render_template('partials/document_list.html', documents=documents)
@@ -139,3 +149,34 @@ def get_document_content(doc_id):
         return "", 400
 
     return send_from_directory(settings.UPLOAD_FOLDER, doc.file_path)
+
+@bp.route('/<string:doc_id>', methods=['PUT'])
+def update_document(doc_id):
+    """Update document metadata."""
+    data = request.get_json()
+    doc = db.session.query(Document).get(doc_id)
+    
+    if not doc:
+        return jsonify({'error': 'Document not found'}), 404
+
+    try:
+        if 'tag' in data:
+            doc.tag = data['tag']
+        if 'stars' in data:
+            doc.stars = int(data['stars'])
+        if 'comment' in data:
+            doc.comment = data['comment']
+        if 'collection_id' in data:
+            col_id = data['collection_id']
+            if col_id is None or col_id == "":
+                doc.collection_id = None
+            else:
+                doc.collection_id = col_id
+        
+        db.session.commit()
+        logger.info(f"Document updated: {doc_id}")
+        return jsonify(doc.to_dict()), 200
+    except Exception as e:
+        logger.error(f"Error updating document: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Internal server error'}), 500

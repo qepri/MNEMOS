@@ -121,188 +121,242 @@
     </div>
 
     <!-- Input Area (Sticky Bottom) -->
-    <div class="flex-shrink-0 bg-base border-divider pt-4 pb-4 sm:pb-6">
-        <div class="max-w-4xl mx-auto px-4 sm:px-6">
+    <div class="flex-shrink-0 z-40 pb-6 px-4 pt-2">
+        <div class="max-w-3xl mx-auto relative">
+
+            <!-- Floating Capsule -->
             <div
-                class="bg-panel border border-divider rounded-2xl shadow-lg overflow-hidden focus-within:ring-2 focus-within:ring-accent transition-all">
-                <div class="flex flex-col gap-2 p-3 sm:p-4">
-                    <!-- Image Previews -->
-                    @if (selectedImages().length > 0) {
-                    <div class="flex gap-2 overflow-x-auto py-2">
-                        @for (img of selectedImages(); track $index) {
-                        <div class="relative group flex-shrink-0">
-                            <img [src]="img" class="h-20 w-20 object-cover rounded-lg border border-divider shadow-sm">
-                            <button (click)="removeImage($index)"
-                                class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-red-600">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
-                            </button>
-                        </div>
-                        }
+                class="bg-panel/90 backdrop-blur-md border border-divider rounded-[2rem] shadow-2xl p-2 transition-all duration-300 ring-1 ring-white/10 relative">
+
+                <!-- Image Previews (Inside Capsule) -->
+                @if (selectedImages().length > 0) {
+                <div class="flex gap-2 overflow-x-auto px-2 pb-2 mb-2 border-b border-divider/50">
+                    @for (img of selectedImages(); track $index) {
+                    <div class="relative group flex-shrink-0">
+                        <img [src]="img" class="h-16 w-16 object-cover rounded-xl border border-divider shadow-sm">
+                        <button (click)="removeImage($index)"
+                            class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-md transform scale-90">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
                     </div>
                     }
+                </div>
+                }
 
-                    <div class="flex items-end gap-2">
-                        <!-- Voice Input -->
-                        <button (click)="toggleRecording()"
-                            class="flex-shrink-0 p-2 rounded-lg transition-colors relative group"
-                            [class.text-red-500]="voiceService.isListening()"
-                            [class.bg-red-500]="voiceService.isListening()"
-                            [class.bg-opacity-10]="voiceService.isListening()"
-                            [class.text-secondary]="!voiceService.isListening()"
-                            [class.hover:text-primary]="!voiceService.isListening()"
-                            [class.hover:bg-hover]="!voiceService.isListening()"
-                            [title]="voiceService.isListening() ? 'Stop Recording' : 'Start Recording'">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                            </svg>
-                            @if (voiceService.isListening()) {
-                            <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                                <span
-                                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
-                            </span>
-                            }
-                        </button>
+                <div class="flex items-end gap-2 relative">
 
-                        <!-- TTS Toggle -->
-                        <button (click)="toggleTts()"
-                            class="flex-shrink-0 p-2 rounded-lg transition-colors relative group"
-                            [class.text-accent]="isTtsEnabled()" [class.bg-accent-subtle]="isTtsEnabled()"
-                            [class.text-secondary]="!isTtsEnabled()" [class.hover:text-primary]="!isTtsEnabled()"
-                            [class.hover:bg-hover]="!isTtsEnabled()"
-                            [title]="isTtsEnabled() ? 'Disable Voice Responses' : 'Enable Voice Responses'">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <!-- PLUS Button (Menu Trigger) -->
+                    <div class="relative">
+                        <button (click)="toggleMenu()"
+                            class="p-3 text-secondary hover:text-primary hover:bg-hover rounded-full transition-all duration-200 group"
+                            [class.bg-hover]="isMenuOpen()" [class.rotate-45]="isMenuOpen()" title="More options">
+                            <svg class="w-5 h-5 transition-transform duration-200" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                    d="M12 4v16m8-8H4" />
                             </svg>
                         </button>
 
-                        <!-- Zenia / Voice Mode Toggle -->
-                        <button (click)="toggleVoiceMode()"
-                            class="flex-shrink-0 p-2 rounded-lg transition-colors relative group"
-                            [class.text-purple-500]="voiceService.handsFreeMode()"
-                            [class.bg-purple-500]="voiceService.handsFreeMode()"
-                            [class.bg-opacity-10]="voiceService.handsFreeMode()"
-                            [class.text-secondary]="!voiceService.handsFreeMode()"
-                            [class.hover:text-primary]="!voiceService.handsFreeMode()"
-                            [class.hover:bg-hover]="!voiceService.handsFreeMode()"
-                            [title]="voiceService.handsFreeMode() ? 'Disable Zenia Mode' : 'Enable Zenia Mode'">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z">
-                                </path>
-                            </svg>
-                            @if (voiceService.handsFreeMode()) {
-                            <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                                <span
-                                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-                                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-500"></span>
-                            </span>
-                            }
-                        </button>
+                        <!-- Popover Menu -->
+                        @if (isMenuOpen()) {
+                        <div
+                            class="absolute bottom-full left-0 mb-3 w-56 bg-panel border border-divider rounded-2xl shadow-xl overflow-hidden anime-fade-in z-50 flex flex-col py-1">
 
-                        <!-- Attach Button -->
-                        <button (click)="triggerFileInput()" [class.opacity-50]="!visionEnabled()"
-                            class="flex-shrink-0 p-2 text-secondary hover:text-primary hover:bg-hover rounded-lg transition-colors"
-                            [title]="visionEnabled() ? 'Attach Image' : 'Vision not supported by current model'">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                            </svg>
-                        </button>
+                            <!-- Upload -->
+                            <button (click)="triggerFileInput(); closeMenu()" [disabled]="!visionEnabled()"
+                                class="flex items-center gap-3 px-4 py-3 hover:bg-hover transition-colors text-left w-full disabled:opacity-50 disabled:cursor-not-allowed">
+                                <div
+                                    class="w-8 h-8 rounded-full bg-accent-subtle flex items-center justify-center text-accent">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-medium text-primary">Upload Image</span>
+                                    <span class="text-xs text-secondary">Analyze with vision</span>
+                                </div>
+                            </button>
 
+                            <!-- Web Search -->
+                            <button (click)="isWebSearchEnabled.set(!isWebSearchEnabled()); closeMenu()"
+                                class="flex items-center gap-3 px-4 py-3 hover:bg-hover transition-colors text-left w-full">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                                    [class.bg-blue-500]="isWebSearchEnabled()" [class.text-white]="isWebSearchEnabled()"
+                                    [class.bg-base-subtle]="!isWebSearchEnabled()"
+                                    [class.text-secondary]="!isWebSearchEnabled()">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                                    </svg>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-medium text-primary">Web Search</span>
+                                    <span class="text-xs text-secondary">{{ isWebSearchEnabled() ? 'Enabled' :
+                                        'Disabled' }}</span>
+                                </div>
+                            </button>
 
+                            <!-- Zenia Mode -->
+                            <button (click)="toggleVoiceMode(); closeMenu()"
+                                class="flex items-center gap-3 px-4 py-3 hover:bg-hover transition-colors text-left w-full">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                                    [class.bg-purple-500]="voiceService.handsFreeMode()"
+                                    [class.text-white]="voiceService.handsFreeMode()"
+                                    [class.bg-base-subtle]="!voiceService.handsFreeMode()"
+                                    [class.text-secondary]="!voiceService.handsFreeMode()">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                    </svg>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-medium text-primary">Voice Mode</span>
+                                    <span class="text-xs text-secondary">Hands-free conversation</span>
+                                </div>
+                            </button>
 
-                        <!-- Vanilla Mode Toggle -->
-                        <button (click)="toggleVanillaMode()"
-                            class="flex-shrink-0 p-2 rounded-lg transition-colors relative group"
-                            [class.text-accent]="isVanillaMode()" [class.bg-accent-subtle]="isVanillaMode()"
-                            [class.text-secondary]="!isVanillaMode()" [class.hover:text-primary]="!isVanillaMode()"
-                            [class.hover:bg-hover]="!isVanillaMode()" title="Vanilla Chat (No Context)">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
-                        </button>
+                            <!-- Vanilla Mode -->
+                            <button (click)="toggleVanillaMode(); closeMenu()"
+                                class="flex items-center gap-3 px-4 py-3 hover:bg-hover transition-colors text-left w-full">
+                                <div
+                                    class="w-8 h-8 rounded-full bg-base-subtle flex items-center justify-center text-secondary">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-medium text-primary">Simple Chat</span>
+                                    <span class="text-xs text-secondary">No attachments/search</span>
+                                </div>
+                            </button>
+                        </div>
 
-                        <!-- Web Search Toggle -->
-                        <button (click)="isWebSearchEnabled.set(!isWebSearchEnabled())"
-                            class="flex-shrink-0 p-2 rounded-lg transition-colors relative group"
-                            [class.text-accent]="isWebSearchEnabled()" [class.bg-accent-subtle]="isWebSearchEnabled()"
-                            [class.text-secondary]="!isWebSearchEnabled()"
-                            [class.hover:text-primary]="!isWebSearchEnabled()"
-                            [class.hover:bg-hover]="!isWebSearchEnabled()" title="Toggle Web Search">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                            </svg>
-
-                            <!-- Tooltip/Badge -->
-                            @if (isWebSearchEnabled()) {
-                            <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                                <span
-                                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-                                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent"></span>
-                            </span>
-                            }
-                        </button>
-
-                        <!-- Textarea -->
-                        <textarea #messageInput placeholder="Send a message..." rows="1"
-                            class="flex-1 bg-transparent text-primary text-sm sm:text-base resize-none focus:outline-none max-h-32 placeholder-secondary"
-                            (input)="autoResize(messageInput)" (keydown)="handleKeyDown($event, messageInput)"
-                            [disabled]="chatService.isLoading()"></textarea>
-
-                        <!-- Send Button -->
-                        <button (click)="sendMessage(messageInput)"
-                            class="flex-shrink-0 p-2 bg-accent text-white rounded-lg hover:bg-accent-dark active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Send message" [disabled]="chatService.isLoading()">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                            </svg>
-                        </button>
+                        <!-- Backdrop for menu -->
+                        <div class="fixed inset-0 z-40 bg-transparent" (click)="closeMenu()"></div>
+                        }
                     </div>
 
-                    <!-- Bottom Bar -->
-                    <div class="flex items-center justify-between sm: pb-3 pt-1 border-t border-divider">
-                        <!-- Vision Icon Indicator -->
-                        @if (visionEnabled()) {
-                        <div class="flex items-center justify-center p-2 text-accent"
-                            title="Current LLM supports vision, upload images">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none"
-                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                                <circle cx="9" cy="9" r="2" />
-                                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-                            </svg>
+                    <!-- Text Area Container -->
+                    <div class="flex-1 flex flex-col justify-center min-h-[44px]">
+
+                        <!-- Active Badges (Web Search / Documents) -->
+                        @if (isWebSearchEnabled() || documentsService.selectedCount() > 0) {
+                        <div class="px-2 pb-1 flex gap-2 items-center">
+
+                            <!-- Search Badge -->
+                            @if (isWebSearchEnabled()) {
+                            <span
+                                class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                                </svg>
+                                Search On
+                            </span>
+                            }
+
+                            <!-- Documents Badge -->
+                            @if (documentsService.selectedCount() > 0) {
+                            <span
+                                class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/10 text-blue-500 border border-blue-500/20 cursor-pointer hover:bg-blue-500/20 transition-colors"
+                                (click)="documentsService.clearSelection()" title="Click to clear selection">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                {{ documentsService.selectedCount() }} Doc{{ documentsService.selectedCount() > 1 ? 's'
+                                : '' }}
+                                <svg class="w-3 h-3 opacity-60 hover:opacity-100 ml-1" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </span>
+                            }
                         </div>
                         }
-                        <!-- Model Selector -->
-                        <button (click)="isLlmModalOpen.set(true)"
-                            class="flex items-center gap-1.5 px-2 py-1 text-xs text-secondary hover:text-primary hover:bg-hover rounded-md transition-colors group">
-                            <span class="text-lg">🤖</span>
-                            <span>{{ currentModel() }}</span>
-                            <svg class="w-3 h-3 opacity-50 group-hover:opacity-100 transition-opacity" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M19 9l-7 7-7-7" />
+
+                        <textarea #messageInput placeholder="Message MNEMOS..." rows="1"
+                            class="w-full bg-transparent text-primary text-base px-2 resize-none focus:outline-none max-h-32 placeholder-secondary/50"
+                            (input)="autoResize(messageInput)" (keydown)="handleKeyDown($event, messageInput)"
+                            [disabled]="chatService.isLoading()"></textarea>
+                    </div>
+
+                    <!-- Right Actions -->
+                    <div class="flex items-center gap-1">
+
+                        <!-- Toggle TTS (Small icon, visible) -->
+                        <button (click)="toggleTts()"
+                            class="p-2 rounded-full transition-colors text-secondary hover:text-primary hover:bg-hover opacity-50 hover:opacity-100"
+                            [class.text-accent]="isTtsEnabled()" [title]="isTtsEnabled() ? 'Mute' : 'Enable TTS'">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path *ngIf="isTtsEnabled()" stroke-linecap="round" stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                <path *ngIf="!isTtsEnabled()" stroke-linecap="round" stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z m15.266-4.596l-3.328 3.329m0-3.329l3.328 3.329" />
                             </svg>
                         </button>
 
-                        <!-- Disclaimer -->
-                        <p class="hidden sm:block text-xs text-secondary">
-                            MNEMOS can make mistakes. Consider checking important information.
-                        </p>
+                        <!-- Send / Stop Button -->
+                        <button (click)="chatService.isLoading() ? stopGeneration() : sendMessage(messageInput)"
+                            class="rounded-full hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg group flex items-center justify-center"
+                            [class.p-2.5]="!chatService.isLoading()" [class.p-1]="chatService.isLoading()"
+                            [class.bg-primary]="!chatService.isLoading()"
+                            [class.text-base-100]="!chatService.isLoading()" [class.bg-panel]="chatService.isLoading()"
+                            [class.text-primary]="chatService.isLoading()"
+                            [class.hover:text-red-500]="chatService.isLoading()"
+                            [class.ring-1]="chatService.isLoading()" [class.ring-divider]="chatService.isLoading()"
+                            [title]="chatService.isLoading() ? 'Stop generating' : 'Send'"
+                            [disabled]="(!messageInput.value.trim() && selectedImages().length === 0) && !chatService.isLoading()">
+
+                            @if (chatService.isLoading()) {
+                            <!-- Stop Icon (Filled, Large) -->
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                class="w-8 h-8 group-hover:text-red-500 transition-colors">
+                                <path fill-rule="evenodd"
+                                    d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm6-2.438c0-.724.588-1.312 1.313-1.312h4.874c.725 0 1.313.588 1.313 1.313v4.874c0 .725-.588 1.313-1.313 1.313H9.564a1.312 1.312 0 0 1-1.313-1.313V9.564Z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            } @else {
+                            <!-- Send Icon -->
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                            </svg>
+                            }
+                        </button>
                     </div>
+
                 </div>
             </div>
-        </div>
 
+            <!-- Footer Info (Model Selector & Disclaimer) -->
+            <div class="flex items-center justify-between px-4 py-2 mt-1">
+                <!-- Model Selector -->
+                <button (click)="isLlmModalOpen.set(true)"
+                    class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-secondary hover:text-primary hover:bg-panel border border-transparent hover:border-divider rounded-full transition-all group backdrop-blur-sm">
+                    <span class="text-base">✨</span>
+                    <span>{{ currentModel() }}</span>
+                    <svg class="w-3 h-3 opacity-50 group-hover:opacity-100 transition-opacity" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+
+                <!-- Disclaimer -->
+                <p class="hidden sm:block text-[10px] text-secondary/50">
+                    MNEMOS can make mistakes. Verify important info.
+                </p>
+            </div>
+
+        </div>
     </div>
 
     <app-llm-selection-modal [(isVisible)]="isLlmModalOpen" />

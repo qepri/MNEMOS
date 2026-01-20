@@ -152,6 +152,9 @@ export class SettingsService {
       const prefs = await firstValueFrom(
         this.http.get<ChatPreferences>(ApiEndpoints.SETTINGS_CHAT)
       );
+      if (prefs && !prefs.ollama_num_ctx) {
+        prefs.ollama_num_ctx = 2048;
+      }
       this.chatPreferences.set(prefs);
     } catch (error) {
       console.error('Failed to load chat preferences', error);
@@ -259,6 +262,20 @@ export class SettingsService {
     } catch (error) {
       console.error('Failed to scan imports', error);
       return [];
+    }
+  }
+
+  async uploadModel(file: File): Promise<{ success: boolean, filename: string }> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      return await firstValueFrom(
+        this.http.post<{ success: boolean, filename: string }>('/api/settings/import/upload', formData)
+      );
+    } catch (error) {
+      console.error('Failed to upload model', error);
+      throw error;
     }
   }
 

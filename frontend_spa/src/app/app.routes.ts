@@ -13,6 +13,14 @@ export const routes: Routes = [
             {
                 path: 'settings',
                 loadComponent: () => import('./features/settings/pages/settings-page.component').then(m => m.SettingsPage)
+            },
+            {
+                path: 'library',
+                loadComponent: () => import('./features/library/library.component').then(m => m.LibraryPageComponent)
+            },
+            {
+                path: 'collections',
+                loadComponent: () => import('./features/collections/collections.component').then(m => m.CollectionsPageComponent)
             }
         ]
     }

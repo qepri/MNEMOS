@@ -20,13 +20,33 @@ export class DocumentsService {
     constructor() {
     }
 
-    async fetchDocuments() {
+    async fetchDocuments(collectionId?: string | null) {
         try {
-            const docs = await firstValueFrom(this.http.get<Document[]>(ApiEndpoints.DOCUMENTS));
+            let url = ApiEndpoints.DOCUMENTS;
+            if (collectionId !== undefined) {
+                url += `?collection_id=${collectionId}`;
+            } else if (collectionId === null) {
+                url += `?collection_id=null`;
+            }
+
+            const docs = await firstValueFrom(this.http.get<Document[]>(url));
             // Map backend fields to UI fields if necessary, or just use them
             this.documents.set(docs.map(d => ({ ...d, selected: false })));
         } catch (error) {
             console.error('Failed to fetch documents', error);
+        }
+    }
+
+    async updateDocument(id: string, updates: Partial<Document>) {
+        try {
+            const updatedDoc = await firstValueFrom(this.http.put<Document>(`${ApiEndpoints.DOCUMENTS}/${id}`, updates));
+            this.documents.update(docs =>
+                docs.map(d => d.id === id ? { ...updatedDoc, selected: d.selected } : d)
+            );
+            return updatedDoc;
+        } catch (error) {
+            console.error('Failed to update document', error);
+            throw error;
         }
     }
 

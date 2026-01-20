@@ -12,6 +12,7 @@ services:
       - "5000:5000"
     environment:
       - FLASK_ENV=development
+      - RUN_MIGRATIONS=true
       - DATABASE_URL=postgresql://mnemos_user:mnemos_pass@db:5432/mnemos_db
       - REDIS_URL=redis://redis:6379/0
       # Ensure python doesn't buffer output so we see logs in realtime
@@ -87,11 +88,11 @@ services:
   ollama:
     image: ollama/ollama:latest
     container_name: mnemos-ollama
-    profiles: [ "manual" ]
+    # profiles: [ "manual" ]
     ports:
       - "11435:11434"
     volumes:
-      - ./ollama_models:/root/.ollama
+      - ollama_models:/root/.ollama
       - ./ollama_models/import:/root/.ollama/import
     deploy:
       resources:
@@ -102,15 +103,16 @@ services:
               capabilities: [ gpu ]
     environment:
       - OLLAMA_HOST="0.0.0.0"
-      - OLLAMA_FLASH_ATTENTION=0
+      - OLLAMA_FLASH_ATTENTION=1
       - OLLAMA_GPU_LAYERS=-1
       - CUDA_VISIBLE_DEVICES=0
       - OLLAMA_MAX_LOADED_MODELS=1
+      - OLLAMA_NUM_CTX=2048
     restart: no
 
   mcp:
     build: .
-    command: python -m app.mcp_server.server
+    command: python -m app.mcp_server.server run --transport sse --port 3000 --host 0.0.0.0
     ports:
       - "3000:3000"
     environment:
@@ -171,3 +173,5 @@ volumes:
   whisper_cache:
   redis_data:
   hf_cache:
+  ollama_models:
+    external: true

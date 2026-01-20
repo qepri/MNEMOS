@@ -29,10 +29,7 @@ class TranscriptionService:
                 if prefs.whisper_model:
                     target_model = prefs.whisper_model
                 # Check for provider (defaulting to local)
-                if hasattr(prefs, 'stt_provider') and prefs.stt_provider:
-                    provider = prefs.stt_provider
-                # Fallback to older field name if stt_provider is not set or default
-                elif hasattr(prefs, 'transcription_provider') and prefs.transcription_provider:
+                if hasattr(prefs, 'transcription_provider') and prefs.transcription_provider:
                     provider = prefs.transcription_provider
 
                 if hasattr(prefs, 'groq_api_key') and prefs.groq_api_key:
@@ -56,40 +53,30 @@ class TranscriptionService:
                     api_key = prefs.openai_api_key
             except: pass
             return self._transcribe_openai(audio_path, target_model, api_key)
+        elif provider == 'local':
+             return self._transcribe_local(audio_path, target_model)
         else:
+            # Check if provider is a Custom Connection ID (UUID)
+            # This is the KISS way: reuse the string field to store the ID
+            from app.models.llm_connection import LLMConnection
+            try:
+                connection = db.session.query(LLMConnection).filter_by(id=provider).first()
+                if connection:
+                    logger.info(f"Using Custom Connection '{connection.name}' for transcription")
+                    return self._transcribe_openai(audio_path, target_model, connection.api_key, connection.base_url)
+            except Exception as e:
+                logger.warning(f"Failed to load custom connection '{provider}': {e}")
+            
+            # Final Fallback
             return self._transcribe_local(audio_path, target_model)
 
     def _transcribe_local(self, audio_path: str, model_name: str) -> List[Dict]:
         """Use local Whisper model."""
-        # Ensure correct model is loaded
-        # We need to bypass the caching check if we are switching providers or models manually, 
-        # but get_model handles logic for 'same model name'.
-        # However, we must ensure we don't accidentally use a Groq model name for local loading
-        # if the user messed up settings, but we assume UI handles this.
-        
-        # Determine actual local model name if needed, or trust input.
-        # If model_name starts with "whisper-large" (Groq style) and we are in local, 
-        # we might want to fallback to 'base' to avoid error, or let it fail.
-        # For now, we trust the input.
-        
-        # Logic from original get_model is slightly specific about using settings.WHISPER_MODEL
-        # We will adapt get_model to take an argument or just set the class var.
-        
-        # Accessing private logic from get_model via class method
-        # But get_model pulls from DB itself.
-        # We should probably update get_model to NOT pull from DB and take arguments,
-        # OR just set the class logic here.
-        
-        # Simpler: Let's reuse get_model but we need to ensure it uses the intended model_name
-        # passing it down is hard since get_model has no args.
-        # Let's modify get_model to accept an optional model_name override?
-        # Or better, just refactor _transcribe_local to do the loading logic if needed.
-        
-        # To avoid breaking existing calls to get_model (if any), 
-        # I'll rely on get_model's DB lookup for now, BUT if I passed model_name here,
-        # it might conflict if get_model reads DB again.
-        # ACTUALLY, strict clean approach:
-        # Refactor get_model to accept model_name.
+        # Map known external names to local names if mismatch occurs
+        if model_name and model_name.startswith('whisper-'):
+             logger.warning(f"Local transcription requested with external model name '{model_name}'. converting to local format.")
+             model_name = model_name.replace('whisper-', '')
+             
         model = self._load_local_model(model_name)
         
         result = model.transcribe(
@@ -218,13 +205,14 @@ class TranscriptionService:
 
         return segments
 
-    def _transcribe_openai(self, audio_path: str, model_name: str, api_key: str) -> List[Dict]:
-        """Use OpenAI API for transcription."""
+    def _transcribe_openai(self, audio_path: str, model_name: str, api_key: str, base_url: str = None) -> List[Dict]:
+        """Use OpenAI API (or compatible) for transcription."""
         if not api_key:
-            raise ValueError("OpenAI API Key is required for OpenAI transcription.")
+            # Some local servers don't need a key, but usually one is passed or dummy
+            pass 
             
         from openai import OpenAI
-        client = OpenAI(api_key=api_key)
+        client = OpenAI(api_key=api_key, base_url=base_url)
         
         # OpenAI Whisper model names: whisper-1
         if not model_name or model_name == 'base': # Fallback if local default passed

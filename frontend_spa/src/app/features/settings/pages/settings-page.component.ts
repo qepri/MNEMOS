@@ -44,6 +44,13 @@ export class SettingsPage implements OnInit {
 
 
 
+    // Helper to get active custom connection for transcription
+    getTranscriptionConnection() {
+        const providerId = this.settingsService.chatPreferences()?.transcription_provider;
+        if (!providerId || ['local', 'groq', 'openai', 'deepgram'].includes(providerId)) return null;
+        return this.settingsService.llmConnections().find(c => c.id === providerId);
+    }
+
     // Chat Preferences
     async handleSaveChatPreferences() {
         const currentPrefs = this.settingsService.chatPreferences();
@@ -71,7 +78,7 @@ export class SettingsPage implements OnInit {
                     const defaultModel = chatSel.connForm.defaultModel();
 
                     // Only attempt save if it looks valid to avoid error toasts for half-filled forms
-                    if (name && url && (!isNew || key)) {
+                    if (name && url) {
                         try {
                             await chatSel.saveConnection();
                             // Fetch fresh snapshot after save (in case ID changed from 'new' to 'uuid')
@@ -134,6 +141,35 @@ export class SettingsPage implements OnInit {
     importModelName = signal<string>('');
     selectedImportFile = signal<string>('');
 
+    // Heuristic to check if file is already imported
+    getImportStatus(filename: string): { text: string, class: string } {
+        const basename = filename.toLowerCase().replace('.gguf', '');
+        const models = this.settingsService.models()?.models || [];
+
+        // Check if any model name contains the basename (or vice versa, roughly)
+        // User typically names it similarly. 
+        // e.g. file: "DeepSeek-R1.gguf", model: "deepseek-r1:latest"
+        const isUrl = (s: string) => s.includes(':'); // simplistic check for "name:tag"
+
+        const exists = models.some(m => {
+            const mName = m.name.toLowerCase();
+            const mBase = mName.split(':')[0]; // ignore tag
+            return mName.includes(basename) || basename.includes(mBase);
+        });
+
+        if (exists) {
+            return { text: 'Already imported (Ready to use)', class: 'text-success' };
+        }
+        return { text: 'Ready to import', class: 'text-secondary' };
+    }
+
+    selectImportFile(file: string) {
+        this.selectedImportFile.set(file);
+        // Auto-populate model name: remove extension, lowercase
+        const name = file.replace(/\.gguf$/i, '').toLowerCase();
+        this.importModelName.set(name);
+    }
+
     // Discover State
     searchQuery = signal<string>('');
     searchResults = signal<any[]>([]);
@@ -168,6 +204,7 @@ export class SettingsPage implements OnInit {
             this.settingsService.loadChatPreferences(),
             this.settingsService.loadSystemPrompts(),
             this.settingsService.loadMemories(),
+            this.settingsService.loadConnections(),
             this.checkOllamaStatus()
         ]);
     }
@@ -340,20 +377,121 @@ export class SettingsPage implements OnInit {
         const files = await this.settingsService.scanImports();
         this.importFiles.set(files);
         if (files.length > 0) {
-            this.selectedImportFile.set(files[0]);
+            this.selectImportFile(files[0]);
+        }
+    }
+
+    async handleFileUpload(event: Event) {
+        const input = event.target as HTMLInputElement;
+        if (!input.files || input.files.length === 0) return;
+
+        const file = input.files[0];
+        if (!file.name.toLowerCase().endsWith('.gguf')) {
+            this.toastr.error('Only .gguf files are allowed', 'Invalid File');
+            return;
+        }
+
+        const taskId = `upload-${Date.now()}`;
+        this.activeDownloads.update(d => ({
+            ...d,
+            [taskId]: {
+                task_id: taskId,
+                model: file.name,
+                status: 'uploading',
+                progress: 0,
+                is_import: true
+            }
+        }));
+
+        this.toastr.info(`Uploading ${file.name}...`, 'Upload Started');
+
+        try {
+            const res = await this.settingsService.uploadModel(file);
+            if (res.success) {
+                this.toastr.success('File uploaded successfully', 'Upload Complete');
+                await this.scanImports(); // Refresh list
+                this.selectImportFile(res.filename); // Auto-select new file
+
+                this.activeDownloads.update(d => ({
+                    ...d,
+                    [taskId]: { ...d[taskId], status: 'success', progress: 100, dismissScheduled: true }
+                }));
+
+                setTimeout(() => {
+                    this.activeDownloads.update(d => {
+                        const next = { ...d };
+                        delete next[taskId];
+                        return next;
+                    });
+                }, 5000);
+            }
+        } catch (error) {
+            console.error(error);
+            this.toastr.error('Failed to upload file', 'Upload Failed');
+            this.activeDownloads.update(d => ({
+                ...d,
+                [taskId]: { ...d[taskId], status: 'failure' }
+            }));
+        } finally {
+            input.value = ''; // Reset input
         }
     }
 
     async handleImportModel() {
         if (!this.selectedImportFile() || !this.importModelName()) return;
 
+        const modelName = this.importModelName();
+        const taskId = `import-${Date.now()}`;
+
+        // Optimistic UI: Add to active downloads to show progress/spinner
+        this.activeDownloads.update(d => ({
+            ...d,
+            [taskId]: {
+                task_id: taskId,
+                model: modelName,
+                status: 'importing', // Custom status, UI should handle 'importing' or generic string
+                progress: 0,
+                is_import: true
+            }
+        }));
+
+        this.toastr.info(`Importing ${modelName}...`, 'Import Started');
+
         try {
-            await this.settingsService.importModel(this.selectedImportFile(), this.importModelName());
-            alert('Import started/completed');
+            await this.settingsService.importModel(this.selectedImportFile(), modelName);
+
+            // Update to success
+            this.activeDownloads.update(d => ({
+                ...d,
+                [taskId]: { ...d[taskId], status: 'success', progress: 100, dismissScheduled: true }
+            }));
+
+            this.toastr.success(`Successfully imported ${modelName}`, 'Import Complete');
             this.importModelName.set('');
+
+            // Refresh models list
+            await this.settingsService.loadModels();
+
+            // Clean up task after delay
+            setTimeout(() => {
+                this.activeDownloads.update(d => {
+                    const next = { ...d };
+                    delete next[taskId];
+                    return next;
+                });
+            }, 5000);
+
             this.switchTab('models');
-        } catch (err) {
-            alert('Import failed');
+
+        } catch (err: any) {
+            console.error(err);
+            // Update to failure
+            this.activeDownloads.update(d => ({
+                ...d,
+                [taskId]: { ...d[taskId], status: 'failure' }
+            }));
+            const msg = err.error?.error || 'Failed to import model';
+            this.toastr.error(msg, 'Import Failed');
         }
     }
 

@@ -44,6 +44,15 @@ export class ChatPage {
   isWebSearchEnabled = signal<boolean>(false);
   selectedImages = signal<string[]>([]);
   isDragging = signal<boolean>(false);
+  isMenuOpen = signal<boolean>(false);
+
+  toggleMenu() {
+    this.isMenuOpen.update(v => !v);
+  }
+
+  closeMenu() {
+    this.isMenuOpen.set(false);
+  }
 
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef;
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
@@ -421,5 +430,10 @@ export class ChatPage {
       textarea.value = '';
       textarea.style.height = 'auto';
     }
+  }
+
+  stopGeneration() {
+    this.chatService.cancelGeneration();
+    this.toastr.info('Request cancelled', 'Stopped');
   }
 }

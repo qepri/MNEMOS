@@ -23,6 +23,15 @@ class Document(db.Model):
     
     chunks = relationship('Chunk', back_populates='document', cascade='all, delete-orphan')
 
+    # New fields for Collections and Library
+    collection_id = Column(UUID(as_uuid=True), db.ForeignKey('collections.id'), nullable=True)
+    tag = Column(String(255)) # Simple tag for now
+    stars = Column(Integer, default=0)
+    comment = Column(Text)
+
+    collection = relationship('Collection', backref='documents')
+
+
     def to_dict(self):
         return {
             "id": str(self.id),
@@ -32,5 +41,9 @@ class Document(db.Model):
             "status": self.status,
             "processing_progress": self.processing_progress or 0,
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "metadata": self.metadata_
+            "metadata": self.metadata_,
+            "collection_id": str(self.collection_id) if self.collection_id else None,
+            "tag": self.tag,
+            "stars": self.stars,
+            "comment": self.comment
         }

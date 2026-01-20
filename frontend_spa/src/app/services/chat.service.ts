@@ -1,6 +1,6 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subject, takeUntil } from 'rxjs';
 import { ApiEndpoints } from '@core/constants/api-endpoints';
 import { ChatRequest, ChatResponse, Message } from '@core/models';
 import { SettingsService } from './settings.service';
@@ -19,12 +19,17 @@ export class ChatService {
   currentConversationId = signal<string | null>(null);
   isLoading = signal<boolean>(false);
 
-  async sendMessage(request: ChatRequest): Promise<ChatResponse> {
+  // Cancellation
+  private stop$ = new Subject<void>();
+
+  async sendMessage(request: ChatRequest): Promise<ChatResponse | null> {
     this.isLoading.set(true);
 
     try {
       const response = await firstValueFrom(
-        this.http.post<ChatResponse>(ApiEndpoints.CHAT, request)
+        this.http.post<ChatResponse>(ApiEndpoints.CHAT, request).pipe(
+          takeUntil(this.stop$)
+        )
       ) as ChatResponse;
 
       // Update current conversation ID
@@ -37,11 +42,19 @@ export class ChatService {
 
       return response;
     } catch (error) {
-      console.error('Failed to send message', error);
-      throw error;
+      if (this.isLoading()) {
+        console.error('Failed to send message', error);
+        throw error;
+      }
+      return null;
     } finally {
       this.isLoading.set(false);
     }
+  }
+
+  cancelGeneration() {
+    this.stop$.next();
+    this.isLoading.set(false);
   }
 
   loadMessages(messages: Message[]) {
@@ -81,6 +94,9 @@ export class ChatService {
     const delay = 5; // Low delay
 
     for (let i = 0; i < content.length; i += chunkSize) {
+      // Check for cancellation
+      if (!this.isLoading()) break;
+
       const chunk = content.slice(i, i + chunkSize);
 
       this.messages.update(msgs =>
@@ -105,7 +121,7 @@ export class ChatService {
 
     // TTS
     const prefs = this.settingsService.chatPreferences();
-    if (prefs?.tts_enabled) {
+    if (prefs?.tts_enabled && this.isLoading()) { // Only speak if not cancelled
       this.voiceService.speak(content);
     }
   }

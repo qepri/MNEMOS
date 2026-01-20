@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     
     # Ollama (Dockerized)
     # Using internal docker hostname 'ollama' and port 11434
-    OLLAMA_BASE_URL: str = "http://ollama:11434/v1"
+    OLLAMA_BASE_URL: str = "http://mnemos-ollama:11434/v1"
     OLLAMA_NUM_CTX: int = 2048 # Reduced to 2048 to fit in 6GB VRAM
     
     # Embeddings
@@ -77,7 +77,7 @@ class Settings(BaseSettings):
     # In docker, mapped to /app/uploads
     # Default to a local 'uploads' directory for Windows dev
     UPLOAD_FOLDER: str = os.path.join(os.getcwd(), 'uploads') if os.name == 'nt' else "/app/uploads"
-    MAX_CONTENT_LENGTH: int = 500 * 1024 * 1024  # 500MB
+    MAX_CONTENT_LENGTH: int = 50 * 1024 * 1024 * 1024  # 50GB
     
     class Config:
         env_file = ".env"

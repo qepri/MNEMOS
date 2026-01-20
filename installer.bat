@@ -80,6 +80,15 @@ echo [OK] Podman installed and started.
 set ENGINE=podman
 
 
+
+:CREATE_VOLUME
+echo [*] Ensuring ollama_models volume exists...
+if "%ENGINE%"=="podman" (
+    podman volume create ollama_models >nul 2>&1
+) else (
+    docker volume create ollama_models >nul 2>&1
+)
+
 :GPU_CHECK
 echo.
 echo [*] Checking for GPU capabilities...

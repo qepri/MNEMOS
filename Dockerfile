@@ -23,8 +23,15 @@ RUN python -c "import whisper; whisper.load_model('base')"
 # Copy application code
 COPY . .
 
+# Add entrypoint script
+COPY entrypoint.sh .
+RUN chmod +x entrypoint.sh
+
 # Expose port
 EXPOSE 5000
+
+# Entrypoint to run migrations
+ENTRYPOINT ["./entrypoint.sh"]
 
 # Default command
 CMD ["gunicorn", "-b", "0.0.0.0:5000", "-w", "1", "--timeout", "1800", "app:create_app()"]

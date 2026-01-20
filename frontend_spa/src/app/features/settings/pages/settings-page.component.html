@@ -233,7 +233,7 @@
                         <div class="flex items-center gap-3">
                             <div class="flex-1">
                                 <app-progress-bar [label]="download.model || download.model_name"
-                                    [progress]="download.progress !== undefined ? download.progress : (download.total ? (download.completed / download.total * 100) : 0)"
+                                    [progress]="download.progress !== undefined ? download.progress : ((download.total && download.completed) ? (download.completed / download.total * 100) : 0)"
                                     [status]="download.status === 'success' ? 'completed' : (download.status === 'failure' ? 'error' : (download.status === 'revoked' ? 'error' : 'downloading'))"
                                     [message]="download.status">
                                 </app-progress-bar>
@@ -477,19 +477,30 @@
                 <div class="space-y-6 anime-fade-in">
                     <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
                         <h2 class="text-lg font-semibold mb-4">Import GGUF Files</h2>
+                        <h3 class="card-title text-lg mb-4">Import GGUF Files</h3>
                         <p class="text-sm text-secondary mb-6">
-                            Import custom GGUF model files from your local system. Click "Scan" to find .gguf files
-                            in
-                            your
-                            <code>ollama_models/import</code> folder.
+                            Import custom GGUF model files. You can upload a file directly or scan the imports folder.
                         </p>
-                        <button (click)="scanImports()" class="btn-primary mb-6 flex items-center gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            Scan for GGUF Files
-                        </button>
+
+                        <div class="flex gap-2 mb-6">
+                            <button (click)="scanImports()" class="btn-primary flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                Scan for GGUF Files
+                            </button>
+
+                            <button class="btn-secondary flex items-center gap-2" (click)="fileInput.click()">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                </svg>
+                                Upload GGUF
+                            </button>
+                            <input #fileInput type="file" accept=".gguf" class="hidden" style="display: none;"
+                                (change)="handleFileUpload($event)">
+                        </div>
 
                         <div class="space-y-3">
                             @for (file of importFiles(); track file) {
@@ -497,11 +508,13 @@
                                 <div class="flex items-start justify-between gap-4 mb-3">
                                     <div class="flex-1">
                                         <p class="font-mono text-sm mb-1">{{ file }}</p>
-                                        <p class="text-xs text-secondary">Ready to import</p>
+                                        <p class="text-xs" [ngClass]="getImportStatus(file).class">
+                                            {{ getImportStatus(file).text }}
+                                        </p>
                                     </div>
                                     <input type="radio" name="import-file" [value]="file"
-                                        (change)="selectedImportFile.set(file)"
-                                        [checked]="selectedImportFile() === file" class="radio radio-sm radio-accent">
+                                        (change)="selectImportFile(file)" [checked]="selectedImportFile() === file"
+                                        class="radio radio-sm radio-accent">
                                 </div>
                                 @if (selectedImportFile() === file) {
                                 <div class="flex gap-2">
@@ -525,7 +538,8 @@
                 }
 
                 <!-- Tab: Chat Settings -->
-                @if (activeTab() === 'chat' && settingsService.chatPreferences()) {
+                @if (activeTab() === 'chat') {
+                @if (settingsService.chatPreferences()) {
                 <div class="space-y-6 anime-fade-in">
 
                     <!-- AI Provider Configuration -->
@@ -586,6 +600,35 @@
                                 Connection</button>
                             }
                             }
+                        </div>
+                        }
+
+                        <!-- Ollama Advanced Settings -->
+                        @if (llmSelector.selectedProvider() === 'ollama') {
+                        <div class="mt-6">
+                            <h3 class="text-sm font-medium mb-2">Ollama Advanced Settings</h3>
+                            <div class="bg-base-200 rounded-lg p-4 border border-divider">
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="text-sm font-medium">Context Window (Tokens)</label>
+                                    <span class="text-xs font-mono bg-base-100 px-2 py-1 rounded border border-divider">
+                                        {{ settingsService.chatPreferences()!.ollama_num_ctx || 2048 }}
+                                    </span>
+                                </div>
+                                <input type="range" min="2048" max="16384" step="1024"
+                                    [(ngModel)]="settingsService.chatPreferences()!.ollama_num_ctx"
+                                    class="range range-accent range-sm mb-2">
+                                <div class="flex justify-between text-xs text-secondary px-1">
+                                    <span>2048 (Fast)</span>
+                                    <span>4096 (Standard)</span>
+                                    <span>8192 (Large)</span>
+                                    <span>16384 (Massive)</span>
+                                </div>
+                                <p class="text-xs text-secondary mt-2">
+                                    Higher values allow more text history but consume more VRAM.
+                                    <br><strong>Recommended:</strong> 2048 for 6GB GPU, 8192 for 24GB GPU.
+                                    <br><em>Requires restart of chat session to take effect.</em>
+                                </p>
+                            </div>
                         </div>
                         }
                     </div>
@@ -669,6 +712,9 @@
                                     class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent mb-4">
                                     <option value="local">Local (Whisper)</option>
                                     <option value="groq">Groq Cloud API</option>
+                                    @for (conn of settingsService.llmConnections(); track conn.id) {
+                                    <option [value]="conn.id">{{ conn.name }} (Custom)</option>
+                                    }
                                 </select>
 
                                 <label class="block text-sm font-medium mb-2">Whisper Model</label>
@@ -679,6 +725,16 @@
                                     <option value="whisper-large-v3-turbo">Whisper Large V3 Turbo</option>
                                 </select>
                                 <p class="text-xs text-secondary mt-1">Uses Groq API Key set in LLM section.</p>
+                                } @else if (getTranscriptionConnection()) {
+                                <select [(ngModel)]="settingsService.chatPreferences()!.whisper_model"
+                                    class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
+                                    @for (model of getTranscriptionConnection()?.models; track model) {
+                                    <option [value]="model">{{ model }}</option>
+                                    }
+                                </select>
+                                <p class="text-xs text-secondary mt-1">
+                                    Uses custom connection <strong>{{ getTranscriptionConnection()?.name }}</strong>.
+                                </p>
                                 } @else {
                                 <select [(ngModel)]="settingsService.chatPreferences()!.whisper_model"
                                     class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
@@ -866,6 +922,27 @@
                         </button>
                     </div>
                 </div>
+                } @else {
+                <div class="p-8 text-center bg-panel border border-divider rounded-xl anime-fade-in">
+                    <svg class="w-12 h-12 text-error mx-auto mb-4 opacity-50" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <h3 class="text-lg font-semibold text-primary mb-2">Unable to load Chat Settings</h3>
+                    <p class="text-secondary max-w-md mx-auto mb-6">
+                        Could not connect to the backend service. Please ensure the backend server and database are
+                        running.
+                    </p>
+                    <button (click)="settingsService.loadChatPreferences()" class="btn-primary gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Retry Connection
+                    </button>
+                </div>
+                }
                 }
 
             </div>
