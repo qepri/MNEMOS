@@ -974,7 +974,13 @@ def save_chat_settings():
 
     # LLM Config
     if 'llm_provider' in data:
-        prefs.llm_provider = data['llm_provider']
+        # Normalize provider string
+        provider = data['llm_provider']
+        if provider:
+             prefs.llm_provider = provider
+             # Explicitly set active model based on provider defaults if not set?
+             # No, let the UI handle that or fallback logic in LLMClient.
+    
     if 'openai_api_key' in data:
         prefs.openai_api_key = data['openai_api_key']
     if 'anthropic_api_key' in data:

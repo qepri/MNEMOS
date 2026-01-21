@@ -12,20 +12,28 @@ class LLMClient:
         # Priority: Argument > DB > Settings
         
         db_prefs = None
+        db_prefs = None
         try:
-            if db.session.registry.has():
-                db_prefs = db.session.query(UserPreferences).first()
+            # Just query directly. Flask-SQLAlchemy handles session creation if App Context is active.
+            db_prefs = db.session.query(UserPreferences).first()
+            if db_prefs:
+                print(f"DEBUG: Found UserPreferences in DB. Provider: {db_prefs.llm_provider}")
+            else:
+                print("DEBUG: UserPreferences table empty.")
         except Exception as e:
             print(f"Error loading LLM config from DB: {e}")
+            # If we are really outside context, this will catch it.
 
         # Provider
         if provider:
             self.provider = provider
+            print(f"DEBUG: Using passed provider arg: {provider}")
         elif db_prefs and db_prefs.llm_provider:
              self.provider = db_prefs.llm_provider
+             print(f"DEBUG: Using DB provider: {self.provider}")
         else:
              self.provider = settings.LLM_PROVIDER
-             
+             print(f"DEBUG: Fallback to Settings provider: {self.provider}")             
         
         d_anthropic_key = db_prefs.anthropic_api_key if db_prefs else None
         d_groq_key = db_prefs.groq_api_key if db_prefs else None

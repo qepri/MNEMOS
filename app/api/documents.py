@@ -135,7 +135,11 @@ def get_document_status(doc_id):
     if request.headers.get('HX-Request'):
         return render_template('partials/document_item.html', document=doc)
         
-    return jsonify({"status": doc.status, "error": doc.error_message})
+    return jsonify({
+        "status": doc.status, 
+        "progress": doc.processing_progress, 
+        "error": doc.error_message
+    })
 
 @bp.route('/<string:doc_id>/content', methods=['GET'])
 def get_document_content(doc_id):
@@ -245,3 +249,29 @@ def download_transcription(doc_id):
         return "", 404
         
     return send_from_directory(settings.TRANSCRIPTION_FOLDER, filename, as_attachment=True)
+
+@bp.route('/<string:doc_id>/summary', methods=['POST'])
+def generate_summary(doc_id):
+    """Manually trigger summary generation."""
+    from app.tasks.processing import generate_summary_task
+    
+    doc = db.session.query(Document).get(doc_id)
+    if not doc:
+        return jsonify({'error': 'Document not found'}), 404
+        
+    generate_summary_task.delay(doc_id)
+    logger.info(f"Manual summary generation triggered for {doc_id}")
+    
+    return jsonify({'status': 'queued'}), 202
+
+@bp.route('/reprocess-hypergraph', methods=['POST'])
+def reprocess_hypergraph():
+    """
+    Trigger batch reprocessing of hypergraph for all documents.
+    """
+    from app.tasks.processing import reprocess_all_hypergraphs_task
+    
+    reprocess_all_hypergraphs_task.delay()
+    logger.info("Triggered batch hypergraph reprocessing task.")
+    
+    return jsonify({'status': 'queued', 'message': 'Batch hypergraph reprocessing started.'}), 202

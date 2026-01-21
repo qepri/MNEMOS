@@ -22,6 +22,10 @@ export const routes: Routes = [
             {
                 path: AppRoutes.COLLECTIONS,
                 loadComponent: () => import('./features/collections/collections.component').then(m => m.CollectionsPageComponent)
+            },
+            {
+                path: AppRoutes.REASONING,
+                loadComponent: () => import('./pages/reasoning/reasoning.component').then(m => m.ReasoningComponent)
             }
         ]
     }

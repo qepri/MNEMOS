@@ -46,6 +46,9 @@ def create_app():
 
     from app.api.voice import voice_bp
     app.register_blueprint(voice_bp, url_prefix='/api/voice')
+
+    from app.api.reasoning import bp as reasoning_bp
+    app.register_blueprint(reasoning_bp)
     
     from sqlalchemy import text
     from sqlalchemy.exc import SQLAlchemyError

@@ -7,6 +7,7 @@ from app.services.chunker import ChunkerService
 from app.services.epub_processor import EpubProcessor
 from app.services.embedder import EmbedderService
 from app.services.youtube import YouTubeService
+from app.services.llm_client import get_llm_client, reset_client
 from config.settings import settings
 import os
 import logging
@@ -30,6 +31,9 @@ def process_document_task(self, document_id: str):
     with app.app_context():
         try:
             logger.info(f"Starting processing for document {document_id}")
+            
+            # Ensure Worker picks up latest LLM settings from DB
+            reset_client()
             
             doc = db.session.get(Document, UUID(document_id))
             if not doc:
@@ -258,46 +262,17 @@ def process_document_task(self, document_id: str):
                 logger.info(f"Saved {len(text_chunks)} chunks to database")
                 
                 # --- Generate Document Summary (Summary Indexing) ---
-                logger.info("Generating document summary...")
-                try:
-                    from app.services.llm_client import get_llm_client
-                    
-                    # Combine first N chunks to generate a decent summary (limit context)
-                    summary_context = "\n".join([c["text"] for c in text_chunks[:5]])[:10000]
-                    logger.info(f"Generating summary using context length: {len(summary_context)} chars")
-                    
-                    llm = get_llm_client()
-                    summary_prompt = f"""Summarize the following text in a detailed paragraph (200-300 words). 
-Focus on the main topics, key entities, and core arguments.
-Text:
-{summary_context}
-"""
-                    summary_text = llm.chat(
-                        system="You are an expert summarizer.",
-                        messages=[{"role": "user", "content": summary_prompt}]
-                    )
-                    
-                    logger.info(f"Summary generated: {summary_text}")
-                    
-                    doc.summary = summary_text
-                    # Language already set on Doc, so trigger will index this summary correctly.
-                    
-                    # Embed Summary
-                    logger.info("Embedding summary...")
-                    summary_vec = embedder.embed([summary_text])[0]
-                    doc.summary_embedding = summary_vec
-                    
-                    logger.info("Summary generated and embedded.")
-                    doc.processing_progress = 85
-                    db.session.commit()
-                    
-                except Exception as e:
-                    logger.error(f"Failed to generate summary: {e}")
-                    # Non-fatal
-                
-                doc.processing_progress = 95  # Saving done
-                db.session.commit()
+                _generate_summary_logic(doc.id)
 
+                # --- Hypergraph Extraction (New Step) ---
+                try:
+                    from app.services.hypergraph_extractor import HypergraphExtractor
+                    doc.processing_progress = 90
+                    db.session.commit()
+                    HypergraphExtractor.process_document(doc.id)
+                except Exception as hg_e:
+                    logger.error(f"Hypergraph extraction failed (non-blocking): {hg_e}")
+                
             doc.status = 'completed'
             doc.processing_progress = 100
             db.session.commit()
@@ -310,6 +285,55 @@ Text:
                  doc.status = 'error'
                  doc.error_message = str(e)
                  db.session.commit()
+            raise e
+
+def _generate_summary_logic(document_id):
+    """
+    Helper function to generate summary for a document.
+    Can be called from main processing task or independent summary task.
+    """
+    from app.services.summary_service import SummaryService
+    try:
+        SummaryService.generate_summary(document_id)
+    except Exception as e:
+        logger.error(f"Failed to generate summary (wrapper): {e}")
+
+@celery_app.task(bind=True)
+def generate_summary_task(self, document_id: str):
+    """
+    Standalone task to generate summary (e.g. retry).
+    """
+    from app import create_app
+    app = create_app()
+    with app.app_context():
+        try:
+             # Set status to processing so UI shows bar
+             doc = db.session.get(Document, UUID(document_id))
+             if doc:
+                 doc.status = 'processing'
+                 doc.processing_progress = 50 
+                 db.session.commit()
+                 
+             _generate_summary_logic(document_id)
+             
+             # Mark done
+             if doc:
+                 doc.status = 'completed'
+                 doc.processing_progress = 100
+                 db.session.commit()
+                 
+             return "Summary generated"
+        except Exception as e:
+            logger.error(f"Error in generate_summary_task: {e}")
+            # Ensure we don't leave it stuck if we can help it
+            try:
+                doc = db.session.get(Document, UUID(document_id))
+                if doc:
+                    doc.status = 'error'
+                    doc.error_message = str(e)
+                    db.session.commit()
+            except:
+                pass
             raise e
 
 @celery_app.task(bind=True)
@@ -452,3 +476,33 @@ def download_gguf_task(self, repo_id, filename, model_name):
     except Exception as e:
         logger.error(f"GGUF Task failed: {e}")
         return {'status': 'failure', 'error': str(e)}
+
+@celery_app.task(bind=True)
+def reprocess_all_hypergraphs_task(self):
+    """
+    Background task to iterate over all documents and re-run hypergraph extraction.
+    This is useful for 'Rebuild Knowledge Graph' functionality.
+    """
+    from app import create_app
+    from app.services.hypergraph_extractor import HypergraphExtractor
+    
+    app = create_app()
+    with app.app_context():
+        try:
+            documents = db.session.query(Document).all()
+            total = len(documents)
+            logger.info(f"Starting batch hypergraph reprocessing for {total} documents.")
+            
+            for i, doc in enumerate(documents):
+                try:
+                    logger.info(f"Reprocessing doc {i+1}/{total}: {doc.id}")
+                    HypergraphExtractor.process_document(doc.id)
+                except Exception as e:
+                    logger.error(f"Failed to reprocess doc {doc.id}: {e}")
+                    # Continue to next document
+                    
+            return f"Completed reprocessing {total} documents."
+            
+        except Exception as e:
+            logger.error(f"Error in reprocess_all_hypergraphs_task: {e}")
+            raise e

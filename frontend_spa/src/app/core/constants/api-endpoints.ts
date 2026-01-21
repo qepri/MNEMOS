@@ -45,7 +45,10 @@ export const ApiEndpoints = {
   SETTINGS_OLLAMA_INSTALL: '/api/settings/ollama/install',
   SETTINGS_OLLAMA_START: '/api/settings/ollama/start',
 
-  // Memory
   MEMORY_GET: '/api/memory',
   MEMORY_DELETE: (id: string) => `/api/memory/${id}`,
+
+  // Reasoning
+  REASONING_TRAVERSE: '/api/reasoning/traverse',
+  REASONING_REPROCESS: '/api/documents/reprocess-hypergraph',
 } as const;
