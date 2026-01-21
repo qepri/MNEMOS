@@ -9,10 +9,12 @@ import { ApiEndpoints } from '@core/constants/api-endpoints';
 
 import { VoiceService } from '@services/voice.service';
 
+import { GraphVisualizerComponent } from '@shared/components/graph-visualizer/graph-visualizer.component';
+
 @Component({
   selector: 'app-message-bubble',
   standalone: true,
-  imports: [CommonModule, FormsModule, SourceModalComponent, MarkdownDisplayComponent],
+  imports: [CommonModule, FormsModule, SourceModalComponent, MarkdownDisplayComponent, GraphVisualizerComponent],
   template: `
     <div class="flex flex-col gap-1 w-full max-w-3xl mx-auto anime-fade-in group"
       [class.message-user]="message().role === 'user'"
@@ -76,6 +78,12 @@ import { VoiceService } from '@services/voice.service';
                 }
               </div>
             </div>
+          }
+
+          @if (message().graph_data) {
+             <div class="mt-4 pt-3 border-t border-divider">
+                <app-graph-visualizer [data]="message().graph_data"></app-graph-visualizer>
+             </div>
           }
 
           @if (message().sources && message().sources!.length > 0 && (!message().status || message().status === 'completed')) {

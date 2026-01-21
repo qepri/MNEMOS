@@ -16,6 +16,7 @@ export interface Message {
   created_at: string;
   status?: 'generating' | 'completed' | 'error';
   search_queries?: string[];
+  graph_data?: any;
 }
 
 export interface MessageSource {

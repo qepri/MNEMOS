@@ -3,12 +3,14 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ReasoningService } from '../../services/reasoning.service';
 import { ToastrService } from 'ngx-toastr';
-import cytoscape from 'cytoscape';
+import { CollectionService } from '../../services/collection.service';
+import { Collection } from '../../core/models/collection.model';
+import { GraphVisualizerComponent } from '../../shared/components/graph-visualizer/graph-visualizer.component';
 
 @Component({
     selector: 'app-reasoning',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, GraphVisualizerComponent],
     template: `
     <div class="h-full flex flex-col gap-6 p-6">
       
@@ -35,6 +37,23 @@ import cytoscape from 'cytoscape';
       <!-- Controls -->
       <div class="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_auto] gap-4 items-end bg-panel p-4 rounded-xl shadow-lg border border-divider">
         
+        <!-- Collection Filter -->
+        <div class="flex flex-col gap-2 w-full md:col-span-4 mb-2">
+            <label class="text-sm font-semibold text-primary">Context Scope (Collections)</label>
+            <div class="flex flex-wrap gap-2">
+                <button *ngFor="let col of collections()" 
+                    (click)="toggleCollection(col.id)"
+                    [class.bg-accent]="selectedCollectionIds().has(col.id)"
+                    [class.text-white]="selectedCollectionIds().has(col.id)"
+                    [class.bg-input]="!selectedCollectionIds().has(col.id)"
+                    [class.text-secondary]="!selectedCollectionIds().has(col.id)"
+                    class="px-3 py-1 rounded-full text-xs font-medium border border-divider hover:border-accent transition-all">
+                    {{ col.name }}
+                </button>
+                <span *ngIf="collections().length === 0" class="text-xs text-secondary italic">No collections found.</span>
+            </div>
+        </div>
+
         <!-- Start -->
         <div class="flex flex-col gap-2 w-full">
             <label class="text-sm font-semibold text-primary">Start Concept</label>
@@ -71,8 +90,7 @@ import cytoscape from 'cytoscape';
         
         <!-- Graph Visualization (Left/Top) -->
         <div class="lg:col-span-2 bg-base rounded-xl border border-divider relative overflow-hidden flex flex-col shadow-sm">
-            <div class="absolute top-4 left-4 z-10 px-3 py-1 bg-panel/80 backdrop-blur-sm border border-divider rounded-full text-xs font-medium text-secondary">Graph View</div>
-            <div #cy id="cy" class="w-full h-full bg-base"></div>
+             <app-graph-visualizer [data]="graphData()" [height]="600"></app-graph-visualizer>
         </div>
 
         <!-- Narrative / Text (Right/Bottom) -->
@@ -100,10 +118,6 @@ import cytoscape from 'cytoscape';
       display: block;
       height: 100%;
     }
-    #cy {
-        display: block;
-        min-height: 400px;
-    }
     .animate-fade-in {
         animation: fadeIn 0.5s ease-in-out;
     }
@@ -114,9 +128,9 @@ import cytoscape from 'cytoscape';
   `]
 })
 export class ReasoningComponent implements AfterViewInit, OnDestroy {
-    @ViewChild('cy') cyElement!: ElementRef;
 
     private reasoningService = inject(ReasoningService);
+    private collectionService = inject(CollectionService);
     private toastr = inject(ToastrService);
 
     // Inputs
@@ -127,54 +141,38 @@ export class ReasoningComponent implements AfterViewInit, OnDestroy {
     isLoading = signal(false);
     isReprocessing = signal(false);
     result = signal<string>('');
+    graphData = signal<any>(null);
 
-    // Cytoscape Instance
-    private cy: cytoscape.Core | null = null;
+    // Collections
+    collections = signal<Collection[]>([]);
+    selectedCollectionIds = signal<Set<string>>(new Set());
+
+    constructor() {
+        // Load collections
+        this.collectionService.getCollections().subscribe({
+            next: (cols) => this.collections.set(cols),
+            error: (err) => console.error("Failed to load collections", err)
+        });
+    }
 
     ngAfterViewInit() {
-        this.initGraph();
+        // No init needed
+    }
+
+    toggleCollection(id: string) {
+        this.selectedCollectionIds.update(set => {
+            const newSet = new Set(set);
+            if (newSet.has(id)) {
+                newSet.delete(id);
+            } else {
+                newSet.add(id);
+            }
+            return newSet;
+        });
     }
 
     ngOnDestroy() {
-        if (this.cy) {
-            this.cy.destroy();
-        }
-    }
-
-    initGraph() {
-        // Basic initialization of Cytoscape
-        this.cy = cytoscape({
-            container: this.cyElement.nativeElement,
-            elements: [], // start empty
-            style: [
-                {
-                    selector: 'node',
-                    style: {
-                        'background-color': '#66CCFF',
-                        'label': 'data(label)',
-                        'color': '#fff',
-                        'text-valign': 'center',
-                        'text-halign': 'center',
-                        'width': 40,
-                        'height': 40
-                    }
-                },
-                {
-                    selector: 'edge',
-                    style: {
-                        'width': 3,
-                        'line-color': '#ccc',
-                        'target-arrow-color': '#ccc',
-                        'target-arrow-shape': 'triangle',
-                        'curve-style': 'bezier'
-                    }
-                }
-            ],
-            layout: {
-                name: 'grid',
-                rows: 1
-            }
-        });
+        // No cleanup needed
     }
 
     traverse() {
@@ -182,28 +180,19 @@ export class ReasoningComponent implements AfterViewInit, OnDestroy {
 
         this.isLoading.set(true);
         this.result.set('');
+        this.graphData.set(null);
 
-        // Clear previous graph
-        if (this.cy) {
-            this.cy.elements().remove();
-        }
+        const filterIds = Array.from(this.selectedCollectionIds());
 
-        this.reasoningService.traverse(this.startConcept, this.goalConcept).subscribe({
+        // Always save to chat as requested
+        this.reasoningService.traverse(this.startConcept, this.goalConcept, filterIds, true).subscribe({
             next: (res: any) => {
                 this.result.set(res.narrative);
                 this.isLoading.set(false);
-                this.toastr.success('Hypothesis generated successfully');
+                this.toastr.success('Hypothesis generated and saved to Chat history');
 
-                if (this.cy && res.graph_data) {
-                    this.cy.add(res.graph_data);
-
-                    // Use COSE layout for better organic dispersal
-                    this.cy.layout({
-                        name: 'cose',
-                        animate: true,
-                        animationDuration: 500,
-                        padding: 50
-                    }).run();
+                if (res.graph_data) {
+                    this.graphData.set(res.graph_data);
                 }
             },
             error: (err) => {

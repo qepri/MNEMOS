@@ -24,7 +24,6 @@ share/python-wheels/
 MANIFEST
 
 app/static/audio/
-.agent/
 
 # Virtual Environment
 venv/

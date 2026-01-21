@@ -476,33 +476,3 @@ def download_gguf_task(self, repo_id, filename, model_name):
     except Exception as e:
         logger.error(f"GGUF Task failed: {e}")
         return {'status': 'failure', 'error': str(e)}
-
-@celery_app.task(bind=True)
-def reprocess_all_hypergraphs_task(self):
-    """
-    Background task to iterate over all documents and re-run hypergraph extraction.
-    This is useful for 'Rebuild Knowledge Graph' functionality.
-    """
-    from app import create_app
-    from app.services.hypergraph_extractor import HypergraphExtractor
-    
-    app = create_app()
-    with app.app_context():
-        try:
-            documents = db.session.query(Document).all()
-            total = len(documents)
-            logger.info(f"Starting batch hypergraph reprocessing for {total} documents.")
-            
-            for i, doc in enumerate(documents):
-                try:
-                    logger.info(f"Reprocessing doc {i+1}/{total}: {doc.id}")
-                    HypergraphExtractor.process_document(doc.id)
-                except Exception as e:
-                    logger.error(f"Failed to reprocess doc {doc.id}: {e}")
-                    # Continue to next document
-                    
-            return f"Completed reprocessing {total} documents."
-            
-        except Exception as e:
-            logger.error(f"Error in reprocess_all_hypergraphs_task: {e}")
-            raise e

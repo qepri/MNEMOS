@@ -263,15 +263,3 @@ def generate_summary(doc_id):
     logger.info(f"Manual summary generation triggered for {doc_id}")
     
     return jsonify({'status': 'queued'}), 202
-
-@bp.route('/reprocess-hypergraph', methods=['POST'])
-def reprocess_hypergraph():
-    """
-    Trigger batch reprocessing of hypergraph for all documents.
-    """
-    from app.tasks.processing import reprocess_all_hypergraphs_task
-    
-    reprocess_all_hypergraphs_task.delay()
-    logger.info("Triggered batch hypergraph reprocessing task.")
-    
-    return jsonify({'status': 'queued', 'message': 'Batch hypergraph reprocessing started.'}), 202

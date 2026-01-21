@@ -53,10 +53,11 @@ class ReasoningEngine:
             
         return None
 
-    def traverse(self, start_concept_name: str, goal_concept_name: str, max_depth=3, k_paths=3, intersection_size=1):
+    def traverse(self, start_concept_name: str, goal_concept_name: str, max_depth=3, k_paths=3, intersection_size=1, collection_ids=None):
         """
         Traverse the Hypergraph from start_concept to goal_concept using BFS on HyperEdges.
         Returns a narrative explanation of the connections found.
+        collection_ids: Optional list of UUID strings to filter edges by source document collection.
         """
         start_concept_name = start_concept_name.lower().strip()
         goal_concept_name = goal_concept_name.lower().strip()
@@ -83,7 +84,18 @@ class ReasoningEngine:
         queue = deque()
         
         # Initial Set: All HyperEdges containing start_node
-        start_edges = [m.hyper_edge for m in start_node.hyper_edge_members]
+        # Filter initial edges too if needed? Yes.
+        initial_query = db.session.query(HyperEdgeMember)\
+            .filter(HyperEdgeMember.concept_id == start_node.id)\
+            .join(HyperEdgeMember.hyper_edge)
+            
+        if collection_ids:
+             from app.models.document import Document
+             initial_query = initial_query.join(HyperEdge.document).filter(Document.collection_id.in_(collection_ids))
+             
+        start_members = initial_query.all()
+        start_edges = [m.hyper_edge for m in start_members]
+        
         for edge in start_edges:
             queue.append((edge, [edge]))
             
@@ -114,10 +126,15 @@ class ReasoningEngine:
             
             # Query: Find all members where concept_id IN current_concept_ids
             # Then get their hyper_edge_ids
-            candidates = db.session.query(HyperEdgeMember)\
+            candidate_query = db.session.query(HyperEdgeMember)\
                 .filter(HyperEdgeMember.concept_id.in_(current_concept_ids))\
-                .options(joinedload(HyperEdgeMember.hyper_edge).joinedload(HyperEdge.members))\
-                .all()
+                .join(HyperEdgeMember.hyper_edge)
+                
+            if collection_ids:
+                from app.models.document import Document
+                candidate_query = candidate_query.join(HyperEdge.document).filter(Document.collection_id.in_(collection_ids))
+            
+            candidates = candidate_query.options(joinedload(HyperEdgeMember.hyper_edge).joinedload(HyperEdge.members)).all()
                 
             candidate_edges = {} # edge_id -> HyperEdge Obj
             
