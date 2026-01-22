@@ -6,6 +6,7 @@ import { ToastrService } from 'ngx-toastr';
 import { CollectionService } from '../../services/collection.service';
 import { Collection } from '../../core/models/collection.model';
 import { GraphVisualizerComponent } from '../../shared/components/graph-visualizer/graph-visualizer.component';
+import { Router } from '@angular/router';
 
 @Component({
     selector: 'app-reasoning',
@@ -27,9 +28,11 @@ import { GraphVisualizerComponent } from '../../shared/components/graph-visualiz
             (click)="triggerReprocess()" 
             [disabled]="isReprocessing()"
             class="px-4 py-2 rounded-lg border border-divider text-sm font-medium text-secondary hover:bg-hover hover:text-primary transition-colors flex items-center gap-2">
-            <span *ngIf="isReprocessing()" class="loading-dots">
-                <span></span><span></span><span></span>
-            </span>
+            @if (isReprocessing()) {
+                <span class="loading-dots">
+                    <span></span><span></span><span></span>
+                </span>
+            }
             {{ isReprocessing() ? 'Building Graph...' : 'Rebuild Knowledge Graph' }}
         </button>
       </div>
@@ -41,16 +44,20 @@ import { GraphVisualizerComponent } from '../../shared/components/graph-visualiz
         <div class="flex flex-col gap-2 w-full md:col-span-4 mb-2">
             <label class="text-sm font-semibold text-primary">Context Scope (Collections)</label>
             <div class="flex flex-wrap gap-2">
-                <button *ngFor="let col of collections()" 
-                    (click)="toggleCollection(col.id)"
-                    [class.bg-accent]="selectedCollectionIds().has(col.id)"
-                    [class.text-white]="selectedCollectionIds().has(col.id)"
-                    [class.bg-input]="!selectedCollectionIds().has(col.id)"
-                    [class.text-secondary]="!selectedCollectionIds().has(col.id)"
-                    class="px-3 py-1 rounded-full text-xs font-medium border border-divider hover:border-accent transition-all">
-                    {{ col.name }}
-                </button>
-                <span *ngIf="collections().length === 0" class="text-xs text-secondary italic">No collections found.</span>
+                @for (col of collections(); track col.id) {
+                    <button 
+                        (click)="toggleCollection(col.id)"
+                        [class.bg-accent]="selectedCollectionIds().has(col.id)"
+                        [class.text-white]="selectedCollectionIds().has(col.id)"
+                        [class.bg-input]="!selectedCollectionIds().has(col.id)"
+                        [class.text-secondary]="!selectedCollectionIds().has(col.id)"
+                        class="px-3 py-1 rounded-full text-xs font-medium border border-divider hover:border-accent transition-all">
+                        {{ col.name }}
+                    </button>
+                }
+                @if (collections().length === 0) {
+                    <span class="text-xs text-secondary italic">No collections found.</span>
+                }
             </div>
         </div>
 
@@ -78,9 +85,11 @@ import { GraphVisualizerComponent } from '../../shared/components/graph-visualiz
         <!-- Action -->
         <button (click)="traverse()" [disabled]="isLoading() || !startConcept || !goalConcept" 
             class="h-[42px] px-6 bg-accent hover:bg-accent-dark text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[120px]">
-            <span *ngIf="isLoading()" class="loading-dots mr-2">
-                <span></span><span></span><span></span>
-            </span>
+            @if (isLoading()) {
+                <span class="loading-dots mr-2">
+                    <span></span><span></span><span></span>
+                </span>
+            }
             Traverse Path
         </button>
       </div>
@@ -90,7 +99,7 @@ import { GraphVisualizerComponent } from '../../shared/components/graph-visualiz
         
         <!-- Graph Visualization (Left/Top) -->
         <div class="lg:col-span-2 bg-base rounded-xl border border-divider relative overflow-hidden flex flex-col shadow-sm">
-             <app-graph-visualizer [data]="graphData()" [height]="600"></app-graph-visualizer>
+             <app-graph-visualizer [data]="graphData()" [height]="600" (viewSource)="handleViewSource($event)"></app-graph-visualizer>
         </div>
 
         <!-- Narrative / Text (Right/Bottom) -->
@@ -102,13 +111,17 @@ import { GraphVisualizerComponent } from '../../shared/components/graph-visualiz
                 Hypothesis Narrative
             </h3>
             
-            <div *ngIf="!result()" class="text-secondary italic flex flex-col items-center justify-center h-40">
-                <span>Enter concepts to generate a hypothesis...</span>
-            </div>
+            @if (!result()) {
+                <div class="text-secondary italic flex flex-col items-center justify-center h-40">
+                    <span>Enter concepts to generate a hypothesis...</span>
+                </div>
+            }
 
-            <div *ngIf="result()" class="prose prose-sm max-w-none text-primary animate-fade-in">
-                <p class="whitespace-pre-wrap leading-relaxed">{{ result() }}</p>
-            </div>
+            @if (result()) {
+                <div class="prose prose-sm max-w-none text-primary animate-fade-in">
+                    <p class="whitespace-pre-wrap leading-relaxed">{{ result() }}</p>
+                </div>
+            }
         </div>
       </div>
     </div>
@@ -132,6 +145,7 @@ export class ReasoningComponent implements AfterViewInit, OnDestroy {
     private reasoningService = inject(ReasoningService);
     private collectionService = inject(CollectionService);
     private toastr = inject(ToastrService);
+    private router = inject(Router);
 
     // Inputs
     startConcept = '';
@@ -169,6 +183,10 @@ export class ReasoningComponent implements AfterViewInit, OnDestroy {
             }
             return newSet;
         });
+    }
+
+    handleViewSource(docId: string) {
+        this.router.navigate(['/library/documents', docId]);
     }
 
     ngOnDestroy() {

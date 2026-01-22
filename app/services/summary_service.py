@@ -8,65 +8,163 @@ from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
+import json
+import re
+
 class SummaryService:
     @staticmethod
     def generate_summary(document_id: str):
         """
-        Generates a summary for the given document ID.
-        Fetches chunks, prompts LLM, and saves summary + embedding.
+        Generates a summary using Map-Reduce pattern.
+        1. Map: Batch chunks -> Section Summary + Structure + Concepts
+        2. Reduce: Combine -> Global Summary + Master Structure + Top Concepts
         """
         try:
-            logger.info(f"Generating summary logic for doc {document_id}")
+            logger.info(f"Generating summary (Map-Reduce) for doc {document_id}")
             
-            # Handle UUID vs String input
-            oid = document_id
-            if isinstance(document_id, str):
-                oid = UUID(document_id)
-            
+            # 1. Setup
+            oid = UUID(document_id) if isinstance(document_id, str) else document_id
             doc = db.session.get(Document, oid)
             if not doc:
-                logger.error(f"Document {document_id} not found for summary")
+                logger.error(f"Document {document_id} not found")
                 return None
 
-            # Fetch chunks for context
-            chunks = db.session.query(Chunk).filter_by(document_id=doc.id).order_by(Chunk.chunk_index).limit(10).all()
+            # 2. Fetch ALL chunks (ordered)
+            chunks = db.session.query(Chunk).filter_by(document_id=doc.id).order_by(Chunk.chunk_index).all()
             if not chunks:
-                logger.warning("No chunks found to summarize")
+                logger.warning("No chunks found")
                 return None
 
-            summary_context = "\n".join([c.content for c in chunks])[:10000]
-            logger.info(f"Generating summary using context length: {len(summary_context)} chars")
-            
-            # Ensure fresh client
             reset_client()
             llm = get_llm_client()
+
+            # 3. MAP PHASE: Batch Processing
+            BATCH_SIZE = 5 # Adjust based on chunk size (~500 chars * 5 = 2500 chars)
+            map_results = []
             
-            summary_prompt = f"""Summarize the following text in a detailed paragraph (200-300 words). 
-Focus on the main topics, key entities, and core arguments.
-Text:
-{summary_context}
-"""
-            summary_text = llm.chat(
-                system="You are an expert summarizer.",
-                messages=[{"role": "user", "content": summary_prompt}]
-            )
+            logger.info(f"Starting Map Phase for {len(chunks)} chunks in batches of {BATCH_SIZE}...")
             
-            logger.info(f"Summary generated: {summary_text[:50]}...")
+            for i in range(0, len(chunks), BATCH_SIZE):
+                batch_chunks = chunks[i : i + BATCH_SIZE]
+                batch_text = "\n".join([f"[Page {c.page_number or '?'}] {c.content}" for c in batch_chunks])
+                
+                # Extract Section info
+                section_data = SummaryService._map_process_batch(llm, batch_text, i // BATCH_SIZE)
+                if section_data:
+                    map_results.append(section_data)
+
+            # 4. REDUCE PHASE: Aggregate results
+            logger.info("Starting Reduce Phase...")
+            global_summary, global_structure, global_concepts = SummaryService._reduce_results(llm, map_results)
+
+            # 5. Save to Document
+            doc.summary = global_summary
             
-            doc.summary = summary_text
+            # Initialize metadata if null
+            if doc.metadata_ is None:
+                doc.metadata_ = {}
+            
+            # Update specific keys
+            doc.metadata_['structure'] = global_structure
+            doc.metadata_['key_concepts'] = global_concepts
             
             # Embed Summary
-            logger.info("Embedding summary...")
+            logger.info("Embedding final summary...")
             embedder = EmbedderService()
-            summary_vec = embedder.embed([summary_text])[0]
+            summary_vec = embedder.embed([global_summary])[0]
             doc.summary_embedding = summary_vec
             
-            logger.info("Summary generated and embedded.")
-            doc.processing_progress = 85 if doc.processing_progress < 85 else doc.processing_progress
+            doc.processing_progress = 85
             db.session.commit()
             
-            return summary_text
+            logger.info("Summary generation complete.")
+            return global_summary
 
         except Exception as e:
             logger.error(f"Failed to generate summary: {e}")
             raise e
+
+    @staticmethod
+    def _map_process_batch(llm, text_content: str, batch_index: int):
+        """
+        MAP STEP: Summarize a single batch and extract structure/concepts.
+        """
+        try:
+            prompt = f"""Analyze the following text segment from a larger document.
+Return a JSON object with this EXACT structure (no markdown, no extra text):
+{{
+    "summary": "A concise paragraph summarizing this section.",
+    "chapters": [
+        {{ "title": "Chapter/Section Title found (if any)", "page": 12 }}
+    ],
+    "concepts": ["Concept 1", "Concept 2"] 
+}}
+
+Limit 'concepts' to the top 3 most important entities in this segment.
+If no explicit chapter/section title exists, leave "chapters" empty [].
+
+Text Segment:
+{text_content[:3500]} 
+""" # Limit context to avoid overflow
+
+            response = llm.chat(
+                system="You are a precise data extractor. Output valid, separate JSON only.",
+                messages=[{"role": "user", "content": prompt}]
+            )
+            
+            # Clean response (strip code blocks)
+            clean_json = response.strip()
+            if clean_json.startswith("```json"):
+                clean_json = clean_json[7:]
+            if clean_json.endswith("```"):
+                clean_json = clean_json[:-3]
+            
+            data = json.loads(clean_json)
+            return data
+            
+        except Exception as e:
+            logger.warning(f"Map step failed for batch {batch_index}: {e}")
+            return None
+
+    @staticmethod
+    def _reduce_results(llm, map_results):
+        """
+        REDUCE STEP: Combine map outputs into global metadata.
+        """
+        # 1. Concatenate Summaries
+        combined_summaries = "\n\n".join([f"[Section {i+1}] {r.get('summary', '')}" for i, r in enumerate(map_results)])
+        
+        # 2. Aggregate Structure directly
+        global_structure = []
+        for r in map_results:
+            if 'chapters' in r and isinstance(r['chapters'], list):
+                global_structure.extend(r['chapters'])
+        
+        # 3. Aggregate Concepts (Frequency Count)
+        concept_freq = {}
+        for r in map_results:
+            for c in r.get('concepts', []):
+                c_clean = c.strip().title()
+                concept_freq[c_clean] = concept_freq.get(c_clean, 0) + 1
+        
+        # Top 20 concepts by frequency, then appearance
+        top_concepts = sorted(concept_freq.keys(), key=lambda x: concept_freq[x], reverse=True)[:20]
+
+        # 4. Generate Global Summary (Final LLM Pass)
+        reduce_prompt = f"""Synthesize the following section summaries into one cohesive 'Global Executive Summary' of the entire document.
+Write 3-4 distinct paragraphs. Focus on the narrative arc, core arguments, and final conclusions.
+
+Section Summaries:
+{combined_summaries[:10000]}
+"""
+        global_summary = "Summary generation failed."
+        try:
+            global_summary = llm.chat(
+                system="You are an expert editor.",
+                messages=[{"role": "user", "content": reduce_prompt}]
+            )
+        except Exception as e:
+            logger.error(f"Reduce step (Final content) failed: {e}")
+            global_summary = combined_summaries[:2000] # Fallback
+            
+        return global_summary.strip(), global_structure, top_concepts

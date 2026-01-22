@@ -10,6 +10,7 @@ import { ApiEndpoints } from '@core/constants/api-endpoints';
 import { VoiceService } from '@services/voice.service';
 
 import { GraphVisualizerComponent } from '@shared/components/graph-visualizer/graph-visualizer.component';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-message-bubble',
@@ -82,7 +83,10 @@ import { GraphVisualizerComponent } from '@shared/components/graph-visualizer/gr
 
           @if (message().graph_data) {
              <div class="mt-4 pt-3 border-t border-divider">
-                <app-graph-visualizer [data]="message().graph_data"></app-graph-visualizer>
+                <app-graph-visualizer 
+                    [data]="message().graph_data"
+                    (viewSource)="goToDocument($event)">
+                </app-graph-visualizer>
              </div>
           }
 
@@ -166,6 +170,7 @@ export class MessageBubbleComponent {
 
   private modalService = inject(ModalService);
   private voiceService = inject(VoiceService);
+  private router = inject(Router);
 
   // State
   isEditing = signal(false);
@@ -254,6 +259,10 @@ export class MessageBubbleComponent {
         this.openSourceModal(source);
       }
     }
+  }
+
+  goToDocument(docId: string) {
+    this.router.navigate(['/library/documents', docId]);
   }
 
   playAudio() {

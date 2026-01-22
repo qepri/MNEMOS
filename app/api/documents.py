@@ -119,6 +119,18 @@ def delete_document(doc_id):
                  logger.error(f"Error deleting file {full_path}: {e}")
     
     db.session.delete(doc)
+    
+    # Clean up orphan concepts
+    try:
+        db.session.flush() # Ensure cascades happened
+        from sqlalchemy import text
+        cleanup_query = text("DELETE FROM concepts WHERE id NOT IN (SELECT concept_id FROM hyper_edge_members)")
+        result = db.session.execute(cleanup_query)
+        if result.rowcount > 0:
+             logger.info(f"Cleanup: Removed {result.rowcount} orphan concepts.")
+    except Exception as e:
+        logger.warning(f"Orphan cleanup failed: {e}")
+
     db.session.commit()
     logger.info(f"Document {doc_id} deleted from DB")
     
@@ -263,3 +275,22 @@ def generate_summary(doc_id):
     logger.info(f"Manual summary generation triggered for {doc_id}")
     
     return jsonify({'status': 'queued'}), 202
+
+@bp.route('/reprocess-hypergraph', methods=['POST'])
+def reprocess_hypergraph():
+    """
+    Triggers background tasks to re-extract hypergraph data from ALL documents.
+    """
+    from app.tasks.processing import reprocess_hypergraph_task
+    
+    docs = db.session.query(Document).all()
+    count = 0
+    
+    for doc in docs:
+        # Optional: Check if we have enough content/summary to extract from?
+        # For now, just queue it, the task handles validation.
+        reprocess_hypergraph_task.delay(str(doc.id))
+        count += 1
+        
+    logger.info(f"Queued hypergraph reprocessing for {count} documents.")
+    return jsonify({'status': 'queued', 'count': count, 'message': f'Started reprocessing {count} documents'}), 202

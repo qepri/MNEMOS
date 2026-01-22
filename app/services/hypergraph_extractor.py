@@ -9,12 +9,17 @@ from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
+from app.models.chunk import Chunk
+
+logger = logging.getLogger(__name__)
+
 class HypergraphExtractor:
     
     @staticmethod
     def process_document(document_id: str):
         """
         Main entry point to extract hypergraph knowledge from a document.
+        Uses Deep Extraction (Chunk-based) to capture detailed concepts and definitions.
         """
         try:
             # Handle UUID vs String input
@@ -27,180 +32,205 @@ class HypergraphExtractor:
                 logger.warning(f"Document {document_id} not found for extraction.")
                 return
 
-            logger.info(f"Extracting Hypergraph for doc {document_id}")
+            logger.info(f"Starting Deep Hypergraph Extraction for doc {document_id}")
             
-            # 1. LLM Extraction
-            llm = get_llm_client()
+            # 1. Fetch Content (Chunks)
+            chunks = db.session.query(Chunk).filter_by(document_id=doc.id).order_by(Chunk.chunk_index).all()
             
-            # Context Preparation: Use summary if available, else generate it
-            context_text = doc.summary
-            if not context_text:
-                logger.info("Document has no summary. Triggering Summary Generation...")
-                try:
-                    from app.services.summary_service import SummaryService
-                    context_text = SummaryService.generate_summary(doc.id)
-                    if not context_text:
-                         logger.warning("Summary generation failed or returned empty. Aborting extraction.")
-                         return
-                    
-                    # Refresh doc to get the summary (though we have the text, good to be safe)
-                    db.session.refresh(doc) # This might not be needed if session is same, but safe
-                except Exception as e:
-                    logger.error(f"Failed to generate summary during hypergraph extraction: {e}")
+            batches = []
+            if chunks:
+                logger.info(f"Found {len(chunks)} chunks. Grouping into batches...")
+                # Batch size 4 (approx 2000-3000 chars)
+                BATCH_SIZE = 4
+                for i in range(0, len(chunks), BATCH_SIZE):
+                    batch_chunks = chunks[i:i+BATCH_SIZE]
+                    batch_text = "\n---\n".join([c.content for c in batch_chunks])
+                    batches.append(batch_text)
+            else:
+                logger.warning("No chunks found (legacy doc?). Falling back to Summary if available.")
+                if doc.summary:
+                    batches.append(doc.summary)
+                else:
+                    logger.error("No content available for extraction.")
                     return
 
-            prompt = """
-            You are a network ontology graph maker who extracts precise Subject–Verb–Object triples from a given context.
-            
-            Task:
-            1. Analyze the text to identify specific scientific assertions.
-            2. Extract "events" where specific "source" entities relate to "target" entities via a specific "relation".
-            3. Use exact technical terms. Normalize vague terms (e.g., "this material" -> "nHAp composite").
-            4. Output a JSON object with a single key "events".
-
-            Format:
-            {
-              "events": [
-                {
-                  "source": ["Concept A", "Concept B"], 
-                  "relation": "specific verb phrase", 
-                  "target": ["Concept C"]
-                }
-              ]
-            }
-
-            Output specification:
-            - "source" and "target" must be lists of strings.
-            - "relation" must be a string.
-            - Limit to the top 10 most mechanistically important events.
-
-            Text:
-            """ + context_text
-            
-            response = llm.chat(
-                system="You are an expert scientific knowledge graph builder. Output only valid JSON.",
-                messages=[{"role": "user", "content": prompt}]
-            )
-            
-            try:
-                # Naive JSON cleaning
-                clean_json = response.strip().replace("```json", "").replace("```", "")
-                edges_data_raw = json.loads(clean_json)
-                # Handle both list (old) and dict (new) formats just in case
-                if isinstance(edges_data_raw, dict) and "events" in edges_data_raw:
-                    edges_data = edges_data_raw["events"]
-                elif isinstance(edges_data_raw, list):
-                    edges_data = edges_data_raw
-                else:
-                    edges_data = [] # Invalid format
-            except json.JSONDecodeError:
-                logger.error(f"Failed to parse LLM output for doc {document_id}: {response}")
-                return
-
-            # 2. Entity Resolution & Storage
+            llm = get_llm_client()
             embedder = EmbedderService()
+
+            total_events = 0
             
-            # Pre-calc embeddings for all unique concept names in this batch to save time?
-            # For now, do it iteratively for simplicity.
-            
-            for edge_item in edges_data:
-                # SVO Format Support
-                if "source" in edge_item and "target" in edge_item:
+            # 2. Process Batches
+            for i, context_text in enumerate(batches):
+                logger.info(f"Processing Batch {i+1}/{len(batches)}...")
+                
+                prompt = """
+                You are a network ontology graph maker. Analyze the text to extract scientific knowledge.
+                
+                Tasks:
+                1. Identify specific assertions (Source -> Relation -> Target).
+                2. Extract definitions for technical concepts.
+                
+                Output valid JSON only. Structure:
+                {
+                  "events": [
+                    { "source": ["A"], "relation": "relates to", "target": ["B"] }
+                  ],
+                  "definitions": {
+                    "A": "definition..."
+                  }
+                }
+                DO NOT output multiple JSON objects. MERGE them into one.
+                
+                Rules:
+                - Use precise technical terms.
+                - Normalize names (e.g., "this protein" -> "Protein X").
+                - Capture up to 10 most important events per batch.
+                
+                Text:
+                """ + context_text
+
+                response = llm.chat(
+                    system="You are an expert scientific knowledge graph builder. Output only valid JSON.",
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                
+                try:
+                    # JSON Parsing
+                    clean_json = response.strip()         
+                    
+                    # Robust extraction: Remove C-style comments // ...
+                    import re
+                    clean_json = re.sub(r"//.*", "", clean_json)
+                    
+                    # Robust extraction: Find first and last brace
+                    start_idx = clean_json.find("{")
+                    end_idx = clean_json.rfind("}")
+                    
+                    if start_idx != -1 and end_idx != -1:
+                        clean_json = clean_json[start_idx:end_idx+1]
+                    else:
+                        raise json.JSONDecodeError("No JSON braces found", clean_json, 0)
+
+                    data = json.loads(clean_json)
+                    events = data.get("events", [])
+                    definitions = data.get("definitions", {})
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to parse LLM output for batch {i}: {e}. Response preview: {response[:100]}...")
+                    continue
+
+                # 3. Process Definitions (Update Concepts)
+                for concept_name, definition_val in definitions.items():
+                    norm_name = concept_name.strip().lower()
+                    if not norm_name or not definition_val: continue
+                    
+                    # Handle nested dicts if the LLM hallucinates structure (e.g. {"definition": "..."})
+                    final_def = definition_val
+                    if isinstance(definition_val, dict):
+                         final_def = definition_val.get("definition") or definition_val.get("description") or str(definition_val)
+                    
+                    if not isinstance(final_def, str):
+                        final_def = str(final_def)
+
+                    # Quick lookup
+                    concept = db.session.query(Concept).filter_by(name=norm_name).first()
+                    if concept:
+                        if not concept.description:
+                            concept.description = final_def
+                            db.session.add(concept)
+                            logger.info(f"Updated definition for '{norm_name}'")
+                    # Note: We don't create concepts just from definitions, we wait for events to link them.
+                    # Or should we? Better to wait for usage in an edge to avoid orphan noise.
+
+                # 4. Process Events
+                for edge_item in events:
                     sources = edge_item.get("source", [])
                     targets = edge_item.get("target", [])
                     relation = edge_item.get("relation", "relates to")
                     
-                    # Flatten list if needed (some LLMs output string instead of list)
                     if isinstance(sources, str): sources = [sources]
                     if isinstance(targets, str): targets = [targets]
                     
+                    if not sources or not targets: continue
+                    
                     concept_names = sources + targets
                     description = f"{', '.join(sources)} {relation} {', '.join(targets)}"
-                else:
-                    # Fallback to old "description" + "concepts" format
-                    description = edge_item.get("description")
-                    concept_names = edge_item.get("concepts", [])
-                
-                if not description or len(concept_names) < 2:
-                    continue
-                
-                # Create/Get Concepts
-                concept_objs = []
-                for name in concept_names:
-                    # Normalize name
-                    norm_name = name.strip().lower()
-                    if not norm_name: continue
                     
-                    # Generate embedding FIRST
-                    name_embedding = embedder.embed([norm_name])[0]
-                    
-                    # 1. Exact Match Check (Fastest)
-                    concept = db.session.query(Concept).filter_by(name=norm_name).first()
-                    
-                    if not concept:
-                        # 2. Fuzzy Vector Match (Cos Sim)
-                        # Threshold 0.15 (approx 0.85 similarity)
-                        closest = db.session.query(Concept).order_by(
-                            Concept.embedding.cosine_distance(name_embedding)
-                        ).limit(1).first()
+                    # Entity Resolution & Creation
+                    concept_objs = []
+                    for name in concept_names:
+                        norm_name = name.strip().lower()
+                        if not norm_name: continue
                         
-                        if closest:
-                            # Check actual distance
-                            # We need a separate query or trust the order. 
-                            # Let's verify distance.
-                            dist = db.session.query(
+                        # Check Cache/DB
+                        concept = db.session.query(Concept).filter_by(name=norm_name).first()
+                        
+                        if not concept:
+                            # Fuzzy Match
+                            name_embedding = embedder.embed([norm_name])[0]
+                            closest = db.session.query(Concept).order_by(
                                 Concept.embedding.cosine_distance(name_embedding)
-                            ).filter(Concept.id == closest.id).scalar()
+                            ).limit(1).first()
                             
-                            if dist is not None and dist < 0.15:
-                                logger.info(f"Fuzzy Resolved: '{norm_name}' -> '{closest.name}' (dist: {dist:.3f})")
-                                concept = closest
+                            if closest:
+                                dist = db.session.query(Concept.embedding.cosine_distance(name_embedding)).filter(Concept.id == closest.id).scalar()
+                                if dist is not None and dist < 0.15:
+                                    concept = closest
+                        
+                        if not concept:
+                            # Create New
+                            concept = Concept(name=norm_name)
+                            concept.embedding = embedder.embed([norm_name])[0]
+                            # Check if we have a definition waiting
+                            # (Naive check: capitalized key matches?)
+                            # Better: check lowercased dictionary
+                            for def_key, def_val in definitions.items():
+                                if def_key.strip().lower() == norm_name:
+                                    # Handle nested structs
+                                    final_def = def_val
+                                    if isinstance(def_val, dict):
+                                         final_def = def_val.get("definition") or def_val.get("description") or str(def_val)
+                                    concept.description = str(final_def)
+                                    break
+                                    
+                            db.session.add(concept)
+                            db.session.flush()
+                        
+                        if concept not in concept_objs:
+                            concept_objs.append(concept)
                     
-                    if not concept:
-                        # Create New
-                        logger.info(f"Creating new Concept: {norm_name}")
-                        concept = Concept(name=norm_name)
-                        concept.embedding = name_embedding
-                        db.session.add(concept)
-                        db.session.flush() # get ID
-                    
-                    if concept not in concept_objs:
-                        concept_objs.append(concept)
-                
-                if len(concept_objs) < 2:
-                    continue
+                    if len(concept_objs) < 2: continue
 
-                # Create HyperEdge
-                logger.info(f"Creating HyperEdge: {description[:50]}...")
-                hyper_edge = HyperEdge(
-                    description=description,
-                    source_document_id=doc.id
-                )
-                hyper_edge.embedding = embedder.embed([description])[0]
-                db.session.add(hyper_edge)
-                db.session.flush()
-                
-                # Link Members
-                for c in concept_objs:
-                    # Precise Role Assignment
-                    role = "participant" # default
+                    # Create HyperEdge
+                    # Check for duplicates? (Optional enhancement)
+                    # For now just append to allow multi-context assertions
                     
-                    # Check if this concept's name was in the source list
-                    # We compare lowercased names
-                    if c.name in [s.strip().lower() for s in sources]:
-                        role = "source"
-                    elif c.name in [t.strip().lower() for t in targets]:
-                        role = "target"
-                    
-                    member = HyperEdgeMember(
-                        hyper_edge_id=hyper_edge.id,
-                        concept_id=c.id,
-                        role=role
+                    hyper_edge = HyperEdge(
+                        description=description,
+                        source_document_id=doc.id
                     )
-                    db.session.add(member)
+                    hyper_edge.embedding = embedder.embed([description])[0]
+                    db.session.add(hyper_edge)
+                    db.session.flush()
+                    
+                    for c in concept_objs:
+                        role = "participant"
+                        if c.name in [s.strip().lower() for s in sources]: role = "source"
+                        elif c.name in [t.strip().lower() for t in targets]: role = "target"
+                        
+                        member = HyperEdgeMember(
+                            hyper_edge_id=hyper_edge.id, 
+                            concept_id=c.id, 
+                            role=role
+                        )
+                        db.session.add(member)
+                    
+                    total_events += 1
+                
+                # Commit per batch to save progress
+                db.session.commit()
             
-            db.session.commit()
-            logger.info(f"Hypergraph extraction complete for doc {document_id}")
+            logger.info(f"Hypergraph extraction complete. Extracted {total_events} events.")
             
         except Exception as e:
             logger.error(f"Error in HypergraphExtractor: {e}")

@@ -16,10 +16,21 @@ branch_labels = None
 depends_on = None
 
 def upgrade():
-    # Add graph_data column to messages table
-    # Using JSONB for efficient storage and potential querying of graph structure
-    op.add_column('messages', sa.Column('graph_data', postgresql.JSONB(astext_type=sa.Text()), nullable=True))
+    # Helper to check if column exists
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    columns = [c['name'] for c in inspector.get_columns('messages')]
+
+    if 'graph_data' not in columns:
+        # Add graph_data column to messages table
+        # Using JSONB for efficient storage and potential querying of graph structure
+        op.add_column('messages', sa.Column('graph_data', postgresql.JSONB(astext_type=sa.Text()), nullable=True))
 
 
 def downgrade():
-    op.drop_column('messages', 'graph_data')
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    columns = [c['name'] for c in inspector.get_columns('messages')]
+
+    if 'graph_data' in columns:
+        op.drop_column('messages', 'graph_data')

@@ -196,3 +196,5 @@ yarn-error.log
 testem.log
 typing_definitions/
 active_downloads.json
+.agent/HyperGraphReasoning
+.agent/HyperGraphReasoning

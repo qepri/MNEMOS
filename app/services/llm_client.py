@@ -6,6 +6,8 @@ from app.extensions import db
 from app.models.user_preferences import UserPreferences
 from app.models.llm_connection import LLMConnection
 
+import os
+
 class LLMClient:
     def __init__(self, provider=None, api_key=None, base_url=None, model=None):
         # 1. Determine Provider
@@ -29,11 +31,11 @@ class LLMClient:
             self.provider = provider
             print(f"DEBUG: Using passed provider arg: {provider}")
         elif db_prefs and db_prefs.llm_provider:
-             self.provider = db_prefs.llm_provider
-             print(f"DEBUG: Using DB provider: {self.provider}")
+            self.provider = db_prefs.llm_provider
+            print(f"DEBUG: Using DB provider: {self.provider}")
         else:
-             self.provider = settings.LLM_PROVIDER
-             print(f"DEBUG: Fallback to Settings provider: {self.provider}")             
+            self.provider = settings.LLM_PROVIDER
+            print(f"DEBUG: Fallback to Settings provider: {self.provider}")             
         
         d_anthropic_key = db_prefs.anthropic_api_key if db_prefs else None
         d_groq_key = db_prefs.groq_api_key if db_prefs else None
@@ -92,6 +94,19 @@ class LLMClient:
 
         elif self.provider == LLMProvider.LM_STUDIO:
             url = base_url or d_local_base_url or s_local_base_url
+            
+            # Docker Fix: Replace localhost with host.docker.internal if running in Docker
+            # This handles cases where user sets 'http://localhost:1234' in settings but is running in a container
+            if url and ("localhost" in url or "127.0.0.1" in url):
+                if os.path.exists('/.dockerenv'): 
+                     url = url.replace("localhost", "host.docker.internal").replace("127.0.0.1", "host.docker.internal")
+                     print(f"DEBUG: Auto-corrected LM Studio URL to: {url}")
+            
+            # Ensure URL ends with /v1 for LM Studio
+            if url and not url.endswith("/v1"):
+                url = f"{url.rstrip('/')}/v1"
+                print(f"DEBUG: Appended /v1 to LM Studio URL: {url}")
+
             self.client = OpenAI(
                 base_url=url,
                 api_key="lm-studio"
@@ -134,6 +149,11 @@ class LLMClient:
                  # Legacy/Default fallback (for non-strict custom or other cases)
                  url = base_url or d_local_base_url or s_local_base_url
                  key = api_key or (db_prefs.custom_api_key if db_prefs else None) or "custom"
+
+             if url and ("localhost" in url or "127.0.0.1" in url):
+                if os.path.exists('/.dockerenv'): 
+                     url = url.replace("localhost", "host.docker.internal").replace("127.0.0.1", "host.docker.internal")
+                     print(f"DEBUG: Auto-corrected Custom URL to: {url}")
 
              self.client = OpenAI(
                 base_url=url,

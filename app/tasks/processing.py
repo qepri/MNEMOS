@@ -337,6 +337,27 @@ def generate_summary_task(self, document_id: str):
             raise e
 
 @celery_app.task(bind=True)
+def reprocess_hypergraph_task(self, document_id: str):
+    """
+    Task to specifically re-run hypergraph extraction for a document.
+    """
+    from app import create_app
+    app = create_app()
+    with app.app_context():
+        try:
+            logger.info(f"Starting generic hypergraph reprocessing for {document_id}")
+            from app.services.hypergraph_extractor import HypergraphExtractor
+            
+            # Simple wrapper
+            HypergraphExtractor.process_document(document_id)
+            return f"Hypergraph processed for {document_id}"
+            
+        except Exception as e:
+            logger.error(f"Error in reprocess_hypergraph_task: {e}")
+            raise e
+
+
+@celery_app.task(bind=True)
 def download_model_task(self, model_name):
     """
     Celery task for downloading a model in the background.

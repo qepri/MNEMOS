@@ -186,6 +186,7 @@ class ReasoningEngine:
                             "id": str(hyper_edge.id),
                             "label": label,
                             "full_desc": hyper_edge.description,
+                            "source_document_id": str(hyper_edge.source_document_id) if hyper_edge.source_document_id else None,
                             "type": "hyperedge",
                             "color": "#888888" # Grey for context
                         }
@@ -202,6 +203,7 @@ class ReasoningEngine:
                             "data": {
                                 "id": str(concept.id),
                                 "label": concept.name,
+                                "full_desc": concept.description,
                                 "type": "concept",
                                 "color": "#007BFF" # Blue for concepts
                             }
