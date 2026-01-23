@@ -17,12 +17,13 @@ export class ReasoningService {
     /**
      * Traverse the hypergraph to find a path between two concepts.
      */
-    traverse(startConcept: string, goalConcept: string, collectionIds: string[] = [], saveToChat: boolean = false): Observable<TraversalResult> {
+    traverse(startConcept: string, goalConcept: string, collectionIds: string[] = [], saveToChat: boolean = false, useSemanticLeap: boolean = false): Observable<TraversalResult> {
         return this.http.post<TraversalResult>(ApiEndpoints.REASONING_TRAVERSE, {
             start: startConcept,
             goal: goalConcept,
             collection_ids: collectionIds,
-            save_to_chat: saveToChat
+            save_to_chat: saveToChat,
+            use_semantic_leap: useSemanticLeap
         });
     }
 

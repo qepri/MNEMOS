@@ -16,13 +16,14 @@ def traverse_graph():
     goal_concept = data.get('goal')
     collection_ids = data.get('collection_ids', [])
     save_to_chat = data.get('save_to_chat', False)
+    use_semantic_leap = data.get('use_semantic_leap', False)
     
     if not start_concept or not goal_concept:
         return jsonify({"error": "Missing start or goal concept"}), 400
         
     try:
         engine = ReasoningEngine()
-        result = engine.traverse(start_concept, goal_concept, collection_ids=collection_ids)
+        result = engine.traverse(start_concept, goal_concept, collection_ids=collection_ids, use_semantic_leap=use_semantic_leap)
         
         # Result is now a dict { "narrative": str, "graph_data": dict }
         if isinstance(result, str):

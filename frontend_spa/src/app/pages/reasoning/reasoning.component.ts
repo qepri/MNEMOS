@@ -82,6 +82,16 @@ import { Router } from '@angular/router';
                 class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-primary placeholder-secondary transition-all" />
         </div>
 
+        <!-- Semantic Leap Toggle -->
+        <div class="flex items-center gap-2 mb-2 w-full md:w-auto">
+             <input type="checkbox" id="semanticLeap" [ngModel]="useSemanticLeap()" (ngModelChange)="useSemanticLeap.set($event)" 
+                class="w-4 h-4 text-accent bg-input border-divider rounded focus:ring-accent" />
+             <label for="semanticLeap" class="text-sm font-medium text-primary cursor-pointer select-none">
+                Semantic Leap
+                <span class="block text-xs text-secondary font-normal">Find hidden connections</span>
+             </label>
+        </div>
+
         <!-- Action -->
         <button (click)="traverse()" [disabled]="isLoading() || !startConcept || !goalConcept" 
             class="h-[42px] px-6 bg-accent hover:bg-accent-dark text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[120px]">
@@ -156,6 +166,7 @@ export class ReasoningComponent implements AfterViewInit, OnDestroy {
     isReprocessing = signal(false);
     result = signal<string>('');
     graphData = signal<any>(null);
+    useSemanticLeap = signal(false);
 
     // Collections
     collections = signal<Collection[]>([]);
@@ -203,7 +214,7 @@ export class ReasoningComponent implements AfterViewInit, OnDestroy {
         const filterIds = Array.from(this.selectedCollectionIds());
 
         // Always save to chat as requested
-        this.reasoningService.traverse(this.startConcept, this.goalConcept, filterIds, true).subscribe({
+        this.reasoningService.traverse(this.startConcept, this.goalConcept, filterIds, true, this.useSemanticLeap()).subscribe({
             next: (res: any) => {
                 this.result.set(res.narrative);
                 this.isLoading.set(false);
