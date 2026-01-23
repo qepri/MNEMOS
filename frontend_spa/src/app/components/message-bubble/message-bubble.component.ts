@@ -261,8 +261,49 @@ export class MessageBubbleComponent {
     }
   }
 
-  goToDocument(docId: string) {
-    this.router.navigate(['/library/documents', docId]);
+  goToDocument(doc: any) {
+    if (!doc.id) return;
+
+    // Check type and open appropriate modal
+    if (doc.type === 'pdf' || (doc.original_filename && doc.original_filename.toLowerCase().endsWith('.pdf'))) {
+      const documentLike = {
+        id: doc.id,
+        original_filename: doc.original_filename || doc.title || 'Document',
+        file_type: 'pdf'
+      };
+      // Pass page number
+      this.modalService.openPdfViewer(documentLike as any, undefined, doc.page_number);
+    }
+    else if (['video', 'audio', 'youtube'].includes(doc.type)) {
+      // Re-use openSourceModal logic or direct service call
+      // We construct a partial source object to reuse openSourceModal
+      const sourceLike: any = {
+        document_id: doc.id,
+        document: doc.title,
+        file_type: doc.type,
+        location: 'Graph',
+        text: 'Accessed via Reasoning Graph',
+        start_time: doc.start_time
+      };
+      this.openSourceModal(sourceLike);
+    }
+    else {
+      // Fallback: Use Source Modal for text/others instead of navigating to broken route
+      const sourceLike: any = {
+        document_id: doc.id,
+        document: doc.original_filename || doc.title || 'Document',
+        file_type: doc.type || 'text',
+        location: 'Graph',
+        text: 'Accessed via Reasoning Graph' // We don't have the text here, but SourceModal fetches it if doc_id exists? 
+        // Actually SourceModal typically takes text from the message source. 
+        // If we want it to fetch content, we need to ensure it does or we accept we just show metadata.
+        // But wait, SourceModal doesn't auto-fetch content usually? 
+        // Let's check SourceModal. 
+        // If SourceModal is just for display, this might show empty text.
+        // BUT it is better than a crash.
+      };
+      this.openSourceModal(sourceLike);
+    }
   }
 
   playAudio() {

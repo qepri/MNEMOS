@@ -64,13 +64,39 @@ class SummaryService:
             if doc.metadata_ is None:
                 doc.metadata_ = {}
             
-            # Update specific keys
-            doc.metadata_['structure'] = global_structure
+            # Save Global Concepts to metadata
             doc.metadata_['key_concepts'] = global_concepts
             
-            # Embed Summary
-            logger.info("Embedding final summary...")
+            # 6. Save Chapters to 'document_sections' Table (Vectorized)
+            from app.models.section import DocumentSection
+            
+            # Clear old sections if any
+            db.session.query(DocumentSection).filter_by(document_id=doc.id).delete()
+            
+            logger.info(f"Saving {len(global_structure)} vectorized sections...")
             embedder = EmbedderService()
+            
+            for chapter in global_structure:
+                title = chapter.get('title', 'Untitled Section')
+                content = chapter.get('summary', '') 
+                # If no summary explicitly attached, fallback to title or placeholder
+                if not content: content = f"Section: {title}"
+                
+                # Embed content for semantic search
+                embedding = embedder.embed([content])[0]
+                
+                section = DocumentSection(
+                    document_id=doc.id,
+                    title=title,
+                    content=content,
+                    start_page=chapter.get('page'), # map_process returns 'page'
+                    end_page=chapter.get('page'),   # naive assumption, can refine range later
+                    embedding=embedding
+                )
+                db.session.add(section)
+            
+            # Embed Final Summary
+            logger.info("Embedding final global summary...")
             summary_vec = embedder.embed([global_summary])[0]
             doc.summary_embedding = summary_vec
             
@@ -137,7 +163,12 @@ Text Segment:
         # 2. Aggregate Structure directly
         global_structure = []
         for r in map_results:
+            batch_summary = r.get('summary', '')
             if 'chapters' in r and isinstance(r['chapters'], list):
+                for chapter in r['chapters']:
+                    # Attach the summary of the section where this chapter was found
+                    # This serves as the "Chapter Summary" context
+                    chapter['summary'] = batch_summary
                 global_structure.extend(r['chapters'])
         
         # 3. Aggregate Concepts (Frequency Count)

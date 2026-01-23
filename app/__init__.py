@@ -66,7 +66,7 @@ def create_app():
         try:
             # This import is necessary for Alembic to detect models
             from app import models
-            db.create_all()
+            # db.create_all()
             
             # Auto-migration for new features without full Alembic reset
             try:

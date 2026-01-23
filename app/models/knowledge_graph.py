@@ -28,12 +28,14 @@ class HyperEdge(db.Model):
     embedding = Column(Vector(settings.EMBEDDING_DIMENSION))
     
     source_document_id = Column(UUID(as_uuid=True), ForeignKey('documents.id', ondelete='CASCADE'), nullable=True)
+    source_chunk_id = Column(UUID(as_uuid=True), ForeignKey('chunks.id', ondelete='CASCADE'), nullable=True)
     
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
     members = relationship('HyperEdgeMember', back_populates='hyper_edge', cascade='all, delete-orphan')
     document = relationship('app.models.document.Document', backref='hyper_edges')
+    chunk = relationship('app.models.chunk.Chunk')
 
 class HyperEdgeMember(db.Model):
     __tablename__ = 'hyper_edge_members'

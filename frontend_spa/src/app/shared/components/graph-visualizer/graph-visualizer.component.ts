@@ -7,9 +7,17 @@ import cytoscape from 'cytoscape';
     standalone: true,
     imports: [CommonModule],
     template: `
-    <div class="graph-container rounded-xl border border-divider overflow-hidden relative" [style.height.px]="height()">
+    <div #graphContainer class="graph-container rounded-xl border border-divider overflow-hidden relative" [style.height.px]="height()">
         <!-- Header -->
-        <div class="absolute top-2 left-2 z-10 px-2 py-0.5 bg-panel/80 backdrop-blur-sm border border-divider rounded-full text-[10px] font-medium text-secondary">Reasoning Graph</div>
+        <div class="absolute top-2 left-2 z-10 flex items-center gap-2">
+            <div class="px-2 py-0.5 bg-panel/80 backdrop-blur-sm border border-divider rounded-full text-[10px] font-medium text-secondary">Reasoning Graph</div>
+        </div>
+
+        <!-- Fullscreen Button -->
+         <button (click)="toggleFullscreen()" class="absolute top-2 right-2 z-10 p-1.5 bg-panel/80 backdrop-blur-sm border border-divider rounded-lg text-secondary hover:text-primary hover:bg-white/5 transition-colors" title="Toggle Fullscreen">
+            <svg *ngIf="!isFullscreen()" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+            <svg *ngIf="isFullscreen()" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
+        </button>
         
         <!-- Cytoscape Container -->
         <div #cy id="cy" class="w-full h-full bg-base"></div>
@@ -34,9 +42,10 @@ import cytoscape from 'cytoscape';
                     <div class="pt-2 border-t border-divider">
                         <div class="flex items-center gap-2">
                             <span class="opacity-60">Source:</span>
-                            <button (click)="onViewSource(selectedNode().source_document_id)" 
-                                    class="text-xs bg-primary/10 hover:bg-primary/20 text-primary px-2 py-1 rounded transition-colors">
-                                View Document
+                            <button (click)="onViewSource(selectedNode())" 
+                                    class="text-xs bg-primary/10 hover:bg-primary/20 text-primary px-2 py-1 rounded transition-colors max-w-[200px] truncate"
+                                    [title]="selectedNode().source_document_title">
+                                View {{ selectedNode().source_document_title || 'Document' }}
                             </button>
                         </div>
                     </div>
@@ -55,12 +64,14 @@ export class GraphVisualizerComponent implements AfterViewInit, OnDestroy {
     height = input<number>(300);
 
     // Outputs
-    viewSource = output<string>();
+    viewSource = output<any>();
 
     // State
     selectedNode = signal<any>(null);
+    isFullscreen = signal(false);
 
     @ViewChild('cy') cyElement!: ElementRef;
+    @ViewChild('graphContainer') graphContainer!: ElementRef; // We need to reference the container div
     private cy: cytoscape.Core | null = null;
 
     constructor() {
@@ -73,6 +84,7 @@ export class GraphVisualizerComponent implements AfterViewInit, OnDestroy {
     }
 
     ngAfterViewInit() {
+        this.setupFullscreenListener();
         this.initGraph();
         if (this.data()) {
             this.renderGraph(this.data());
@@ -85,8 +97,15 @@ export class GraphVisualizerComponent implements AfterViewInit, OnDestroy {
         }
     }
 
-    onViewSource(docId: string) {
-        this.viewSource.emit(docId);
+    onViewSource(node: any) {
+        this.viewSource.emit({
+            id: node.source_document_id,
+            title: node.source_document_title || 'Document',
+            type: node.source_document_type || 'unknown',
+            original_filename: node.original_filename,
+            page_number: node.page_number,
+            start_time: node.start_time
+        });
     }
 
     initGraph() {
@@ -116,8 +135,7 @@ export class GraphVisualizerComponent implements AfterViewInit, OnDestroy {
                         'shape': 'round-rectangle',
                         'width': 20,
                         'height': 20,
-                        'font-size': '8px',
-                        'label': ''  // Hide label on graph to reduce clutter? Or keep it? keeping it for now
+                        'font-size': '8px'
                     }
                 },
                 {
@@ -181,5 +199,33 @@ export class GraphVisualizerComponent implements AfterViewInit, OnDestroy {
         }).run();
 
         this.cy.fit();
+    }
+
+    toggleFullscreen() {
+        const elem = this.graphContainer.nativeElement;
+
+        if (!document.fullscreenElement) {
+            elem.requestFullscreen().catch((err: any) => {
+                console.error(`Error attempting to enable fullscreen mode: ${err.message} (${err.name})`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    }
+
+    private setupFullscreenListener() {
+        document.addEventListener('fullscreenchange', this.handleFullscreenChange.bind(this));
+    }
+
+    private handleFullscreenChange() {
+        const isFull = !!document.fullscreenElement;
+        this.isFullscreen.set(isFull);
+        // Resize graph after transition
+        setTimeout(() => {
+            if (this.cy) {
+                this.cy.resize();
+                this.cy.fit();
+            }
+        }, 100);
     }
 }

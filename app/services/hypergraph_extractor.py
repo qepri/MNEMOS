@@ -45,11 +45,12 @@ class HypergraphExtractor:
                 for i in range(0, len(chunks), BATCH_SIZE):
                     batch_chunks = chunks[i:i+BATCH_SIZE]
                     batch_text = "\n---\n".join([c.content for c in batch_chunks])
-                    batches.append(batch_text)
+                    # Store tuple (text, first_chunk_id)
+                    batches.append((batch_text, batch_chunks[0].id))
             else:
                 logger.warning("No chunks found (legacy doc?). Falling back to Summary if available.")
                 if doc.summary:
-                    batches.append(doc.summary)
+                    batches.append((doc.summary, None))
                 else:
                     logger.error("No content available for extraction.")
                     return
@@ -60,7 +61,8 @@ class HypergraphExtractor:
             total_events = 0
             
             # 2. Process Batches
-            for i, context_text in enumerate(batches):
+            for i, batch_data in enumerate(batches):
+                context_text, first_chunk_id = batch_data
                 logger.info(f"Processing Batch {i+1}/{len(batches)}...")
                 
                 prompt = """
@@ -207,7 +209,8 @@ class HypergraphExtractor:
                     
                     hyper_edge = HyperEdge(
                         description=description,
-                        source_document_id=doc.id
+                        source_document_id=doc.id,
+                        source_chunk_id=first_chunk_id
                     )
                     hyper_edge.embedding = embedder.embed([description])[0]
                     db.session.add(hyper_edge)

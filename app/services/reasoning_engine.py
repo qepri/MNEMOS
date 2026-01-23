@@ -187,6 +187,11 @@ class ReasoningEngine:
                             "label": label,
                             "full_desc": hyper_edge.description,
                             "source_document_id": str(hyper_edge.source_document_id) if hyper_edge.source_document_id else None,
+                            "source_document_title": hyper_edge.document.tag or hyper_edge.document.original_filename if hyper_edge.document else "Unknown Document",
+                            "source_document_type": hyper_edge.document.file_type if hyper_edge.document else None,
+                            "original_filename": hyper_edge.document.original_filename if hyper_edge.document else None,
+                            "page_number": hyper_edge.chunk.page_number if hyper_edge.chunk else None,
+                            "start_time": hyper_edge.chunk.start_time if hyper_edge.chunk else None,
                             "type": "hyperedge",
                             "color": "#888888" # Grey for context
                         }
