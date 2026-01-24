@@ -4,8 +4,10 @@ import { Observable } from 'rxjs';
 import { ApiEndpoints } from '@core/constants/api-endpoints';
 
 export interface TraversalResult {
-    result: string; // The narrative text
-    // Future: graph_data for visualization
+    result: string; // The narrative text due to legacy
+    narrative?: string; // The specific narrative field
+    graph_data?: any; // The graph data for visualization
+    conversation_id?: string; // The ID of the created conversation
 }
 
 @Injectable({
@@ -31,7 +33,11 @@ export class ReasoningService {
     /**
      * Trigger reprocessing of all documents to build the hypergraph.
      */
-    reprocessAll(): Observable<{ status: string, message: string }> {
-        return this.http.post<{ status: string, message: string }>(ApiEndpoints.REASONING_REPROCESS, {});
+    reprocessAll(): Observable<{ status: string, message: string; }> {
+        return this.http.post<{ status: string, message: string; }>(ApiEndpoints.REASONING_REPROCESS, {});
+    }
+
+    getReprocessStatus(): Observable<{ status: string }> {
+        return this.http.get<{ status: string }>(`${ApiEndpoints.REASONING_REPROCESS}/status`);
     }
 }

@@ -21,6 +21,9 @@ class DocumentSection(db.Model):
     # Vector for semantic search (HNSW index applied below)
     embedding = Column(Vector(settings.EMBEDDING_DIMENSION))
     
+    # New Metadata for improved granularity
+    metadata_ = Column(JSONB) # e.g. { "key_concepts": [], "source_map": [] }
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationship

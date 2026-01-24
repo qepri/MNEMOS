@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ReasoningService } from '../../services/reasoning.service';
 import { ToastrService } from 'ngx-toastr';
 import { CollectionService } from '../../services/collection.service';
+import { ConversationsService } from '../../services/conversations.service';
 import { Collection } from '../../core/models/collection.model';
 import { GraphVisualizerComponent } from '../../shared/components/graph-visualizer/graph-visualizer.component';
 import { Router } from '@angular/router';
@@ -174,6 +175,7 @@ export class ReasoningComponent implements AfterViewInit, OnDestroy {
 
     private reasoningService = inject(ReasoningService);
     private collectionService = inject(CollectionService);
+    private conversationsService = inject(ConversationsService);
     private toastr = inject(ToastrService);
     private router = inject(Router);
 
@@ -237,12 +239,18 @@ export class ReasoningComponent implements AfterViewInit, OnDestroy {
         // Always save to chat as requested
         this.reasoningService.traverse(this.startConcept, this.goalConcept, filterIds, true, this.useSemanticLeap(), this.maxDepth()).subscribe({
             next: (res: any) => {
-                this.result.set(res.narrative);
+                const result = res as any; // Explicit cast to avoid type errors with flexible response
+                this.result.set(result.narrative || result.result);
                 this.isLoading.set(false);
                 this.toastr.success('Hypothesis generated and saved to Chat history');
 
-                if (res.graph_data) {
-                    this.graphData.set(res.graph_data);
+                if (result.graph_data) {
+                    this.graphData.set(result.graph_data);
+                }
+
+                // Refresh conversations list in sidebar so the new chat (if saved) appears immediately
+                if (result.conversation_id) {
+                    this.conversationsService.loadConversations();
                 }
             },
             error: (err) => {
@@ -260,8 +268,23 @@ export class ReasoningComponent implements AfterViewInit, OnDestroy {
         this.reasoningService.reprocessAll().subscribe({
             next: (res) => {
                 this.toastr.info(res.message);
-                // In a real app, we'd poll for status. For now, we assume queued.
-                setTimeout(() => this.isReprocessing.set(false), 3000);
+
+                // Poll for completion
+                const pollInterval = window.setInterval(() => {
+                    this.reasoningService.getReprocessStatus().subscribe({
+                        next: (statusRes) => {
+                            if (statusRes.status !== 'processing') {
+                                this.isReprocessing.set(false);
+                                this.toastr.success('Knowledge Graph Rebuilt Successfully');
+                                clearInterval(pollInterval);
+                            }
+                        },
+                        error: () => {
+                            this.isReprocessing.set(false);
+                            clearInterval(pollInterval);
+                        }
+                    });
+                }, 2000);
             },
             error: (err) => {
                 this.toastr.error("Failed to trigger reprocessing");

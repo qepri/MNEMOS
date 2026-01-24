@@ -5,22 +5,22 @@ from app.services.llm_client import get_llm_client, reset_client
 from app.services.embedder import EmbedderService
 import logging
 from uuid import UUID
-
-logger = logging.getLogger(__name__)
-
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+logger = logging.getLogger(__name__)
 
 class SummaryService:
     @staticmethod
     def generate_summary(document_id: str):
         """
-        Generates a summary using Map-Reduce pattern.
-        1. Map: Batch chunks -> Section Summary + Structure + Concepts
-        2. Reduce: Combine -> Global Summary + Master Structure + Top Concepts
+        Generates a summary using Parallel Map-Reduce pattern.
+        1. Map (Parallel): Batch chunks -> Section Summary + Structure + Rich Concepts
+        2. Reduce: Smart Stitching -> Global Summary + Merged Sections
         """
         try:
-            logger.info(f"Generating summary (Map-Reduce) for doc {document_id}")
+            logger.info(f"Generating summary (Parallel Map-Reduce) for doc {document_id}")
             
             # 1. Setup
             oid = UUID(document_id) if isinstance(document_id, str) else document_id
@@ -36,62 +36,75 @@ class SummaryService:
                 return None
 
             reset_client()
-            llm = get_llm_client()
+            # Note: Each thread will technically use the same client instance if it's singleton, 
+            # or we might need one per thread if not thread-safe. Assuming LLMClient is thread-safe or stateless.
 
-            # 3. MAP PHASE: Batch Processing
-            BATCH_SIZE = 5 # Adjust based on chunk size (~500 chars * 5 = 2500 chars)
-            map_results = []
-            
-            logger.info(f"Starting Map Phase for {len(chunks)} chunks in batches of {BATCH_SIZE}...")
-            
+            # 3. MAP PHASE: Parallel Batch Processing
+            BATCH_SIZE = 5 
+            batches = []
             for i in range(0, len(chunks), BATCH_SIZE):
                 batch_chunks = chunks[i : i + BATCH_SIZE]
-                batch_text = "\n".join([f"[Page {c.page_number or '?'}] {c.content}" for c in batch_chunks])
-                
-                # Extract Section info
-                section_data = SummaryService._map_process_batch(llm, batch_text, i // BATCH_SIZE)
-                if section_data:
-                    map_results.append(section_data)
+                batches.append((i // BATCH_SIZE, batch_chunks))
 
-            # 4. REDUCE PHASE: Aggregate results
-            logger.info("Starting Reduce Phase...")
-            global_summary, global_structure, global_concepts = SummaryService._reduce_results(llm, map_results)
+            logger.info(f"Starting Parallel Map Phase for {len(chunks)} chunks ({len(batches)} batches)...")
+            
+            map_results = [None] * len(batches) # Pre-allocate to maintain order
+            
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                # Submit all tasks
+                future_to_index = {
+                    executor.submit(SummaryService._map_process_batch, batch_chunks, idx): idx 
+                    for idx, batch_chunks in batches
+                }
+                
+                for future in as_completed(future_to_index):
+                    idx = future_to_index[future]
+                    try:
+                        result = future.result()
+                        map_results[idx] = result
+                    except Exception as exc:
+                        logger.error(f"Batch {idx} generated an exception: {exc}")
+
+            # Filter out failures
+            map_results = [r for r in map_results if r is not None]
+
+            # 4. REDUCE PHASE: Smart Stitching & Aggregation
+            logger.info("Starting Smart Reduce Phase...")
+            global_summary, merged_sections, global_concepts = SummaryService._reduce_results(map_results)
 
             # 5. Save to Document
             doc.summary = global_summary
-            
-            # Initialize metadata if null
-            if doc.metadata_ is None:
-                doc.metadata_ = {}
-            
-            # Save Global Concepts to metadata
+            if doc.metadata_ is None: doc.metadata_ = {}
             doc.metadata_['key_concepts'] = global_concepts
             
-            # 6. Save Chapters to 'document_sections' Table (Vectorized)
+            # 6. Save Sections to 'document_sections' Table
             from app.models.section import DocumentSection
             
-            # Clear old sections if any
+            # Clear old sections
             db.session.query(DocumentSection).filter_by(document_id=doc.id).delete()
             
-            logger.info(f"Saving {len(global_structure)} vectorized sections...")
+            logger.info(f"Saving {len(merged_sections)} smart sections...")
             embedder = EmbedderService()
             
-            for chapter in global_structure:
-                title = chapter.get('title', 'Untitled Section')
-                content = chapter.get('summary', '') 
-                # If no summary explicitly attached, fallback to title or placeholder
+            for section_data in merged_sections:
+                title = section_data.get('title', 'Untitled Section')
+                content = section_data.get('summary', '') 
                 if not content: content = f"Section: {title}"
                 
-                # Embed content for semantic search
+                # Fetch metadata
+                meta = section_data.get('metadata', {})
+                
+                # Embed content
                 embedding = embedder.embed([content])[0]
                 
                 section = DocumentSection(
                     document_id=doc.id,
                     title=title,
                     content=content,
-                    start_page=chapter.get('page'), # map_process returns 'page'
-                    end_page=chapter.get('page'),   # naive assumption, can refine range later
-                    embedding=embedding
+                    start_page=section_data.get('start_page'),
+                    end_page=section_data.get('end_page'),
+                    embedding=embedding,
+                    metadata_=meta # Save the rich metadata!
                 )
                 db.session.add(section)
             
@@ -100,7 +113,7 @@ class SummaryService:
             summary_vec = embedder.embed([global_summary])[0]
             doc.summary_embedding = summary_vec
             
-            doc.processing_progress = 85
+            doc.processing_progress = 90
             db.session.commit()
             
             logger.info("Summary generation complete.")
@@ -111,39 +124,39 @@ class SummaryService:
             raise e
 
     @staticmethod
-    def _map_process_batch(llm, text_content: str, batch_index: int):
+    def _map_process_batch(chunk_list: list, batch_index: int):
         """
-        MAP STEP: Summarize a single batch and extract structure/concepts.
+        MAP STEP: Summarize batch and Extract Rich Metadata.
         """
         try:
-            prompt = f"""Analyze the following text segment from a larger document.
-Return a JSON object with this EXACT structure (no markdown, no extra text):
+            llm = get_llm_client() # Get client inside thread
+            text_block = "\n".join([f"[Page {c.page_number or '?'}] {c.content}" for c in chunk_list])
+            
+            # Smart Prompt: Infer title, extracting concepts with location awareness
+            prompt = f"""Analyze this document segment.
+Return a valid JSON object (no markdown):
 {{
-    "summary": "A concise paragraph summarizing this section.",
-    "chapters": [
-        {{ "title": "Chapter/Section Title found (if any)", "page": 12 }}
+    "title": "A descriptive title for this segment (infer one if missing)",
+    "summary": "Concise summary of this segment.",
+    "concepts": [
+         {{ "name": "Concept Name", "relevance": 1-10 }}
     ],
-    "concepts": ["Concept 1", "Concept 2"] 
+    "page_start": {chunk_list[0].page_number or 0},
+    "page_end": {chunk_list[-1].page_number or 0}
 }}
 
-Limit 'concepts' to the top 3 most important entities in this segment.
-If no explicit chapter/section title exists, leave "chapters" empty [].
-
-Text Segment:
-{text_content[:3500]} 
-""" # Limit context to avoid overflow
-
+Text:
+{text_block[:3500]}
+""" 
             response = llm.chat(
-                system="You are a precise data extractor. Output valid, separate JSON only.",
+                system="You are a structured data extractor. Output valid JSON only.",
                 messages=[{"role": "user", "content": prompt}]
             )
             
-            # Clean response (strip code blocks)
+            # Parsing logic
             clean_json = response.strip()
-            if clean_json.startswith("```json"):
-                clean_json = clean_json[7:]
-            if clean_json.endswith("```"):
-                clean_json = clean_json[:-3]
+            if clean_json.startswith("```json"): clean_json = clean_json[7:]
+            if clean_json.endswith("```"): clean_json = clean_json[:-3]
             
             data = json.loads(clean_json)
             return data
@@ -153,40 +166,75 @@ Text Segment:
             return None
 
     @staticmethod
-    def _reduce_results(llm, map_results):
+    def _reduce_results(map_results):
         """
-        REDUCE STEP: Combine map outputs into global metadata.
+        REDUCE STEP: 
+        1. Stitch consecutive batches if they share the same topic/title (simple heuristic).
+        2. Aggregate concepts.
+        3. Generate Global Summary.
         """
-        # 1. Concatenate Summaries
-        combined_summaries = "\n\n".join([f"[Section {i+1}] {r.get('summary', '')}" for i, r in enumerate(map_results)])
+        llm = get_llm_client()
         
-        # 2. Aggregate Structure directly
-        global_structure = []
-        for r in map_results:
-            batch_summary = r.get('summary', '')
-            if 'chapters' in r and isinstance(r['chapters'], list):
-                for chapter in r['chapters']:
-                    # Attach the summary of the section where this chapter was found
-                    # This serves as the "Chapter Summary" context
-                    chapter['summary'] = batch_summary
-                global_structure.extend(r['chapters'])
-        
-        # 3. Aggregate Concepts (Frequency Count)
-        concept_freq = {}
-        for r in map_results:
-            for c in r.get('concepts', []):
-                c_clean = c.strip().title()
-                concept_freq[c_clean] = concept_freq.get(c_clean, 0) + 1
-        
-        # Top 20 concepts by frequency, then appearance
-        top_concepts = sorted(concept_freq.keys(), key=lambda x: concept_freq[x], reverse=True)[:20]
+        # --- A. Smart Stitching (Merging Sections) ---
+        merged_sections = []
+        if map_results:
+            current_section = map_results[0]
+            current_section['metadata'] = { 
+                "concepts": current_section.get('concepts', []),
+                "source_batches": [0]
+            }
+            
+            for i in range(1, len(map_results)):
+                next_batch = map_results[i]
+                
+                # Heuristic: If titles are very similar or just generic "Untitled", merge?
+                # For now, we will just keep them separate to ensure granularity, 
+                # UNLESS we drastically over-segmented. 
+                # Let's simple-stitch: If the 'title' is identical, merge.
+                
+                if next_batch.get('title') == current_section.get('title'):
+                    # Merge Logic
+                    current_section['summary'] += " " + next_batch.get('summary', '')
+                    current_section['page_end'] = next_batch.get('page_end')
+                    # Merge concepts
+                    current_section['metadata']['concepts'].extend(next_batch.get('concepts', []))
+                    current_section['metadata']['source_batches'].append(i)
+                else:
+                    # Finalize current, start new
+                    merged_sections.append(current_section)
+                    current_section = next_batch
+                    current_section['metadata'] = { 
+                        "concepts": current_section.get('concepts', []),
+                        "source_batches": [i]
+                    }
+            
+            # Append last one
+            merged_sections.append(current_section)
 
-        # 4. Generate Global Summary (Final LLM Pass)
-        reduce_prompt = f"""Synthesize the following section summaries into one cohesive 'Global Executive Summary' of the entire document.
-Write 3-4 distinct paragraphs. Focus on the narrative arc, core arguments, and final conclusions.
+        # --- B. Global Aggregations ---
+        all_summaries = "\n".join([f"[{s.get('title')}] {s.get('summary')}" for s in merged_sections])
+        
+        # Global Concepts (Count Frequency from the merged metadata)
+        concept_map = {}
+        for s in merged_sections:
+            for c in s['metadata']['concepts']:
+                name = c['name'].lower().strip()
+                if name not in concept_map:
+                    concept_map[name] = {'count': 0, 'display': c['name']}
+                concept_map[name]['count'] += 1
+        
+        top_concepts = sorted([v['display'] for k, v in concept_map.items()], \
+                              key=lambda x: concept_map[x.lower().strip()]['count'], reverse=True)[:20]
 
-Section Summaries:
-{combined_summaries[:10000]}
+        # --- C. Final Summary ---
+        reduce_prompt = f"""Write an Executive Summary of this document based on the section summaries below.
+Structure:
+1. Overview
+2. Key Themes
+3. Conclusion
+
+Sections:
+{all_summaries[:12000]}
 """
         global_summary = "Summary generation failed."
         try:
@@ -195,7 +243,18 @@ Section Summaries:
                 messages=[{"role": "user", "content": reduce_prompt}]
             )
         except Exception as e:
-            logger.error(f"Reduce step (Final content) failed: {e}")
-            global_summary = combined_summaries[:2000] # Fallback
-            
-        return global_summary.strip(), global_structure, top_concepts
+            logger.error(f"Global reduce failed: {e}")
+            global_summary = all_summaries[:2000]
+
+        # Rename keys to match DB model expected keys
+        valid_sections = []
+        for s in merged_sections:
+            valid_sections.append({
+                "title": s.get('title'),
+                "summary": s.get('summary'),
+                "start_page": s.get('page_start'),
+                "end_page": s.get('page_end'),
+                "metadata": s.get('metadata')
+            })
+
+        return global_summary.strip(), valid_sections, top_concepts

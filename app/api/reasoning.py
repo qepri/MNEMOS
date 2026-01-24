@@ -83,3 +83,41 @@ def traverse_graph():
     except Exception as e:
         logger.error(f"Traversal error: {e}")
         return jsonify({"error": str(e)}), 500
+
+# Simple in-memory status tracker for KISS requirement
+# In production with multiple workers, this should be Redis/Database
+REPROCESSING_STATUS = {
+    "status": "idle" # idle, processing
+}
+
+@bp.route('/reprocess', methods=['POST'])
+def reprocess_all():
+    global REPROCESSING_STATUS
+    if REPROCESSING_STATUS["status"] == "processing":
+         return jsonify({"status": "processing", "message": "Already reprocessing..."})
+
+    REPROCESSING_STATUS["status"] = "processing"
+    
+    # Run in background due to potentially long running time
+    import threading
+    def run_reprocess():
+        global REPROCESSING_STATUS
+        try:
+            logger.info("Starting reprocessing...")
+            engine = ReasoningEngine()
+            engine.build_graph() # Assuming this method exists and rebuilds everything
+            logger.info("Reprocessing complete.")
+        except Exception as e:
+            logger.error(f"Reprocessing failed: {e}")
+        finally:
+            REPROCESSING_STATUS["status"] = "idle"
+
+    thread = threading.Thread(target=run_reprocess)
+    thread.start()
+
+    return jsonify({"status": "processing", "message": "Reprocessing started in background"})
+
+@bp.route('/reprocess/status', methods=['GET'])
+def get_reprocess_status():
+    global REPROCESSING_STATUS
+    return jsonify(REPROCESSING_STATUS)
