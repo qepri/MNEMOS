@@ -38,11 +38,12 @@ import { Router } from '@angular/router';
       </div>
 
       <!-- Controls -->
-      <div class="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_auto] gap-4 items-end bg-panel p-4 rounded-xl shadow-lg border border-divider">
+      <!-- Controls -->
+      <div class="flex flex-col gap-6 bg-panel p-6 rounded-xl shadow-lg border border-divider">
         
         <!-- Collection Filter -->
-        <div class="flex flex-col gap-2 w-full md:col-span-4 mb-2">
-            <label class="text-sm font-semibold text-primary">Context Scope (Collections)</label>
+        <div class="w-full">
+            <label class="text-sm font-semibold text-primary mb-2 block">Context Scope (Collections)</label>
             <div class="flex flex-wrap gap-2">
                 @for (col of collections(); track col.id) {
                     <button 
@@ -61,47 +62,66 @@ import { Router } from '@angular/router';
             </div>
         </div>
 
-        <!-- Start -->
-        <div class="flex flex-col gap-2 w-full">
-            <label class="text-sm font-semibold text-primary">Start Concept</label>
-            <input type="text" [(ngModel)]="startConcept" placeholder="e.g. PCL" 
-                class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-primary placeholder-secondary transition-all" />
+        <!-- Inputs Row -->
+        <div class="flex flex-col md:flex-row items-end gap-4">
+            <!-- Start -->
+            <div class="flex-1 w-full">
+                <label class="text-xs font-bold text-secondary uppercase tracking-wider mb-1 block">Start From</label>
+                <input type="text" [(ngModel)]="startConcept" placeholder="e.g. PCL" 
+                    class="w-full h-12 px-4 bg-input border border-divider rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-lg text-primary placeholder-secondary/50 transition-all font-medium" />
+            </div>
+
+            <!-- Arrow Icon -->
+            <div class="hidden md:flex pb-4 text-secondary/50">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+            </div>
+
+            <!-- Goal -->
+            <div class="flex-1 w-full">
+                <label class="text-xs font-bold text-secondary uppercase tracking-wider mb-1 block">Target Concept</label>
+                <input type="text" [(ngModel)]="goalConcept" placeholder="e.g. Bone Healing" 
+                    class="w-full h-12 px-4 bg-input border border-divider rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-lg text-primary placeholder-secondary/50 transition-all font-medium" />
+            </div>
         </div>
 
-        <!-- Arrow Icon -->
-        <div class="hidden md:flex pb-3 text-secondary">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-        </div>
+        <!-- Actions Row -->
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4 pt-2 border-t border-divider/50">
+             <!-- Advanced Controls -->
+            <div class="flex items-center gap-6 bg-base-200/50 px-4 py-2 rounded-lg border border-divider/50">
+                <!-- Semantic Leap Toggle -->
+                <div class="flex items-center gap-3 cursor-pointer group" (click)="useSemanticLeap.set(!useSemanticLeap())">
+                    <div class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="semanticLeap" [ngModel]="useSemanticLeap()" (ngModelChange)="useSemanticLeap.set($event)" class="sr-only peer">
+                        <div class="w-10 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent/50 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent shadow-inner"></div>
+                    </div>
+                    <label for="semanticLeap" class="text-sm font-medium text-primary cursor-pointer select-none group-hover:text-accent transition-colors">
+                        Semantic Leap
+                    </label>
+                </div>
+    
+                <div class="h-6 w-px bg-divider"></div>
+    
+                <!-- Max Depth Slider -->
+                <div class="flex items-center gap-3">
+                    <label class="text-sm font-medium text-primary whitespace-nowrap">Depth: <span class="text-accent font-bold">{{ maxDepth() }}</span></label>
+                    <input type="range" min="1" max="5" step="1" [ngModel]="maxDepth()" (ngModelChange)="maxDepth.set($event)" 
+                        class="w-24 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-accent" />
+                </div>
+            </div>
 
-        <!-- Goal -->
-        <div class="flex flex-col gap-2 w-full">
-            <label class="text-sm font-semibold text-primary">Goal Concept</label>
-            <input type="text" [(ngModel)]="goalConcept" placeholder="e.g. Bone Healing" 
-                class="w-full px-4 py-2 bg-input border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-primary placeholder-secondary transition-all" />
+            <!-- Main Action -->
+            <button (click)="traverse()" [disabled]="isLoading() || !startConcept || !goalConcept" 
+                class="h-12 px-8 bg-accent hover:bg-accent-dark text-white rounded-xl font-bold tracking-wide transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[160px] shadow-lg hover:shadow-accent/40 active:scale-95">
+                @if (isLoading()) {
+                    <span class="loading-dots mr-2">
+                        <span></span><span></span><span></span>
+                    </span>
+                }
+                Start Traversal
+            </button>
         </div>
-
-        <!-- Semantic Leap Toggle -->
-        <div class="flex items-center gap-2 mb-2 w-full md:w-auto">
-             <input type="checkbox" id="semanticLeap" [ngModel]="useSemanticLeap()" (ngModelChange)="useSemanticLeap.set($event)" 
-                class="w-4 h-4 text-accent bg-input border-divider rounded focus:ring-accent" />
-             <label for="semanticLeap" class="text-sm font-medium text-primary cursor-pointer select-none">
-                Semantic Leap
-                <span class="block text-xs text-secondary font-normal">Find hidden connections</span>
-             </label>
-        </div>
-
-        <!-- Action -->
-        <button (click)="traverse()" [disabled]="isLoading() || !startConcept || !goalConcept" 
-            class="h-[42px] px-6 bg-accent hover:bg-accent-dark text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[120px]">
-            @if (isLoading()) {
-                <span class="loading-dots mr-2">
-                    <span></span><span></span><span></span>
-                </span>
-            }
-            Traverse Path
-        </button>
       </div>
 
       <!-- Results Area -->
@@ -167,6 +187,7 @@ export class ReasoningComponent implements AfterViewInit, OnDestroy {
     result = signal<string>('');
     graphData = signal<any>(null);
     useSemanticLeap = signal(false);
+    maxDepth = signal(3);
 
     // Collections
     collections = signal<Collection[]>([]);
@@ -214,7 +235,7 @@ export class ReasoningComponent implements AfterViewInit, OnDestroy {
         const filterIds = Array.from(this.selectedCollectionIds());
 
         // Always save to chat as requested
-        this.reasoningService.traverse(this.startConcept, this.goalConcept, filterIds, true, this.useSemanticLeap()).subscribe({
+        this.reasoningService.traverse(this.startConcept, this.goalConcept, filterIds, true, this.useSemanticLeap(), this.maxDepth()).subscribe({
             next: (res: any) => {
                 this.result.set(res.narrative);
                 this.isLoading.set(false);

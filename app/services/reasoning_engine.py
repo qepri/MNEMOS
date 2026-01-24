@@ -108,6 +108,7 @@ class ReasoningEngine:
         embedder = EmbedderService() if use_semantic_leap else None
         
         while queue:
+            logger.info(f"Traversal Queue Size: {len(queue)}. Current Depth: {len(queue[0][1]) if queue else 0}")
             current_edge, path = queue.popleft()
             
             if len(path) > max_depth:
@@ -141,27 +142,36 @@ class ReasoningEngine:
             
             candidates = candidate_query.options(joinedload(HyperEdgeMember.hyper_edge).joinedload(HyperEdge.members)).all()
             
-            candidate_edges = {} # edge_id -> HyperEdge Obj
+            hard_link_edges = {} # edge_id -> HyperEdge Obj
             
             for c_member in candidates:
                 e_id = c_member.hyper_edge_id
                 if e_id not in visited_edges:
-                    candidate_edges[e_id] = c_member.hyper_edge
+                    hard_link_edges[e_id] = c_member.hyper_edge
             
+            # Process Hard Links (Must meet intersection size)
+            for cand_id, cand_edge in hard_link_edges.items():
+                cand_concept_ids = [m.concept_id for m in cand_edge.members]
+                
+                # Intersection count
+                common = set(current_concept_ids) & set(cand_concept_ids)
+                if len(common) >= intersection_size:
+                    visited_edges.add(cand_id)
+                    new_path = list(path)
+                    new_path.append(cand_edge)
+                    queue.append((cand_edge, new_path))
+                    # logger.debug(f"  -> Hard Link to {cand_id} via {common}")
+
             # B. SEMANTIC LEAP Expansion (Vector Similarity)
-            # If enabled, find concepts similar to the concepts in the current edge
-            # And add THEIR edges to the candidates.
-            # Limit this to avoid explosion (e.g. only leap from 'main' concepts or limit query)
+            # These bypass intersection checks because the link is semantic, not ID-based.
             if use_semantic_leap and len(path) < max_depth: # Don't leap on last step
-                 # Gather embeddings of concepts in current edge
-                 # We need to query them. Ideally we have them loaded.
                  current_concepts = [m.concept for m in current_edge.members]
                  
                  for concept in current_concepts:
                      if concept.embedding is None: continue
+                     if len(concept.name) < 3: continue # Skip short concepts (stopwords)
                      
                      # Find similar concepts (exclude already visited)
-                     # Cosine Distance < 0.25 (Very close, almost synonym)
                      similar_concepts = db.session.query(Concept)\
                         .filter(Concept.id.notin_(list(visited_concepts)))\
                         .order_by(Concept.embedding.cosine_distance(concept.embedding))\
@@ -169,13 +179,15 @@ class ReasoningEngine:
                         .all()
                      
                      for sim_concept in similar_concepts:
+                         if len(sim_concept.name) < 3: continue # Skip short targets
+                         
                          dist = db.session.query(Concept.embedding.cosine_distance(concept.embedding))\
                              .filter(Concept.id == sim_concept.id).scalar()
                          
                          if dist is not None and dist < 0.25:
                              logger.info(f"Semantic Leap: {concept.name} -> {sim_concept.name} (dist: {dist:.3f})")
                              
-                             # Find edges for this similar concept
+                             # Find edges for this similar concept (LIMIT to avoid explosion)
                              sim_query = db.session.query(HyperEdgeMember)\
                                 .filter(HyperEdgeMember.concept_id == sim_concept.id)\
                                 .join(HyperEdgeMember.hyper_edge)
@@ -183,17 +195,16 @@ class ReasoningEngine:
                              if collection_ids:
                                  sim_query = sim_query.join(HyperEdge.document).filter(Document.collection_id.in_(collection_ids))
                                  
-                             sim_members = sim_query.options(joinedload(HyperEdgeMember.hyper_edge).joinedload(HyperEdge.members)).all()
+                             sim_members = sim_query.options(joinedload(HyperEdgeMember.hyper_edge).joinedload(HyperEdge.members)).limit(5).all() # Limit to 5 bridges
+                             
+                             # Add these edges directly (they are the bridge)
                              for m in sim_members:
                                  if m.hyper_edge_id not in visited_edges:
-                                     candidate_edges[m.hyper_edge_id] = m.hyper_edge
-
-            # Filter by Intersection Size (Standard)
-            for cand_id, cand_edge in candidate_edges.items():
-                visited_edges.add(cand_id)
-                new_path = list(path)
-                new_path.append(cand_edge)
-                queue.append((cand_edge, new_path))
+                                     visited_edges.add(m.hyper_edge_id)
+                                     new_path = list(path)
+                                     new_path.append(m.hyper_edge)
+                                     queue.append((m.hyper_edge, new_path))
+                                     logger.info(f"     -> Added Bridge Edge {m.hyper_edge_id} via {sim_concept.name}")
         
         # 3. Path Reconstruction & Synthesis
         if not found_paths:
