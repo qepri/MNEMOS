@@ -48,12 +48,25 @@ class SummaryService:
 
             logger.info(f"Starting Parallel Map Phase for {len(chunks)} chunks ({len(batches)} batches)...")
             
+            # Initialize Client & Model ONCE in the main thread (with App Context)
+            llm_client = get_llm_client()
+            
+            # Pre-fetch the active model to avoid DB lookup in threads
+            from app.services.model_manager import model_manager
+            active_model = model_manager.get_model()
+            
             map_results = [None] * len(batches) # Pre-allocate to maintain order
             
             with ThreadPoolExecutor(max_workers=5) as executor:
-                # Submit all tasks
+                # Submit all tasks, passing the client AND model explicitly
                 future_to_index = {
-                    executor.submit(SummaryService._map_process_batch, batch_chunks, idx): idx 
+                    executor.submit(
+                        SummaryService._map_process_batch, 
+                        batch_chunks, 
+                        idx, 
+                        llm_client,
+                        active_model
+                    ): idx 
                     for idx, batch_chunks in batches
                 }
                 
@@ -124,12 +137,12 @@ class SummaryService:
             raise e
 
     @staticmethod
-    def _map_process_batch(chunk_list: list, batch_index: int):
+    def _map_process_batch(chunk_list: list, batch_index: int, llm_client, model_name=None):
         """
         MAP STEP: Summarize batch and Extract Rich Metadata.
         """
         try:
-            llm = get_llm_client() # Get client inside thread
+            # llm = get_llm_client() # No longer needed, passed in
             text_block = "\n".join([f"[Page {c.page_number or '?'}] {c.content}" for c in chunk_list])
             
             # Smart Prompt: Infer title, extracting concepts with location awareness
@@ -148,9 +161,10 @@ Return a valid JSON object (no markdown):
 Text:
 {text_block[:3500]}
 """ 
-            response = llm.chat(
+            response = llm_client.chat(
                 system="You are a structured data extractor. Output valid JSON only.",
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
+                model=model_name # Explicitly pass the model to avoid DB lookup
             )
             
             # Parsing logic

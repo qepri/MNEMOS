@@ -27,7 +27,7 @@ class DocumentSection(db.Model):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationship
-    document = relationship('app.models.document.Document', backref='sections')
+    document = relationship('app.models.document.Document', backref=db.backref('sections', cascade='all, delete-orphan'))
 
     __table_args__ = (
         # HNSW Index for fast vector search

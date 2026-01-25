@@ -272,6 +272,20 @@ def process_document_task(self, document_id: str):
                     HypergraphExtractor.process_document(doc.id)
                 except Exception as hg_e:
                     logger.error(f"Hypergraph extraction failed (non-blocking): {hg_e}")
+
+                # --- Graph Unification (Phase 2) ---
+                try:
+                    from app.services.graph_unifier import GraphUnifierService
+                    from app.models.section import DocumentSection
+                    
+                    logger.info("Starting Graph Unification (Phase 2)...")
+                    sections = db.session.query(DocumentSection).filter_by(document_id=doc.id).all()
+                    for section in sections:
+                        GraphUnifierService.process_section(str(section.id))
+                    logger.info("Graph Unification complete.")
+                    
+                except Exception as gu_e:
+                    logger.error(f"Graph Unification failed (non-blocking): {gu_e}")
                 
             doc.status = 'completed'
             doc.processing_progress = 100
