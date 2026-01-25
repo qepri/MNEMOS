@@ -34,6 +34,8 @@ class DocumentSection(db.Model):
         Index('ix_document_sections_embedding', embedding, postgresql_using='hnsw',
               postgresql_with={'m': 16, 'ef_construction': 64},
               postgresql_ops={'embedding': 'vector_cosine_ops'}),
+        # GIN Index for fast Metadata filtering
+        Index('ix_document_sections_metadata', metadata_, postgresql_using='gin'),
     )
 
     def to_dict(self):

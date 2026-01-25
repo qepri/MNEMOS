@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MNEMOS: Unified Summarization & Graph Workflow</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            padding: 20px;
+            background: #f4f4f9;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .mermaid {
+            margin: 20px 0;
+        }
+
+        .legend {
+            font-size: 0.9em;
+            background: #e8f4fc;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        .step {
+            margin-bottom: 20px;
+        }
+
+        .step h3 {
+            color: #3498db;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Architecture: Summarization to Knowledge Graph Pipeline</h1>
+
+        <div class="step">
+            <h3>1. High Level Overview</h3>
+            <p>This diagram shows how we move from raw text to a connected Knowledge Graph, using the Summary Service as
+                the initial extractor.</p>
+
+            <div class="mermaid">
+                flowchart TD
+                %% Nodes
+                DOC["📄 Raw Document"] -->|Upload| CHUNKER["✂️ Chunker Service"]
+                CHUNKER -->|Chunks| MAP_PHASE["🤖 Map Phase (Parallel LLM)"]
+
+                subgraph "Analysis & Extraction"
+                MAP_PHASE -->|Extracts| JSON_META["📝 JSON Metadata"]
+                JSON_META -- Contains --> LOCAL_CONCEPTS["🏷️ Local Concepts (Strings)"]
+                JSON_META -- Contains --> LOCAL_SUM["📄 Section Summary"]
+                end
+
+                subgraph "Phase 1: Fast Storage (What we built)"
+                LOCAL_SUM -->|Save| DB_SEC["🗄️ Table: document_sections"]
+                LOCAL_CONCEPTS -->|Save| DB_META["💾 Column: metadata_"]
+                end
+
+                subgraph "Phase 2: Graph Unification (The Proposal)"
+                DB_META -.->|Async Task| UNIFIER["⚙️ Graph Unifier Service"]
+
+                UNIFIER -->|Lookup/Create| GLOBAL_CONCEPT["🌍 Table: concepts"]
+                UNIFIER -->|Link| HYPER_EDGE["🔗 Table: hyper_edges"]
+
+                GLOBAL_CONCEPT ---|Member| MEMBER["Table: hyper_edge_members"]
+                MEMBER ---|Belongs To| HYPER_EDGE
+                HYPER_EDGE -->|References| DB_SEC
+                end
+
+                %% Styling
+                style DOC fill:#f9f,stroke:#333
+                style UNIFIER fill:#ff9,stroke:#f66,stroke-width:2px,stroke-dasharray: 5 5
+                style GLOBAL_CONCEPT fill:#9f9,stroke:#333
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>2. Data Structure Transformation</h3>
+            <p>How a text string "Gravity" becomes a Node ID in the database.</p>
+            <div class="mermaid">
+                sequenceDiagram
+                participant S as Summarizer
+                participant DB as DocumentSection Table
+                participant U as Unifier Task
+                participant G as Concept Table (Graph)
+                participant H as HyperEdge Table
+
+                S->>DB: Save Section 1 (metadata: {concepts: ["Gravity", "Physics"]})
+                Note right of DB: User sees Summary immediately
+
+                loop Async Background Process
+                U->>DB: Read new Section Metadata
+                U->>G: Check if Concept "Gravity" exists?
+                alt Concept Exists
+                G-->>U: Return UUID (e.g., 550e8400...)
+                else New Concept
+                U->>G: Create Node "Gravity"
+                G-->>U: Return New UUID
+                end
+
+                U->>H: Create Semantic Link (HyperEdge)
+                Note right of H: "Section 1 mentions Gravity"
+                end
+            </div>
+        </div>
+
+        <div class="legend">
+            <strong>Key Takeaways:</strong>
+            <ul>
+                <li><strong>Phase 1 (Done):</strong> Fast, parallel summarization stored in `document_sections` with
+                    JSON metadata. Great for RAG filtering.</li>
+                <li><strong>Phase 2 (Proposed):</strong> An asynchronous "Unifier" task that reads that JSON and
+                    converts it into formal Graph Nodes (`concepts`) and Edges (`hyper_edges`).</li>
+                <li>This keeps valid/fast summarization while slowly building the high-quality Knowledge Graph in the
+                    background.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    </script>
+</body>
+
+</html>
