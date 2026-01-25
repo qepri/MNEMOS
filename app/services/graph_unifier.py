@@ -26,11 +26,21 @@ class GraphUnifierService:
                 return
 
             metadata = section.metadata_ or {}
-            concepts_list = metadata.get("key_concepts", [])
+            # Support both keys and formats (list of strings or list of dicts)
+            raw_concepts = metadata.get("concepts", []) or metadata.get("key_concepts", [])
 
-            if not concepts_list:
+            if not raw_concepts:
                 logger.info(f"GraphUnifier: No concepts found for section {section.title}")
                 return
+
+            # Extract names depending on format
+            concepts_list = []
+            for c in raw_concepts:
+                if isinstance(c, dict):
+                    name = c.get("name")
+                    if name: concepts_list.append(name)
+                elif isinstance(c, str):
+                    concepts_list.append(c)
 
             logger.info(f"GraphUnifier: Processing {len(concepts_list)} concepts for section '{section.title}'")
 
