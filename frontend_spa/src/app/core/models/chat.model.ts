@@ -5,6 +5,7 @@ export interface ChatRequest {
   document_ids?: string[];
   conversation_id?: string;
   web_search?: boolean;
+  use_graph_rag?: boolean;
   images?: string[];
 }
 

@@ -3,8 +3,14 @@ from sqlalchemy import select, text
 from typing import List, Dict
 from app.models.chunk import Chunk
 from app.models.document import Document
+from app.models.section import DocumentSection
+from app.models.knowledge_graph import Concept, HyperEdge, HyperEdgeMember
 from app.services.embedder import EmbedderService
 from app.services.llm_client import get_llm_client
+
+from app.services.embedder import EmbedderService
+from app.services.llm_client import get_llm_client
+import json
 
 class RAGService:
     def __init__(self, db_session):
@@ -79,6 +85,85 @@ Output ONLY the queries, one per line. Do not include numbering or bullets."""
         results = self.db.execute(stmt).all()
         return [row[0] for row in results]
 
+    
+    def _retrieve_via_graph(self, query: str, document_ids: List[str] = None, top_k: int = 3) -> List[DocumentSection]:
+        """
+        Retrieves context via Knowledge Graph Traversal:
+        Query -> [Vector Search] -> Similar Concepts -> [HyperEdge] -> Linked Sections
+        """
+        from sqlalchemy import select, desc
+        
+        # 1. Embed Query
+        query_embedding = self.embedder.embed(query)
+        
+        # 2. Find Similar Concepts
+        # We find concepts that are semantically close to the query
+        stmt = select(Concept).order_by(
+            Concept.embedding.cosine_distance(query_embedding)
+        ).limit(top_k)
+        
+        concepts = self.db.execute(stmt).scalars().all()
+        
+        if not concepts:
+            return []
+            
+        print(f"[GraphRAG] Found concepts: {[c.name for c in concepts]}")
+        
+        # 3. Traverse to Sections
+        # Concept -> HyperEdgeMember -> HyperEdge -> Section
+        
+        relevant_sections = []
+        for concept in concepts:
+            # Verify if this concept is actually relevant (distance check could be added here)
+            
+            # Find edges containing this concept
+            # We want edges where this concept is a member
+            # Optimization: Could be done in one join query
+            members = self.db.query(HyperEdgeMember).filter_by(concept_id=concept.id).limit(5).all()
+            
+            for mem in members:
+                edge = self.db.query(HyperEdge).get(mem.hyper_edge_id)
+                if not edge: continue
+
+                # Filter by Document ID if provided
+                if document_ids:
+                    # Check if edge has a source_document_id and if it's in the allowed list
+                    if not edge.source_document_id or str(edge.source_document_id) not in document_ids:
+                         continue
+
+                # Case A: Linked to Section (Graph Unifier)
+                if edge.source_section_id:
+                     section = self.db.query(DocumentSection).get(edge.source_section_id)
+                     if section:
+                         relevant_sections.append(section)
+                
+                # Case B: Linked to Chunk (Hypergraph Extractor)
+                elif edge.source_chunk_id:
+                     chunk = self.db.query(Chunk).get(edge.source_chunk_id)
+                     if chunk:
+                         # Create a pseudo-section or wrapper for consistency
+                         # We'll re-use DocumentSection model on the fly or adjust return type?
+                         # Simpler: Just wrap it in a lightweight object or existing Section model with null ID?
+                         # Or better: Just append to a list of "ContentNodes" and adjust return type to List[Any]
+                         
+                         # Hack: Use DocumentSection as a container for now
+                         # Ideally we refactor return type, but to be KISS:
+                         fake_section = DocumentSection(
+                             id=None, # Indicating it's dynamic
+                             title=f"Chunk from {chunk.document.original_filename} (Graph)", 
+                             content=chunk.content,
+                             document_id=chunk.document_id
+                         )
+                         relevant_sections.append(fake_section)
+        
+        # Deduplicate by Content (since IDs might be None for chunks)
+        unique_content = {}
+        for s in relevant_sections:
+            if s.content not in unique_content:
+                unique_content[s.content] = s
+            
+        return list(unique_content.values())
+
     def search_similar_chunks(
         self, 
         query: str, 
@@ -127,6 +212,7 @@ Output ONLY the queries, one per line. Do not include numbering or bullets."""
         conversation_history: List = None,
         system_prompt: str = None,
         web_search: bool = False,
+        use_graph_rag: bool = False,
         images: List[str] = None
     ) -> Dict:
         """Executes full RAG flow with optional conversation context."""
@@ -140,57 +226,29 @@ Output ONLY the queries, one per line. Do not include numbering or bullets."""
         start_time = time.time()
         logger.info(f"--- START RAG QUERY: '{question}' ---")
 
-        # 1. Search relevant chunks
+        # 1. Search relevant chunks (Standard Retrieval)
         chunks = []
         t0 = time.time()
+        
+        # Standard Hybrid Search
         if document_ids and len(document_ids) > 0:
             chunks = self.search_similar_chunks(question, document_ids, top_k)
             logger.info(f"[Retrieval] Found {len(chunks)} chunks in {time.time() - t0:.2f}s")
-        else:
-            logger.info("[Retrieval] Skipped (No docs selected)")
+        
+        # 2. Graph retrieval (Optional)
+        graph_sections = []
+        if use_graph_rag:
+            t_graph = time.time()
+            logger.info("[Retrieval] Executing Graph-RAG...")
+            graph_sections = self._retrieve_via_graph(question, document_ids=document_ids, top_k=3)
+            logger.info(f"[Retrieval] Graph found {len(graph_sections)} sections in {time.time() - t_graph:.2f}s")
+            
+        if not chunks and not graph_sections:
+            logger.info("[Retrieval] Skipped (No docs selected and no graph results)")
 
-        # 2. Build RAG context
-        context_parts = []
-        sources = []
-
-        for chunk in chunks:
-            doc = chunk.document
-            location = ""
-
-            if chunk.start_time is not None:
-                location = f"[{self._format_time(chunk.start_time)} - {self._format_time(chunk.end_time)}]"
-            elif chunk.page_number:
-                location = f"[Page {chunk.page_number}]"
-
-
-            # Format metadata if available
-            meta_str = ""
-            if doc.metadata_:
-                 # Filter or format specific keys if needed, or just dump relevant ones
-                 # Prioritize title, author, description, date
-                 meta_parts = []
-                 for key in ['title', 'author', 'description', 'language', 'duration']:
-                     if key in doc.metadata_:
-                         meta_parts.append(f"{key.capitalize()}: {doc.metadata_[key]}")
-                 if meta_parts:
-                     meta_str = f"Metadata: [{', '.join(meta_parts)}]\n"
-
-            context_parts.append(f"--- {doc.original_filename} {location} ---\n{meta_str}{chunk.content}")
-            sources.append({
-                "document": doc.original_filename,
-                "document_id": str(doc.id),
-                "page_number": chunk.page_number,
-                "start_time": chunk.start_time,
-                "end_time": chunk.end_time,
-                "chunk_id": str(chunk.id),
-                "location": location,
-                "text": chunk.content,
-                "file_type": doc.file_type,
-                "youtube_url": doc.youtube_url,
-                "metadata": doc.metadata_
-            })
-
-        rag_context = "\n\n".join(context_parts)
+        # 3. Build RAG context
+        # We now use a hierarchical structure: Document -> Section (Chapter) -> Chunk
+        rag_context, sources = self._build_hierarchical_context(chunks, graph_sections)
 
         if web_search:
             from app.services.web_search import WebSearchService
@@ -200,8 +258,9 @@ Output ONLY the queries, one per line. Do not include numbering or bullets."""
             logger.info("[Web] Generating search queries...")
             
             # Agentic Step: Generate optimized queries
+            # Agentic Step: Generate optimized queries
             search_queries = self._generate_search_queries(question, conversation_history)
-            logger.info(f"[Web] Generated queries: {search_queries}")
+            logger.info(f"[Web] Generated queries:\n{json.dumps(search_queries, indent=2)}")
             
             all_web_context = []
             for q in search_queries:
@@ -301,6 +360,11 @@ Provide detailed and comprehensive answers. Use markdown (bold, lists, headers) 
         hist_len = len(conversation_context) if conversation_context else 0
         logger.info(f"[Context] Docs/Web: {ctx_len} chars | History: {hist_len} chars | Prompt Total: {len(user_prompt)} chars")
 
+        # --- LOGGING: Final Prompt ---
+        logger.info("--- FINAL LLM PROMPT ---")
+        logger.info(user_prompt)
+        logger.info("------------------------")
+
         # 6. Generate response with LLM
         logger.info("[LLM] Sending request to model...")
         t_llm = time.time()
@@ -332,3 +396,158 @@ Provide detailed and comprehensive answers. Use markdown (bold, lists, headers) 
         if hours:
             return f"{hours}:{minutes:02d}:{secs:02d}"
         return f"{minutes}:{secs:02d}"
+
+
+    def _build_hierarchical_context(self, chunks: List[Chunk], graph_sections: List[DocumentSection]):
+        """
+        Groups content by Document -> Section -> Chunks to save tokens and provide structure.
+        Returns: (formatted_context_string, sources_list)
+        """
+        from collections import defaultdict
+        
+        # Data Structure:
+        # docs[doc_id] = { 'obj': Document, 'sections': { sec_id: {'obj': Section, 'chunks': []} }, 'orphans': [] }
+        docs_map = {} 
+        sources = []
+
+        # 1. Process Graph Sections (High Level Concepts)
+        for section in graph_sections:
+            if not section.document_id: continue # Skip if no doc link (rare)
+            
+            d_id = str(section.document_id)
+            if d_id not in docs_map:
+                # We need the document object. 
+                # Optimization: It's likely loaded on section.document, or we fetch it.
+                if section.document:
+                    doc = section.document
+                else:
+                    # Fallback lookup
+                    doc = self.db.query(Document).get(section.document_id)
+                docs_map[d_id] = {'obj': doc, 'sections': {}, 'orphans': []}
+            
+            s_id = str(section.id) if section.id else "virtual_graph_section"
+            if s_id not in docs_map[d_id]['sections']:
+                 docs_map[d_id]['sections'][s_id] = {'obj': section, 'chunks': [], 'is_graph': True}
+            
+            # Graph sections are their own content, often without sub-chunks in this specific flow.
+            # We treat the section content itself as the "chunk".
+            # If it's a "fake_section" from a chunk (see _retrieve_via_graph), it has content.
+            
+            sources.append({
+                "document": doc.original_filename if doc else "Unknown Document",
+                "document_id": str(doc.id) if doc else None,
+                "location": f"Graph Cluster: {section.title}",
+                "text": section.content[:200] + "...",
+                "type": "graph_node"
+            })
+
+
+        # 2. Process Standard Chunks
+        # We need to map chunks to sections.
+        # Efficient way: For each doc, fetch its sections once, then map chunks.
+        
+        # First, ensure all docs are in map
+        chunk_docs = {c.document_id: c.document for c in chunks}
+        for d_id, doc in chunk_docs.items():
+            if str(d_id) not in docs_map:
+                docs_map[str(d_id)] = {'obj': doc, 'sections': {}, 'orphans': []}
+
+        # Pre-fetch sections for these docs to allow mapping
+        # We can utilize the relationship doc.sections if available, or query.
+        # Assuming eager load or reasonable lazy load for now.
+        
+        for chunk in chunks:
+            d_id = str(chunk.document_id)
+            doc_data = docs_map[d_id]
+            
+            # Find which section this chunk belongs to
+            parent_section = None
+            
+            # Iterate through existing sections in our map FIRST (maybe graph brought them in)
+            # Then check other sections of the doc.
+            # To be efficient: just check the doc's section list.
+            
+            found = False
+            if chunk.page_number:
+                # Naive search in doc's sections
+                # In prod: use interval tree or optimized query. Here: loop is fine for standard doc retrieval (5 docs)
+                for sec in doc_data['obj'].sections:
+                    if sec.start_page and sec.end_page and sec.start_page <= chunk.page_number <= sec.end_page:
+                        s_id = str(sec.id)
+                        if s_id not in doc_data['sections']:
+                            doc_data['sections'][s_id] = {'obj': sec, 'chunks': [], 'is_graph': False}
+                        
+                        doc_data['sections'][s_id]['chunks'].append(chunk)
+                        found = True
+                        break
+            
+            if not found:
+                doc_data['orphans'].append(chunk)
+
+            # Add to sources
+            location = f"[Page {chunk.page_number}]" if chunk.page_number else ""
+            sources.append({
+                "document": chunk.document.original_filename,
+                "document_id": str(chunk.document.id),
+                "chunk_id": str(chunk.id),
+                "location": location,
+                "text": chunk.content,
+                "type": "chunk",
+                "metadata": chunk.document.metadata_
+            })
+            
+        # 3. Build String
+        context_lines = []
+        
+        for d_id, data in docs_map.items():
+            doc = data['obj']
+            # Header
+            context_lines.append(f"=== Document: {doc.original_filename} ===")
+            
+            # Metadata
+            meta = []
+            if doc.metadata_:
+                if 'author' in doc.metadata_: meta.append(f"Author: {doc.metadata_['author']}")
+                if 'language' in doc.metadata_: meta.append(f"Lang: {doc.metadata_['language']}")
+            if doc.summary:
+                # Truncate summary to avoid token bloat
+                clean_summ = doc.summary.replace("\n", " ")[:300]
+                meta.append(f"Summary: {clean_summ}...")
+            
+            if meta:
+                context_lines.append(" | ".join(meta))
+            context_lines.append("") # Spacer
+            
+            # Sections
+            for s_id, s_data in data['sections'].items():
+                section = s_data['obj']
+                is_graph = s_data.get('is_graph', False)
+                
+                heading = f"### Chapter: {section.title}"
+                if is_graph: heading += " (Graph Linked)"
+                context_lines.append(heading)
+                
+                # If the section itself came from graph, it might have content directly
+                if is_graph and section.content:
+                     # This is a graph node content (concept or chunk wrapper)
+                     context_lines.append(f"{section.content}\n")
+                
+                # Chunks within this section
+                # Remove duplicates if graph content is same as chunk?
+                # For now, just print chunks.
+                for chunk in s_data['chunks']:
+                     loc = f"[Page {chunk.page_number}]" if chunk.page_number else ""
+                     context_lines.append(f"- {loc}: {chunk.content}\n")
+                
+            # Orphans (Chunks not in any section or generic)
+            if data['orphans']:
+                if data['sections']: # Only print header if we successfully categorized others
+                    context_lines.append("### Uncategorized Fragments")
+                
+                for chunk in data['orphans']:
+                    loc = f"[Page {chunk.page_number}]" if chunk.page_number else ""
+                    context_lines.append(f"- {loc}: {chunk.content}\n")
+            
+            context_lines.append("\n") # separator between docs
+
+        return "\n".join(context_lines), sources

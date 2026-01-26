@@ -42,6 +42,7 @@ export class ChatPage {
   theme = signal<'dark' | 'light'>('dark');
   isLlmModalOpen = signal<boolean>(false);
   isWebSearchEnabled = signal<boolean>(false);
+  isGraphRagEnabled = signal<boolean>(false); // New Graph RAG Toggle
   selectedImages = signal<string[]>([]);
   isDragging = signal<boolean>(false);
   isMenuOpen = signal<boolean>(false);
@@ -251,6 +252,7 @@ export class ChatPage {
         document_ids: documentIds,
         conversation_id: conversationId || undefined,
         web_search: this.isWebSearchEnabled(),
+        use_graph_rag: this.isGraphRagEnabled(),
         images: images.length > 0 ? images : undefined
       });
 

@@ -278,7 +278,13 @@ class LLMClient:
                     temperature=0.7,
                     extra_body=extra_body
                 )
-                logger.info(f"Received response from LLM: {response.model_dump_json()}")
+                response_json = response.model_dump_json()
+                try:
+                    parsed = json.loads(response_json)
+                    logger.info(f"Received response from LLM:\n{json.dumps(parsed, indent=2)}")
+                except:
+                    logger.info(f"Received response from LLM: {response_json}")
+                    
                 return response.choices[0].message.content
                 
         except Exception as e:

@@ -82,6 +82,7 @@ def chat():
             system_prompt = prompt_obj.content
 
     web_search = data.get('web_search', False) if request.is_json else False
+    use_graph_rag = data.get('use_graph_rag', False) if request.is_json else False
 
     # Perform RAG with conversation context
     rag = RAGService(db.session)
@@ -92,6 +93,7 @@ def chat():
         conversation_history=conversation_history,
         system_prompt=system_prompt,
         web_search=web_search,
+        use_graph_rag=use_graph_rag,
         images=images
     )
 
