@@ -48,7 +48,6 @@ def build_installer():
     dirs_to_copy = [
         "app",
         "config",
-        "migrations",
         "frontend_spa"
     ]
 
