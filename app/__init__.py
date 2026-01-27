@@ -64,42 +64,16 @@ def create_app():
             pass
         
         try:
-            # This import is necessary for Alembic to detect models
+            # Import models so SQLAlchemy knows about them
             from app import models
-            # db.create_all()
-            
-            # Auto-migration for new features without full Alembic reset
-            try:
-                 db.session.execute(text("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS active_connection_id UUID REFERENCES llm_connections(id)"))
-                 db.session.commit()
-                 
-                 db.session.execute(text("ALTER TABLE llm_connections ADD COLUMN IF NOT EXISTS models JSONB DEFAULT '[]'"))
-                 db.session.commit()
-                 
-                 # Voice Settings Migration
-                 db.session.execute(text("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS tts_provider VARCHAR(50) DEFAULT 'browser' NOT NULL"))
-                 db.session.execute(text("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS stt_provider VARCHAR(50) DEFAULT 'browser' NOT NULL"))
-                 db.session.execute(text("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS tts_voice VARCHAR(255)"))
-                 db.session.execute(text("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS tts_enabled BOOLEAN DEFAULT FALSE NOT NULL"))
-                 db.session.execute(text("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS openai_tts_model VARCHAR(50) DEFAULT 'tts-1'"))
-                 db.session.execute(text("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS openai_stt_model VARCHAR(50) DEFAULT 'whisper-1'"))
-                 
-                 # Step 2: Add Deepgram Key
-                 db.session.execute(text("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS deepgram_api_key VARCHAR(255)"))
-                 
-                 # Chat Audio Persistence
-                 db.session.execute(text("ALTER TABLE messages ADD COLUMN IF NOT EXISTS audio_path VARCHAR(512)"))
-                 
-                 # Web Search Queries Persistence
-                 db.session.execute(text("ALTER TABLE messages ADD COLUMN IF NOT EXISTS search_queries JSONB"))
-                 
-                 db.session.commit()
-            except Exception as e:
-                 # Ignore if it fails (e.g. invalid state), logs will show
-                 print(f"Schema migration note: {e}")
-                 pass
-                 
-        except SQLAlchemyError:
+
+            # Create all tables based on the model definitions
+            # This is idempotent - it won't recreate existing tables
+            db.create_all()
+            print("Database tables created successfully")
+
+        except SQLAlchemyError as e:
+            print(f"Database initialization note: {e}")
             pass
 
     return app

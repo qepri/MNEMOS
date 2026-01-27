@@ -56,6 +56,7 @@ instance/
 *.db
 *.sqlite
 *.sqlite3
+migrations/
 
 # Docker volumes (data directories)
 postgres_data/
@@ -199,3 +200,4 @@ active_downloads.json
 .agent/HyperGraphReasoning
 .agent/HyperGraphReasoning
 .agent/HyperGraphReasoning
+.claude/settings.local.json
