@@ -71,8 +71,8 @@ class Settings(BaseSettings):
     WHISPER_DEVICE: str = "cuda"  # cpu, cuda
     
     # Chunking
-    CHUNK_SIZE: int = 512
-    CHUNK_OVERLAP: int = 50
+    CHUNK_SIZE: int = 1024
+    CHUNK_OVERLAP: int = 100
     
     # Storage
     # In docker, mapped to /app/uploads

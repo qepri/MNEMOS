@@ -880,8 +880,8 @@ def get_chat_settings():
             "use_conversation_context": True,
             "max_context_messages": 10,
             "selected_system_prompt_id": None,
-            "chunk_size": 512,
-            "chunk_overlap": 50,
+            "chunk_size": 1024,
+            "chunk_overlap": 100,
             "whisper_model": "base"
         })
 

@@ -17,8 +17,8 @@ class UserPreferences(db.Model):
 
     
     # RAG Settings
-    chunk_size = db.Column(db.Integer, default=512, nullable=False)
-    chunk_overlap = db.Column(db.Integer, default=50, nullable=False)
+    chunk_size = db.Column(db.Integer, default=1024, nullable=False)
+    chunk_overlap = db.Column(db.Integer, default=100, nullable=False)
     
     # Persistence
     selected_llm_model = db.Column(db.String(255), nullable=True)

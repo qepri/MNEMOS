@@ -284,7 +284,7 @@ export class LlmSelectorComponent {
       const payload = {
         name: this.connForm.name(),
         base_url: this.connForm.baseUrl(),
-        api_key: this.connForm.apiKey() || undefined, // Send undefined if empty to avoid overwrite with empty
+        api_key: this.connForm.apiKey(), // Send empty string if empty to allow clearing
         default_model: this.connForm.defaultModel(),
         models: this.connForm.models(),
         provider_type: 'openai'

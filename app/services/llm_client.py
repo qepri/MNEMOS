@@ -155,9 +155,15 @@ class LLMClient:
                      url = url.replace("localhost", "host.docker.internal").replace("127.0.0.1", "host.docker.internal")
                      print(f"DEBUG: Auto-corrected Custom URL to: {url}")
 
+             # Ensure URL ends with /v1 for Custom if it looks like an OpenAI wrapper (common ports or just generic fallback)
+             # Most compatible servers (Ollama, LM Studio, vLLM) need /v1
+             if url and not url.endswith("/v1") and not url.endswith("/v1/"):
+                  url = f"{url.rstrip('/')}/v1"
+                  print(f"DEBUG: Appended /v1 to Custom URL: {url}")
+
              self.client = OpenAI(
                 base_url=url,
-                api_key=key
+                api_key=key or "not-needed"
             )
              self.model = model or s_local_model
              

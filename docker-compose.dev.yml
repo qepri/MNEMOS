@@ -1,0 +1,18 @@
+services:
+  app:
+    # Use reload for development
+    command: gunicorn -b 0.0.0.0:5000 -w 1 --reload --timeout 1800 app:create_app()
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+
+  worker:
+    # Worker supports reload with --autoreload via watchdog but standard celery doesn't support it well.
+    # We'll just rely on manual restart for worker for now or use watchdog if installed.
+    # For now, keep as is.
+    environment:
+      - FLASK_ENV=development
+
+  # We don't need to start the frontend service in docker for hot reload dev
+  # as we will run it locally.
+  frontend:

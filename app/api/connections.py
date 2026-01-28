@@ -25,8 +25,8 @@ def create_connection():
     base_url = data.get('base_url')
     api_key = data.get('api_key')
     
-    if not name or not base_url or not api_key:
-        return jsonify({"error": "Name, base_url, and api_key are required"}), 400
+    if not name or not base_url:
+        return jsonify({"error": "Name and base_url are required"}), 400
         
     try:
         # Check uniqueness
@@ -67,7 +67,7 @@ def update_connection(conn_id):
         if 'base_url' in data:
             conn.base_url = data['base_url']
             
-        if 'api_key' in data and data['api_key']:
+        if 'api_key' in data:
              # Only update if provided and not empty mask
              if data['api_key'] != '***':
                  conn.api_key = data['api_key']
