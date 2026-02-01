@@ -278,10 +278,26 @@ class LLMClient:
                          "num_ctx": getattr(self, 'ollama_num_ctx', 2048) or settings.OLLAMA_NUM_CTX
                      }
 
+                # Get generation parameters from DB
+                try:
+                    prefs = db.session.query(UserPreferences).first()
+                    max_tokens = prefs.llm_max_tokens if prefs else 4096
+                    temperature = prefs.llm_temperature if prefs else 0.7
+                    top_p = prefs.llm_top_p if prefs else 0.9
+                    freq_penalty = prefs.llm_frequency_penalty if prefs else 0.3
+                    pres_penalty = prefs.llm_presence_penalty if prefs else 0.1
+                except:
+                    # Safe defaults if DB not available
+                    max_tokens, temperature, top_p, freq_penalty, pres_penalty = 4096, 0.7, 0.9, 0.3, 0.1
+
                 response = self.client.chat.completions.create(
                     model=active_model,
-                    messages=full_messages, # Pass full_messages here instead of messages
-                    temperature=0.7,
+                    messages=full_messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    top_p=top_p,
+                    frequency_penalty=freq_penalty,
+                    presence_penalty=pres_penalty,
                     extra_body=extra_body
                 )
                 response_json = response.model_dump_json()

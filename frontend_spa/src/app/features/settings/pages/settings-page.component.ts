@@ -10,11 +10,12 @@ import { ToastrService } from 'ngx-toastr';
 import { AppRoutes } from '@core/constants/app-routes';
 
 import { PluginsSettingsComponent } from '../components/plugins-settings/plugins-settings.component';
+import { LlmGenerationParamsComponent } from '../components/llm-generation-params/llm-generation-params.component';
 
 @Component({
     selector: 'app-settings-page',
     standalone: true,
-    imports: [CommonModule, RouterLink, FormsModule, ProgressBarComponent, LlmSelectorComponent, PluginsSettingsComponent],
+    imports: [CommonModule, RouterLink, FormsModule, ProgressBarComponent, LlmSelectorComponent, PluginsSettingsComponent, LlmGenerationParamsComponent],
     host: { class: 'flex flex-col h-full w-full' },
     templateUrl: './settings-page.component.html',
     styleUrl: './settings-page.component.css'

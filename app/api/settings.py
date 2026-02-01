@@ -914,7 +914,13 @@ def get_chat_settings():
         "tts_voice": getattr(prefs, 'tts_voice', None),
         "tts_enabled": getattr(prefs, 'tts_enabled', False),
         "openai_tts_model": getattr(prefs, 'openai_tts_model', 'tts-1'),
-        "openai_stt_model": getattr(prefs, 'openai_stt_model', 'whisper-1')
+        "openai_stt_model": getattr(prefs, 'openai_stt_model', 'whisper-1'),
+        "ollama_num_ctx": getattr(prefs, 'ollama_num_ctx', 2048),
+        "llm_max_tokens": getattr(prefs, 'llm_max_tokens', 4096),
+        "llm_temperature": getattr(prefs, 'llm_temperature', 0.7),
+        "llm_top_p": getattr(prefs, 'llm_top_p', 0.9),
+        "llm_frequency_penalty": getattr(prefs, 'llm_frequency_penalty', 0.3),
+        "llm_presence_penalty": getattr(prefs, 'llm_presence_penalty', 0.1)
     })
 
 
@@ -1037,6 +1043,22 @@ def save_chat_settings():
         prefs.openai_tts_model = data['openai_tts_model']
     if 'openai_stt_model' in data:
         prefs.openai_stt_model = data['openai_stt_model']
+
+    # LLM Generation Parameters
+    if 'llm_max_tokens' in data:
+        prefs.llm_max_tokens = int(data['llm_max_tokens'])
+    if 'llm_temperature' in data:
+        prefs.llm_temperature = float(data['llm_temperature'])
+    if 'llm_top_p' in data:
+        prefs.llm_top_p = float(data['llm_top_p'])
+    if 'llm_frequency_penalty' in data:
+        prefs.llm_frequency_penalty = float(data['llm_frequency_penalty'])
+    if 'llm_presence_penalty' in data:
+        prefs.llm_presence_penalty = float(data['llm_presence_penalty'])
+
+    # Ollama Context Window
+    if 'ollama_num_ctx' in data:
+        prefs.ollama_num_ctx = int(data['ollama_num_ctx'])
 
     prefs.updated_at = datetime.utcnow()
     db.session.commit()

@@ -42,6 +42,13 @@ class UserPreferences(db.Model):
     # Ollama Specifics
     ollama_num_ctx = db.Column(db.Integer, default=2048, server_default='2048', nullable=False)
 
+    # LLM Generation Parameters
+    llm_max_tokens = db.Column(db.Integer, default=4096, nullable=False)
+    llm_temperature = db.Column(db.Float, default=0.7, nullable=False)
+    llm_top_p = db.Column(db.Float, default=0.9, nullable=False)
+    llm_frequency_penalty = db.Column(db.Float, default=0.3, nullable=False)
+    llm_presence_penalty = db.Column(db.Float, default=0.1, nullable=False)
+
     # Web Search Config
     web_search_provider = db.Column(db.String(50), default='duckduckgo', nullable=False)
     tavily_api_key = db.Column(db.String(255), nullable=True)
@@ -83,6 +90,11 @@ class UserPreferences(db.Model):
             'memory_llm_model': self.memory_llm_model,
             'max_memories': self.max_memories,
             'ollama_num_ctx': self.ollama_num_ctx,
+            'llm_max_tokens': self.llm_max_tokens,
+            'llm_temperature': self.llm_temperature,
+            'llm_top_p': self.llm_top_p,
+            'llm_frequency_penalty': self.llm_frequency_penalty,
+            'llm_presence_penalty': self.llm_presence_penalty,
             'web_search_provider': self.web_search_provider,
             'tavily_api_key': self.tavily_api_key,
             'brave_search_api_key': self.brave_search_api_key,

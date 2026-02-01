@@ -657,6 +657,10 @@
                         }
                     </div>
 
+                    <!-- LLM Generation Parameters -->
+                    <app-llm-generation-params [preferences]="settingsService.chatPreferences()!">
+                    </app-llm-generation-params>
+
                     <!-- Conversation Context -->
                     <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
                         <div class="flex items-center justify-between mb-4">

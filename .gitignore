@@ -201,3 +201,8 @@ active_downloads.json
 .agent/HyperGraphReasoning
 .agent/HyperGraphReasoning
 .claude/settings.local.json
+ARCHITECTURE_DIAGRAM.txt
+.gitignore
+llm_repetition_problem_explained.txt
+pdf_workflow_diagram.txt
+huggingface_requests_explained.txt
