@@ -1244,3 +1244,35 @@ def pull_model_gguf():
         "task_id": task.id,
         "model": model_name
     })
+
+
+
+# ---------------------------------------------------------------------------
+# Re-embed library (after hardware/preset change)
+# ---------------------------------------------------------------------------
+
+@bp.route('/reembed', methods=['POST'])
+def reembed_library():
+    """Kick off a re-embed of every chunk and concept with the current EMBEDDING_MODEL."""
+    from app.tasks.reembed import reembed_all
+    task = reembed_all.delay()
+    return jsonify({
+        "status": "started",
+        "task_id": task.id,
+        "target_model": settings.EMBEDDING_MODEL,
+        "target_dimension": settings.EMBEDDING_DIMENSION,
+    })
+
+
+@bp.route('/reembed/status/<task_id>', methods=['GET'])
+def reembed_status(task_id):
+    """Poll re-embed task progress."""
+    res = AsyncResult(task_id, app=celery_app)
+    payload = {"task_id": task_id, "state": res.state}
+    if res.state == "PROGRESS" and isinstance(res.info, dict):
+        payload.update(res.info)
+    elif res.state == "SUCCESS":
+        payload["result"] = res.result
+    elif res.state == "FAILURE":
+        payload["error"] = str(res.info)
+    return jsonify(payload)

@@ -1,6 +1,8 @@
-import { Component, computed, inject, viewChild } from '@angular/core';
+import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { SettingsService } from '@services/settings.service';
 import { ToastrService } from 'ngx-toastr';
 import { ChatPreferences } from '@core/models';
@@ -17,6 +19,74 @@ import { SettingsSystemPromptsComponent } from '../settings-system-prompts/setti
 export class SettingsChatTabComponent {
     settingsService = inject(SettingsService);
     toastr = inject(ToastrService);
+    private http = inject(HttpClient);
+
+    // Re-embed task state
+    reembedState = signal<string | null>(null);   // null | 'PENDING' | 'PROGRESS' | 'SUCCESS' | 'FAILURE'
+    reembedStage = signal<string>('');             // 'chunks' | 'concepts'
+    reembedDone = signal<number>(0);
+    reembedTotal = signal<number>(0);
+    private reembedPoller: any = null;
+
+    async handleReembedLibrary() {
+        const ok = window.confirm(
+            'Re-embed ALL documents and concepts with the current embedding model?\n\n' +
+            'This can take minutes to hours depending on corpus size.\n' +
+            'It is strongly recommended to back up your database first ' +
+            '(see CLAUDE.md for the pg_dump command).\n\n' +
+            'Continue?'
+        );
+        if (!ok) return;
+
+        try {
+            const res: any = await firstValueFrom(
+                this.http.post('/api/settings/reembed', {})
+            );
+            this.toastr.info(`Re-embedding to ${res.target_model} (${res.target_dimension}d)`, 'Re-embed started');
+            this.pollReembed(res.task_id);
+        } catch (e: any) {
+            this.toastr.error(e.error?.error || 'Failed to start re-embed', 'Error');
+        }
+    }
+
+    private pollReembed(taskId: string) {
+        if (this.reembedPoller) clearInterval(this.reembedPoller);
+        this.reembedState.set('PENDING');
+        this.reembedPoller = setInterval(async () => {
+            try {
+                const r: any = await firstValueFrom(
+                    this.http.get(`/api/settings/reembed/status/${taskId}`)
+                );
+                this.reembedState.set(r.state);
+                if (r.stage) this.reembedStage.set(r.stage);
+                if (typeof r.done === 'number') this.reembedDone.set(r.done);
+                if (typeof r.total === 'number') this.reembedTotal.set(r.total);
+
+                if (r.state === 'SUCCESS') {
+                    clearInterval(this.reembedPoller);
+                    this.reembedPoller = null;
+                    this.toastr.success('Library re-embedded successfully', 'Done');
+                } else if (r.state === 'FAILURE') {
+                    clearInterval(this.reembedPoller);
+                    this.reembedPoller = null;
+                    this.toastr.error(r.error || 'Re-embed failed', 'Error');
+                }
+            } catch {
+                // transient network errors — keep polling
+            }
+        }, 2000);
+    }
+
+    reembedProgressPct = computed(() => {
+        const t = this.reembedTotal();
+        const d = this.reembedDone();
+        return t > 0 ? Math.round((d / t) * 100) : 0;
+    });
+
+    get reembedRunning(): boolean {
+        const s = this.reembedState();
+        return s === 'PENDING' || s === 'PROGRESS';
+    }
 
     chatSelector = viewChild<LlmSelectorComponent>('chatSelector');
     memorySelector = viewChild<LlmSelectorComponent>('memorySelector');

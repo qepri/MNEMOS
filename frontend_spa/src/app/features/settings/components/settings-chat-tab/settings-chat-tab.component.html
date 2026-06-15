@@ -153,6 +153,34 @@
         </div>
     </div>
 
+    <!-- Re-embed Library -->
+    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+        <h2 class="text-lg font-semibold mb-2">Re-embed Library</h2>
+        <p class="text-xs text-secondary mb-4">
+            Rebuilds chunk and concept vectors with the current embedding model. Use this after
+            switching hardware preset or changing <code>EMBEDDING_MODEL</code>. Source text,
+            summaries, and the hypergraph topology are preserved. <strong>Back up your database
+            first</strong> (see <code>CLAUDE.md</code>).
+        </p>
+        <button type="button"
+            (click)="handleReembedLibrary()"
+            [disabled]="reembedRunning"
+            class="px-4 py-2 bg-accent text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+            {{ reembedRunning ? 'Re-embedding...' : 'Re-embed all documents' }}
+        </button>
+        @if (reembedState()) {
+            <div class="mt-4 text-sm">
+                <div class="flex justify-between mb-1">
+                    <span>Stage: {{ reembedStage() || '—' }} ({{ reembedState() }})</span>
+                    <span>{{ reembedDone() }} / {{ reembedTotal() }}</span>
+                </div>
+                <div class="w-full bg-input rounded-full h-2 overflow-hidden">
+                    <div class="h-2 bg-accent transition-all" [style.width.%]="reembedProgressPct()"></div>
+                </div>
+            </div>
+        }
+    </div>
+
     <!-- Hypergraph Extraction -->
     <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
         <h2 class="text-lg font-semibold mb-4">Hypergraph Extraction</h2>

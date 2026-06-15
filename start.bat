@@ -31,6 +31,30 @@ if %errorlevel% neq 0 (
 )
 :: ----------------------------
 
+:: --- FIRST-RUN .env BOOTSTRAP ---
+if not exist ".env" (
+    echo.
+    echo =================================================================
+    echo   First run detected. Choose a hardware profile:
+    echo.
+    echo     [1] Low     - CPU-only laptop (MiniLM-L6, 384 dims)
+    echo     [2] Medium  - Modern laptop, optional GPU (bge-base, 768)   [default]
+    echo     [3] High    - Desktop with GPU (bge-large, 1024 dims, fp16)
+    echo.
+    echo   You can re-embed your library later from Settings to switch.
+    echo =================================================================
+    set /p PROFILE_CHOICE="Choice (1/2/3, Enter for default): "
+    if "%PROFILE_CHOICE%"=="1" (set PRESET=low) else if "%PROFILE_CHOICE%"=="3" (set PRESET=high) else (set PRESET=medium)
+    echo Applying preset: %PRESET%
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0presets\apply.ps1" -Preset %PRESET%
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to create .env. Copy .env.example to .env manually.
+        pause
+        exit /b 1
+    )
+)
+:: --------------------------------
+
 echo Starting MNEMOS in Default Mode (GPU Enabled)...
 echo.
 

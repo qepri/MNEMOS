@@ -74,6 +74,10 @@ def create_app():
     from app.api.videomix import bp as videomix_bp
     app.register_blueprint(videomix_bp)
 
+    # CLI commands
+    from app import cli as _cli
+    _cli.register(app)
+
     _health_cache: dict = {"result": None, "at": 0.0}
     _health_lock = threading.Lock()
 
@@ -130,6 +134,15 @@ def create_app():
             ))
             db.session.execute(text(
                 "ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS hypergraph_llm_model VARCHAR(255) DEFAULT ''"
+            ))
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            pass
+
+        try:
+            db.session.execute(text(
+                "ALTER TABLE documents ADD COLUMN IF NOT EXISTS embedding_model_used VARCHAR(255)"
             ))
             db.session.commit()
         except SQLAlchemyError:

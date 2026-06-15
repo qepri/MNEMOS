@@ -31,6 +31,13 @@ if %errorlevel% neq 0 (
 )
 :: ----------------------------
 
+:: --- FIRST-RUN .env BOOTSTRAP (silent, medium preset) ---
+if not exist ".env" (
+    echo [dev] No .env found. Applying 'medium' preset. Edit .env to change.
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0presets\apply.ps1" -Preset medium
+)
+:: ---------------------------------------------------------
+
 echo Starting MNEMOS in Dev Mode (Hot Reload)...
 echo.
 

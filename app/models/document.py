@@ -33,6 +33,10 @@ class Document(db.Model):
     language = Column(String(50), default='english') # 'english', 'spanish', 'german', etc.
     summary = Column(Text)
 
+    # Tracks which embedding model produced this doc's chunk vectors. Compared
+    # against settings.EMBEDDING_MODEL to flag docs needing re-embedding.
+    embedding_model_used = Column(String(255), nullable=True)
+
     # Single-collection FK (backward compat, deprecated)
     collection = relationship('Collection', foreign_keys=[collection_id])
 
