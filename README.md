@@ -97,14 +97,18 @@ Funciona **en tu propio equipo** con modelos locales (llama.cpp) o usando APIs e
 
 | Contenedor | Tecnología | Puerto | Rol |
 |---|---|---|---|
-| `frontend` | Nginx + Angular 21 | `:5200` | Sirve la SPA moderna |
-| `app` | Flask + Gunicorn | `:5000` | API REST principal |
-| `worker` | Celery + Redis | — | Procesamiento asíncrono (documentos, embeddings, hypergraph) |
+| `frontend` | Nginx + Angular 21 | `:5200` (LAN) | Sirve la SPA moderna — accesible desde móvil, sin autenticación |
+| `app` | Flask + Gunicorn | `:5000` (LAN) | API REST principal (no root; usuario `mnemos`) |
+| `worker` | Celery + Redis | — | Procesamiento asíncrono (documentos, embeddings, hypergraph); `--pool=solo` por defecto |
 | `llamacpp` | llama.cpp server | `:8082` | Inferencia local con GPU (CUDA) |
-| `db` | PostgreSQL 16 + pgvector | `:5433` | Base de datos + búsqueda vectorial |
-| `redis` | Redis 7 | `:6380` | Cola de tareas + caché + sesiones |
-| `adminer` | Adminer | `:8080` | Gestión de BD desde el navegador |
+| `db` | PostgreSQL 16 + pgvector | `127.0.0.1:5433` | Base de datos + búsqueda vectorial |
+| `redis` | Redis 7 | `127.0.0.1:6380` | Cola de tareas + caché + sesiones |
+| `adminer` | Adminer | `127.0.0.1:8080` (opt-in) | `docker-compose --profile tools up -d adminer` |
 | `mcp` | Python MCP | — | Servidor MCP para Claude Desktop / OpenCode |
+
+Solo `frontend` y `app` son accesibles desde la red local a propósito (uso desde móvil); el resto está limitado a `127.0.0.1`. No hay autenticación todavía — no exponer este stack a internet.
+
+El arranque de los contenedores no requiere red: los modelos de Whisper vienen incluidos en la imagen y las migraciones de base de datos se aplican con Alembic (`flask db upgrade`, controlado por `RUN_MIGRATIONS=true`), no con `db.create_all()`.
 
 ---
 
@@ -613,14 +617,18 @@ It runs **on your own hardware** with local models (llama.cpp) or connects to ex
 
 | Container | Technology | Port | Role |
 |---|---|---|---|
-| `frontend` | Nginx + Angular 21 | `:5200` | Serves the modern SPA |
-| `app` | Flask + Gunicorn | `:5000` | Main REST API |
-| `worker` | Celery + Redis | — | Async processing (documents, embeddings, hypergraph) |
+| `frontend` | Nginx + Angular 21 | `:5200` (LAN) | Serves the SPA — reachable from mobile, no authentication |
+| `app` | Flask + Gunicorn | `:5000` (LAN) | Main REST API (non-root, `mnemos` user) |
+| `worker` | Celery + Redis | — | Async processing (documents, embeddings, hypergraph); `--pool=solo` by default |
 | `llamacpp` | llama.cpp server | `:8082` | Local GPU-accelerated inference (CUDA) |
-| `db` | PostgreSQL 16 + pgvector | `:5433` | Database + vector search |
-| `redis` | Redis 7 | `:6380` | Task queue + cache + sessions |
-| `adminer` | Adminer | `:8080` | Web database management |
+| `db` | PostgreSQL 16 + pgvector | `127.0.0.1:5433` | Database + vector search |
+| `redis` | Redis 7 | `127.0.0.1:6380` | Task queue + cache + sessions |
+| `adminer` | Adminer | `127.0.0.1:8080` (opt-in) | `docker-compose --profile tools up -d adminer` |
 | `mcp` | Python MCP | — | MCP server for Claude Desktop / OpenCode |
+
+Only `frontend` and `app` are deliberately reachable from the LAN (mobile access); everything else is bound to `127.0.0.1`. There is no authentication yet — do not expose this stack to the internet.
+
+Container start requires no network: the Whisper model ships baked into the image, and schema changes are applied via Alembic (`flask db upgrade`, gated by `RUN_MIGRATIONS=true`), not `db.create_all()`.
 
 ---
 

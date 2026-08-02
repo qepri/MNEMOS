@@ -24,7 +24,8 @@ class Chunk(db.Model):
     language = Column(String(50), default='english') # Inherited from Document
     
     # Full Text Search Vector
-    # Managed by DB Trigger: update_chunk_search_vector
+    # Maintained by the update_chunk_search_vector trigger, created in
+    # migrations/versions/a005_chunks_fts_trigger.py (config fixed in a006).
     search_vector = Column(TSVECTOR)
 
     metadata_ = Column(JSONB)

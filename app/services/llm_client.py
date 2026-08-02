@@ -132,20 +132,28 @@ class LLMClient:
         client = OpenAI(base_url=_normalize_local_url(url), api_key=key or "not-needed")
         return client, model or settings.LOCAL_LLM_MODEL
 
-    def __init__(self, provider=None, api_key=None, base_url=None, model=None):
-        db_prefs = self._load_prefs()
-        self.provider = self._resolve_provider(provider, db_prefs)
-
+    @staticmethod
+    def _resolve_credentials(api_key, db_prefs):
+        """Constructor arg > DB > settings, for every provider's credential."""
         d = db_prefs
-        # Resolution order for every credential: constructor arg > DB > settings.
-        creds = {
+        return {
             'openai_key': api_key or (d.openai_api_key if d else None) or settings.OPENAI_API_KEY,
             'anthropic_key': api_key or (d.anthropic_api_key if d else None) or settings.ANTHROPIC_API_KEY,
             'groq_key': api_key or (d.groq_api_key if d else None) or settings.GROQ_API_KEY,
             'cerebras_key': api_key or getattr(d, 'cerebras_api_key', None) or getattr(settings, 'CEREBRAS_API_KEY', None),
             'deepseek_key': api_key or getattr(settings, 'DEEPSEEK_API_KEY', None),
         }
-        local_base_url = base_url or (d.local_llm_base_url if d else None) or settings.LOCAL_LLM_BASE_URL
+
+    def __init__(self, provider=None, api_key=None, base_url=None, model=None):
+        db_prefs = self._load_prefs()
+        self.provider = self._resolve_provider(provider, db_prefs)
+
+        creds = self._resolve_credentials(api_key, db_prefs)
+        local_base_url = (
+            base_url
+            or (db_prefs.local_llm_base_url if db_prefs else None)
+            or settings.LOCAL_LLM_BASE_URL
+        )
 
         spec = PROVIDER_SPECS.get(self.provider)
         if spec is not None:
@@ -161,15 +169,15 @@ class LLMClient:
                 db_prefs, api_key, model, local_base_url
             )
 
-        # Providers that support strict json_schema structured output.
+        self._set_capability_flags()
+        logger.debug(f"LLMClient Initialized. Provider: {self.provider}. Base URL: {self.client.base_url}")
+
+    def _set_capability_flags(self):
         # deepseek-v4-pro doesn't support any response_format; flash does (json_object).
         self.supports_json_schema = self.provider in (LLMProvider.OPENAI, LLMProvider.GROQ)
         self.supports_json_object = self.provider in (
             LLMProvider.OPENAI, LLMProvider.GROQ, LLMProvider.DEEPSEEK,
         )
-
-        
-        logger.debug(f"LLMClient Initialized. Provider: {self.provider}. Base URL: {self.client.base_url}")
 
     def chat(self, system: str, messages: list, images: list = None, model: str = None, json_schema: dict = None) -> str:
         """

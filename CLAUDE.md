@@ -27,8 +27,13 @@ docker-compose up -d db redis
 flask run --debug
 
 # Database backup / restore
-docker-compose exec db pg_dump -U mnemos_user mnemos_db > backup.sql
+docker-compose exec -T db pg_dump -U mnemos_user mnemos_db > backups/mnemos_db_$(date +%Y%m%d-%H%M%S).sql
 cat backup.sql | docker-compose exec -T db psql -U mnemos_user mnemos_db
+
+# Migrations (Alembic — see Database section below)
+docker exec dev-app-1 flask db upgrade      # apply pending revisions
+docker exec dev-app-1 flask db current      # show current revision
+docker exec dev-app-1 flask db history      # list all revisions
 
 # Frontend dev (Angular SPA)
 cd frontend_spa
@@ -75,6 +80,8 @@ All processing is async via Celery. Flow in `app/tasks/processing.py`:
 
 Resume logic: if chunks already exist for a doc, skip extraction/embedding entirely and jump to summary/hypergraph.
 
+Each stage is a discrete function in `app/tasks/pipeline.py` (`stage_extract`, `stage_detect_language`, `stage_embed_and_save`, `stage_summarize`, `stage_hypergraph`); `process_document_task` in `processing.py` is a thin orchestrator over them. Every stage's outcome is recorded on `Document.metadata_['pipeline']`.
+
 ## RAG Query Pipeline (`app/services/rag.py`)
 
 1. Embed query → cosine vector search (pgvector HNSW)
@@ -83,15 +90,17 @@ Resume logic: if chunks already exist for a doc, skip extraction/embedding entir
 4. Re-rank with MMR (λ=0.7)
 5. Expand with adjacent chunks (chunk_index ±1)
 6. Optionally traverse `HyperEdge` graph for graph-RAG
-7. Build hierarchical context: Document → Section → Chunk
+7. Build hierarchical context: Document → Section → Chunk (`app/services/rag_context.py`)
 8. Token budget check — drop lowest chunks if over limit
 9. LLM generation with citations
 
+Chunks only participate in retrieval when `document_ids` is passed to `RAGService.query()`; with none selected, the model answers from its own knowledge and returns no sources — this is intended, not a bug.
+
 ## LLM Client (`app/services/llm_client.py`)
 
-`LLMClient` is the unified abstraction. Provider priority: **constructor arg > DB (UserPreferences) > settings.py**.
+`LLMClient` is the unified abstraction. Provider priority: **constructor arg > DB (UserPreferences) > settings.py**. Dispatch is table-driven (`PROVIDER_SPECS` in `llm_client.py`) rather than if/elif; `LM_STUDIO` and `CUSTOM` (connection-driven) are handled separately since they need extra logic.
 
-Supported providers (`LLMProvider` enum in `config/settings.py`): `openai`, `anthropic`, `groq`, `cerebras`, `deepseek`, `llamacpp`, `lm_studio`, `custom`.
+Supported providers (`LLMProvider` enum in `config/settings.py`): `openai`, `anthropic`, `groq`, `cerebras`, `deepseek`, `llamacpp`, `lm_studio`, `custom`. An unrecognized stored provider value (e.g. a stale `ollama` from before the migration) falls back to `llamacpp` with a warning instead of raising.
 
 All non-Anthropic providers use the OpenAI SDK with a custom `base_url`. Images are passed as base64 in `chat(images=[...])`.
 
@@ -116,11 +125,21 @@ When `VISION_ENABLED=True`, PDF processing also runs `PDFProcessor.extract_image
 
 ## Database
 
-- Uses `db.create_all()` on startup — no migration runner needed for new tables during dev.
-- Alembic (`flask db migrate / upgrade`) is used for production schema changes in `migrations/`.
-- Ad-hoc schema fixes (e.g. `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`) run at startup in `app/__init__.py` for backwards-compat.
-- `Chunk.search_vector` is maintained by a DB trigger (`update_chunk_search_vector`), not the application.
-- `EMBEDDING_DIMENSION` in settings must match the pgvector column size. Changing it requires dropping and recreating the `chunks` table.
+- **Alembic is the only migration path.** `app/__init__.py` performs zero DDL at startup — no `db.create_all()`, no ad-hoc `ALTER TABLE`. (Earlier versions of this file claimed otherwise; that was never actually true — `migrations/` held a single raw `.sql` script with no Alembic scaffolding until the schema was baselined.)
+- Migrations run from `entrypoint.sh` via `flask db upgrade`, gated on `RUN_MIGRATIONS=true`. Only the `app` service sets that env var — `worker` and `mcp` must not, or concurrent starts race on the same schema.
+- To add a schema change: edit models, then `docker exec dev-app-1 flask db migrate -m "description"`, review the generated revision by hand (destructive ops — DROP TABLE/COLUMN/INDEX — must be intentional and called out), then `flask db upgrade`.
+- The baseline revision (`594d02684e1e_baseline_live_schema.py`) was hand-verified against the live database, not generated as a raw diff. Superseded raw SQL lives in `migrations_archive/` for history only.
+- `chunks.search_vector` **is** maintained by a DB trigger (`update_chunk_search_vector`, created in the `a005_chunks_fts` / `a006_fix_ts_config` revisions) — but this was not always true. The trigger did not exist before this migration adoption; every chunk's `search_vector` was `NULL` and keyword search silently returned nothing. The trigger's language config must stay in sync with `RAGService._detect_query_language` and the `lang_map` in `app/tasks/pipeline.py` — a mismatch between index-time and query-time configs silently breaks matches again.
+- `EMBEDDING_DIMENSION` in settings must match the pgvector column size (currently 1024, model `BAAI/bge-m3`). Changing it requires dropping and recreating the `chunks` table and re-embedding everything — do not do this casually.
+
+## Health, Uploads, Workers
+
+- `GET /api/health` — liveness only (db + redis reachable). Unchanged by this feature; the launcher polls it.
+- `GET /api/ready` — readiness: liveness plus `flask db current == flask db heads` and a short-timeout probe of llama.cpp's `/health`. Can be `503` while `/api/health` is `200` — e.g. llama.cpp cold-starting is normal and does not mean the app is down.
+- Uploads are validated at the boundary in `app/api/documents.py` (`detect_file_type`, `MAX_UPLOAD_BY_TYPE`): unsupported extensions get `400`, oversize gets `413`. Limits are per type in `config/settings.py` (`MAX_UPLOAD_DOCUMENT` 512MB, `MAX_UPLOAD_AUDIO` 2GB, `MAX_UPLOAD_VIDEO` 8GB) — there is no more single 50GB cap.
+- Celery worker pool is env-configurable: `CELERY_POOL` (default `solo`) and optional `CELERY_CONCURRENCY`. Solo is the default on purpose — the worker loads embedding models onto the same GPU llama.cpp occupies, so concurrent tasks would contend for VRAM.
+- `adminer` is opt-in behind a compose profile: `docker-compose --profile tools up -d adminer`. It is not started by `start-dev.bat` or the default `docker-compose up`.
+- Ports 5000 (API) and 5200 (SPA) are intentionally reachable from the LAN, not just localhost — mobile access to the SPA is a supported use case and there is currently no authentication layer. `db`, `redis`, and `adminer` are bound to `127.0.0.1` only.
 
 ## Frontend (`frontend_spa/`)
 
@@ -129,6 +148,10 @@ Angular 21 SPA. Served by Nginx in Docker. The dev server proxies `/api` to `:50
 ## MCP Server
 
 Runs as a long-lived idle container (`tail -f /dev/null`). Claude Desktop calls it via `docker exec -i dev-mcp-1 python -m app.mcp_server.server`.
+
+Tools are split into per-domain modules under `app/mcp_server/`: `tools_graph.py`, `tools_search.py`, `tools_collections.py`, `tools_documents.py`, `tools_conversations.py`, `tools_settings.py`, `tools_legacy.py`. They share one `FastMCP`/`MCPServer` instance and helpers (`_validate_uuid`, `_version_footer`, `_format_document`) from `_shared.py`. `server.py` is just the entry point that imports every module for its registration side effects — add a new tool to the module matching its domain, not to `server.py`.
+
+`_shared.py` imports `MCPServer` from `mcp.server.mcpserver` if available, falling back to `FastMCP` from `mcp.server.fastmcp` for `mcp` SDK 1.x — the `mcp` package renamed the class in 2.0. If tool registration ever breaks after a dependency bump, check this shim first.
 
 ### Claude Desktop Integration
 
@@ -144,7 +167,8 @@ The config connects via `docker exec` so the MCP server runs inside the existing
 - **Non-blocking errors**: hypergraph extraction, diagram extraction, and transcription file saves are wrapped in try/except and logged without failing the task.
 - **Thread-local LLM clients**: `get_llm_client()` returns a thread-local singleton to avoid shared state in parallel Celery/ThreadPoolExecutor contexts.
 - **JSONB metadata**: `Document.metadata_` and `Chunk.metadata_` are JSONB. Use `flag_modified(obj, "metadata_")` after mutating them in-place, or reassign the dict entirely.
-- **`local_llm_model` in UserPreferences**: the DB column does not exist yet — access via `getattr(db_prefs, 'local_llm_model', None)` to avoid AttributeError.
+- **Container images run as a non-root user** (`mnemos`, uid 1000). Model caches (Whisper, HuggingFace) live under `/home/mnemos/.cache/...`, not `/root/.cache/...` — if you add a new cache path, mount and `chown` it accordingly in the Dockerfile and compose files together, or the non-root process won't be able to write it.
+- **Structured JSON logs**: `app/logging_config.py` installs one JSON-per-line formatter for both Flask and Celery. A `request_id` is generated per HTTP request (or taken from an inbound `X-Request-ID` header), echoed back in the response, and propagated into Celery task headers — so a request and the background task it triggers share one id across both logs.
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,

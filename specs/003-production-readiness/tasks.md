@@ -244,7 +244,7 @@ Brownfield repository, existing layout retained. Backend at `app/`, config at `c
 - [X] T104 [P] [US5] Verify the frontend build uses `npm ci` (not `npm install`) against the existing `frontend_spa/package-lock.json` in `frontend_spa/Dockerfile`
 - [X] T105 [US5] Add structured JSON logging to Flask in `app/__init__.py` (replacing the `logging.basicConfig` format on lines 10-13) with `timestamp`, `level`, `logger`, `message`, `request_id`; generate a `request_id` per request, honoring an inbound `X-Request-ID`
 - [X] T106 [US5] Propagate `request_id` into Celery task headers when tasks are enqueued, and emit it in worker logs; tasks started without an originating request generate their own so the field is never empty
-- [ ] T107 [US5] Verify per `quickstart.md` §7: line counts under ~600, `radon cc` shows no refactored function above 20, two clean builds produce identical `pip freeze`, and a request ID from an app log line locates the corresponding worker lines
+- [X] T107 [US5] Verify per `quickstart.md` §7: line counts under ~600, `radon cc` shows no refactored function above 20, two clean builds produce identical `pip freeze`, and a request ID from an app log line locates the corresponding worker lines
 
 **Checkpoint**: ✅ Hotspots maintainable, builds reproducible, runtime observable.
 
@@ -252,13 +252,13 @@ Brownfield repository, existing layout retained. Backend at `app/`, config at `c
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T108 [P] Correct the two false claims in `CLAUDE.md`: it states Alembic is already in use (it was not — `migrations/` held only a raw SQL file) and that `Chunk.search_vector` is maintained by a DB trigger (the trigger did not exist until T066/T067)
-- [ ] T109 [P] Update `CLAUDE.md` architecture and commands sections: `flask db upgrade` / `RUN_MIGRATIONS` workflow, the new `/api/ready` endpoint, per-type upload limits, `CELERY_POOL` env, and the `tools` compose profile for adminer
-- [ ] T110 [P] Update `README.md` for the changed startup flow (no network needed at container start, non-root containers, adminer opt-in)
-- [ ] T111 [P] Remove the stale trigger comment at `app/models/chunk.py:27` or update it to reference the migration that now creates the trigger
+- [X] T108 [P] Correct the two false claims in `CLAUDE.md`: it states Alembic is already in use (it was not — `migrations/` held only a raw SQL file) and that `Chunk.search_vector` is maintained by a DB trigger (the trigger did not exist until T066/T067)
+- [X] T109 [P] Update `CLAUDE.md` architecture and commands sections: `flask db upgrade` / `RUN_MIGRATIONS` workflow, the new `/api/ready` endpoint, per-type upload limits, `CELERY_POOL` env, and the `tools` compose profile for adminer
+- [X] T110 [P] Update `README.md` for the changed startup flow (no network needed at container start, non-root containers, adminer opt-in)
+- [X] T111 [P] Remove the stale trigger comment at `app/models/chunk.py:27` or update it to reference the migration that now creates the trigger
 - [X] T112 Reconcile `migrations/phase2_strip_embeddings.sql`: it was verified applied, so either delete it or move it to an archive path with a note that revision history now supersedes it
-- [ ] T113 Full `quickstart.md` pass — run every section end-to-end against the live system
-- [ ] T114 **Final data integrity gate**: re-run T007/T008 queries and confirm exact match with the recorded baseline (58 / 6150 / 8 / 143, and 6150 non-null 1024-dim embeddings). Then ask the SPA a question answerable from a pre-existing document and confirm cited results still return
+- [X] T113 Full `quickstart.md` pass — run every section end-to-end against the live system
+- [X] T114 **Final data integrity gate**: re-run T007/T008 queries and confirm exact match with the recorded baseline (58 / 6150 / 8 / 143, and 6150 non-null 1024-dim embeddings). Then ask the SPA a question answerable from a pre-existing document and confirm cited results still return
 
 ---
 
