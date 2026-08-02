@@ -43,9 +43,18 @@ npm run build   # Production build
 
 # Rebuild llamacpp model only
 docker-compose pull llamacpp
+
+# Backend tests (host-side, disposable Postgres+Redis via testcontainers — needs Docker running)
+python -m pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.in -r requirements-dev.txt
+pytest                    # API/service/pipeline suite (real DB, faked LLM/embedding HTTP calls)
+pytest -m migration       # Alembic upgrade/downgrade round-trip (separate process — see tests/migrations/conftest.py)
+pytest --cov              # coverage report; RAG/processing-pipeline groups are gated against coverage-baseline.json
+
+# Frontend tests (Vitest via Angular's native @angular/build:unit-test)
+cd frontend_spa && npm test
 ```
 
-No test suite exists in the repo currently.
+Never run tests against the live/dev database — `pytest`'s fixtures always provision a disposable container on a random port and refuse to start if pointed at the compose stack's database. See `specs/004-test-suite/quickstart.md` for full details and troubleshooting.
 
 ## Architecture
 
@@ -173,5 +182,5 @@ The config connects via `docker exec` so the MCP server runs inside the existing
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/003-production-readiness/plan.md`
+`specs/004-test-suite/plan.md`
 <!-- SPECKIT END -->

@@ -1,0 +1,8 @@
+[run]
+source = app
+omit =
+    app/mcp_server/*
+    app/cli.py
+
+[report]
+skip_covered = false
