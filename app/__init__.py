@@ -42,7 +42,6 @@ def create_app():
     # Register Blueprints
     from app.api.documents import bp as documents_bp
     from app.api.chat import bp as chat_bp
-    from app.web import bp as web_bp
     from app.api.conversations import bp as conversations_bp
     from app.api.settings import bp as settings_bp
     from app.api.connections import bp as connections_bp
@@ -53,7 +52,6 @@ def create_app():
     app.register_blueprint(documents_bp)
     app.register_blueprint(collections_bp)
     app.register_blueprint(chat_bp)
-    app.register_blueprint(web_bp)
     app.register_blueprint(conversations_bp)
     app.register_blueprint(settings_bp, url_prefix='/api/settings') # Changed: Added url_prefix
     app.register_blueprint(connections_bp)

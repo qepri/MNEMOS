@@ -92,35 +92,6 @@ Output ONLY the queries, one per line. Do not include numbering or bullets."""
         except:
             return 'english'
 
-    def search_similar_documents(self, query: str, top_k: int = 3) -> List[Document]:
-        """
-        Search for documents based on Summary Similarity (Hybrid).
-        """
-        from sqlalchemy import func, desc
-        
-        # 1. Embed Query
-        query_embedding = self.embedder.embed_query(query)
-
-        # 2. Detect Language for Search
-        pg_lang = self._detect_query_language(query)
-        
-        # 3. Hybrid Search on Summary
-        # Similarity
-        similarity = 1 - Document.summary_embedding.cosine_distance(query_embedding)
-        
-        # Keyword (TS Rank) using dynamic language
-        kw_query = func.websearch_to_tsquery(pg_lang, query)
-        rank = func.ts_rank_cd(Document.summary_search_vector, kw_query)
-        
-        hybrid_score = (similarity * 0.8) + (rank * 0.2) # Summaries are semantic-heavy
-        
-        stmt = select(Document).add_columns(hybrid_score.label("score"))
-        stmt = stmt.order_by(desc(hybrid_score)).limit(top_k)
-        
-        results = self.db.execute(stmt).all()
-        return [row[0] for row in results]
-
-    
     def _retrieve_via_graph(self, query: str, document_ids: List[str] = None, top_k: int = 3) -> List[Union[DocumentSection, Chunk]]:
         """
         Retrieves context via Knowledge Graph Traversal.

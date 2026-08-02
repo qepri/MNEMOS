@@ -1,4 +1,4 @@
-from flask import Blueprint, request, render_template, jsonify, Response, stream_with_context
+from flask import Blueprint, request, jsonify, Response, stream_with_context
 from app.services.rag import RAGService
 from app.services.embedder import EmbedderService
 from app.services.llm_client import LLMError
@@ -132,17 +132,6 @@ def chat():
             extract_memories_task.delay(msgs_dicts)
         except Exception as e:
             logger.error(f"Failed to trigger memory task: {e}")
-
-    if request.headers.get('HX-Request'):  # noqa: RET505
-        return render_template(
-            'partials/chat_messages.html',
-            question=question,
-            answer=result["answer"],
-            sources=result["sources"],
-            conversation_id=conversation.id,
-            message_id=assistant_msg.id,
-            context_warning=result.get("context_warning")
-        )
 
     response = result
     response['conversation_id'] = str(conversation.id)

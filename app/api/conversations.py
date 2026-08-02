@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, render_template
+from flask import Blueprint, request, jsonify
 from app.models.conversation import Conversation, Message
 from app.extensions import db
 from sqlalchemy import or_
@@ -26,9 +26,6 @@ def list_conversations():
         
     conversations = query.all()
     
-    if request.headers.get('HX-Request'):
-        return render_template('partials/conversation_list.html', conversations=conversations)
-        
     return jsonify([c.to_dict() for c in conversations])
 
 @bp.route('/<string:conversation_id>', methods=['GET'])
@@ -54,15 +51,6 @@ def get_conversation(conversation_id):
         docs = db.session.query(Document.id).filter(Document.original_filename.in_(source_filenames)).all()
         related_doc_ids = {str(d.id) for d in docs}
     
-    if request.headers.get('HX-Request'):
-        # Pass messages to the chat interface to be rendered
-        return render_template(
-            'partials/chat_history.html', 
-            messages=messages, 
-            conversation=conversation,
-            related_document_ids=list(related_doc_ids)
-        )
-        
     return jsonify({
         "conversation": conversation.to_dict(),
         "messages": [m.to_dict() for m in messages],

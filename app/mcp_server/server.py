@@ -515,56 +515,6 @@ def search_documents_advanced(
     except Exception as e:
         return f"Error searching documents: {str(e)}" + _version_footer()
 
-@mcp.tool()
-def search_similar_documents(query: str, top_k: int = 5) -> str:
-    """
-    Find documents similar to a query based on document-level summaries.
-
-    This searches at the document level (not chunks), good for finding
-    papers, books, or videos about a topic.
-
-    Args:
-        query: Semantic query (e.g., "papers about neural networks")
-        top_k: Number of documents to return (default 5)
-
-    Returns:
-        List of similar documents with titles and summaries.
-
-    Examples:
-        - "Find papers about machine learning" → search_similar_documents("machine learning")
-        - "Videos explaining quantum physics" → search_similar_documents("quantum physics")
-    """
-    try:
-        with flask_app.app_context():
-            rag = RAGService(db.session)
-            documents = rag.search_similar_documents(query, top_k=top_k)
-
-            if not documents:
-                return f"No similar documents found for '{query}'." + _version_footer()
-
-            output = f"# Similar Documents for '{query}'\n\n"
-            output += f"Found {len(documents)} documents:\n\n"
-
-            for i, doc in enumerate(documents, 1):
-                output += f"## {i}. {doc.original_filename}\n\n"
-                output += f"- **Type:** {doc.file_type}\n"
-                output += f"- **ID:** {doc.id}\n"
-
-                if doc.summary:
-                    summary_preview = doc.summary[:300] + "..." if len(doc.summary) > 300 else doc.summary
-                    output += f"- **Summary:** {summary_preview}\n"
-
-                if doc.collections:
-                    coll_names = ", ".join(c.name for c in doc.collections)
-                    output += f"- **Collections:** {coll_names}\n"
-
-                output += "\n"
-
-            return output + _version_footer()
-
-    except Exception as e:
-        return f"Error searching similar documents: {str(e)}" + _version_footer()
-
 # ============================================================================
 # PHASE 3: COLLECTIONS & ORGANIZATION (HIGH PRIORITY)
 # ============================================================================

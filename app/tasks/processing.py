@@ -17,7 +17,6 @@ import time
 from uuid import UUID
 import requests
 import json
-import docker
 from app.utils.hf_downloader import HFDownloader
 
 # Configure Logger for Worker

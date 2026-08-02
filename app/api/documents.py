@@ -1,5 +1,5 @@
 import logging
-from flask import Blueprint, request, render_template, jsonify, send_from_directory, Response
+from flask import Blueprint, request, jsonify, send_from_directory, Response
 from werkzeug.utils import secure_filename
 from app.models.document import Document
 from app.models.section import DocumentSection
@@ -50,9 +50,6 @@ def list_documents():
             ).distinct()
              
     documents = query.order_by(Document.created_at.desc()).all()
-    
-    if request.headers.get('HX-Request') and not request.headers.get('HX-History-Restore-Request'):
-        return render_template('partials/document_list.html', documents=documents)
     
     return jsonify([d.to_dict() for d in documents])
 
@@ -105,9 +102,6 @@ def upload_document():
     
     process_document_task.delay(str(doc.id))
     logger.info(f"Task enqueued for document {doc.id}")
-    
-    if request.headers.get('HX-Request'):
-        return render_template('partials/document_item.html', document=doc)
     
     return jsonify(doc.to_dict()), 201
 
@@ -166,15 +160,12 @@ def delete_document(doc_id):
 
 @bp.route('/<string:doc_id>/status', methods=['GET'])
 def get_document_status(doc_id):
-    """HTMX polling endpoint for status updates."""
+    """Polling endpoint for status updates."""
     # Reduced logging here to avoid spamming
     doc = db.session.query(Document).get(doc_id)
     if not doc:
         return "", 404
-        
-    if request.headers.get('HX-Request'):
-        return render_template('partials/document_item.html', document=doc)
-        
+
     return jsonify({
         "status": doc.status, 
         "progress": doc.processing_progress, 
