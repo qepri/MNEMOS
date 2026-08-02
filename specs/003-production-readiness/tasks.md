@@ -233,10 +233,10 @@ Brownfield repository, existing layout retained. Backend at `app/`, config at `c
 
 - [X] T094 [US5] Decompose `process_document_task` in `app/tasks/processing.py` into discrete stage functions (extract, chunk, embed, save, summarize, hypergraph), preserving the existing resume-if-chunks-exist behavior exactly
 - [X] T095 [US5] Persist per-stage status on the Document using the existing `documents.metadata_` JSONB column (no schema change needed) — remember `flag_modified(obj, "metadata_")` after in-place mutation, per project convention
-- [ ] T096 [US5] Split `app/api/settings.py` (1,278 lines) into focused blueprints plus a model-management service, keeping all existing routes and payload shapes
+- [X] T096 [US5] Split `app/api/settings.py` (1,278 lines) into focused blueprints plus a model-management service, keeping all existing routes and payload shapes
 - [X] T097 [US5] Decompose `save_chat_settings` (cyclomatic 45) in the settings blueprint into helpers, each under cyclomatic 20
-- [ ] T098 [US5] Split `app/mcp_server/server.py` (1,783 lines) into per-domain tool modules (documents, search, wiki, graph, settings) with shared `_validate_uuid` and `_version_footer` helpers. **Tool names and signatures must not change** — reorganization only
-- [ ] T099 [US5] Split `app/services/rag.py` (723 lines, ~700 after T019) so no file exceeds ~600 lines — required by SC-008 though not named in the original spec's hotspot list
+- [X] T098 [US5] Split `app/mcp_server/server.py` (1,783 lines) into per-domain tool modules (documents, search, wiki, graph, settings) with shared `_validate_uuid` and `_version_footer` helpers. **Tool names and signatures must not change** — reorganization only
+- [X] T099 [US5] Split `app/services/rag.py` (723 lines, ~700 after T019) so no file exceeds ~600 lines — required by SC-008 though not named in the original spec's hotspot list
 - [X] T100 [US5] Replace the if/elif provider dispatch in `app/services/llm_client.py` with a provider-config table, preserving public `chat()` behavior and the constructor > DB > settings priority exactly
 - [X] T101 [US5] Replace the 50GB `MAX_CONTENT_LENGTH` in `config/settings.py:103` with per-file-type ceilings per `contracts/api-surface-changes.md` (documents 512MB, audio 2GB, video 8GB), setting the global value to the largest as a backstop
 - [X] T102 [US5] Enforce upload validation at the boundary in `app/api/documents.py`: reject unknown/disallowed extensions with `400` naming accepted types, and over-limit files with `413` stating the limit — both **before** the file is persisted or a Celery task is queued

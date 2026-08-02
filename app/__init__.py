@@ -80,6 +80,8 @@ def create_app():
     from app.api.chat import bp as chat_bp
     from app.api.conversations import bp as conversations_bp
     from app.api.settings import bp as settings_bp
+    # Imported for their route-registration side effects on settings_bp.
+    from app.api import settings_models, settings_downloads  # noqa: F401
     from app.api.connections import bp as connections_bp
     from app.api.collections import bp as collections_bp
     from app.api.docs import bp as docs_bp
