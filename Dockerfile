@@ -13,9 +13,12 @@ RUN apt-get update && apt-get install -y \
     libcairo2-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies to /install directory
-COPY requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+# Install Python dependencies to /install directory.
+# requirements.lock.txt is fully pinned (compiled from requirements.in by
+# pip-compile inside this same base image) so builds are reproducible.
+# Edit requirements.in, then regenerate - never hand-edit the lock file.
+COPY requirements.lock.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements.lock.txt
 
 # Pre-download Whisper base model (will be copied to runtime stage).
 # Baking it into the image is what lets containers start without network.

@@ -231,19 +231,19 @@ Brownfield repository, existing layout retained. Backend at `app/`, config at `c
 
 **Note**: All refactors are behavior-preserving. Prefer dependency injection over module-level singletons where cheap (HC-5) so a future test suite is inexpensive.
 
-- [ ] T094 [US5] Decompose `process_document_task` in `app/tasks/processing.py` into discrete stage functions (extract, chunk, embed, save, summarize, hypergraph), preserving the existing resume-if-chunks-exist behavior exactly
-- [ ] T095 [US5] Persist per-stage status on the Document using the existing `documents.metadata_` JSONB column (no schema change needed) — remember `flag_modified(obj, "metadata_")` after in-place mutation, per project convention
+- [X] T094 [US5] Decompose `process_document_task` in `app/tasks/processing.py` into discrete stage functions (extract, chunk, embed, save, summarize, hypergraph), preserving the existing resume-if-chunks-exist behavior exactly
+- [X] T095 [US5] Persist per-stage status on the Document using the existing `documents.metadata_` JSONB column (no schema change needed) — remember `flag_modified(obj, "metadata_")` after in-place mutation, per project convention
 - [ ] T096 [US5] Split `app/api/settings.py` (1,278 lines) into focused blueprints plus a model-management service, keeping all existing routes and payload shapes
-- [ ] T097 [US5] Decompose `save_chat_settings` (cyclomatic 45) in the settings blueprint into helpers, each under cyclomatic 20
+- [X] T097 [US5] Decompose `save_chat_settings` (cyclomatic 45) in the settings blueprint into helpers, each under cyclomatic 20
 - [ ] T098 [US5] Split `app/mcp_server/server.py` (1,783 lines) into per-domain tool modules (documents, search, wiki, graph, settings) with shared `_validate_uuid` and `_version_footer` helpers. **Tool names and signatures must not change** — reorganization only
 - [ ] T099 [US5] Split `app/services/rag.py` (723 lines, ~700 after T019) so no file exceeds ~600 lines — required by SC-008 though not named in the original spec's hotspot list
-- [ ] T100 [US5] Replace the if/elif provider dispatch in `app/services/llm_client.py` with a provider-config table, preserving public `chat()` behavior and the constructor > DB > settings priority exactly
+- [X] T100 [US5] Replace the if/elif provider dispatch in `app/services/llm_client.py` with a provider-config table, preserving public `chat()` behavior and the constructor > DB > settings priority exactly
 - [X] T101 [US5] Replace the 50GB `MAX_CONTENT_LENGTH` in `config/settings.py:103` with per-file-type ceilings per `contracts/api-surface-changes.md` (documents 512MB, audio 2GB, video 8GB), setting the global value to the largest as a backstop
 - [X] T102 [US5] Enforce upload validation at the boundary in `app/api/documents.py`: reject unknown/disallowed extensions with `400` naming accepted types, and over-limit files with `413` stating the limit — both **before** the file is persisted or a Celery task is queued
-- [ ] T103 [US5] Create `requirements.in` from the current `requirements.txt` dependency list, compile a fully-pinned `requirements.txt` with `pip-tools` **from inside `python:3.11-slim`** so resolved wheels match the image, and update the `Dockerfile` to install from the compiled file
-- [ ] T104 [P] [US5] Verify the frontend build uses `npm ci` (not `npm install`) against the existing `frontend_spa/package-lock.json` in `frontend_spa/Dockerfile`
-- [ ] T105 [US5] Add structured JSON logging to Flask in `app/__init__.py` (replacing the `logging.basicConfig` format on lines 10-13) with `timestamp`, `level`, `logger`, `message`, `request_id`; generate a `request_id` per request, honoring an inbound `X-Request-ID`
-- [ ] T106 [US5] Propagate `request_id` into Celery task headers when tasks are enqueued, and emit it in worker logs; tasks started without an originating request generate their own so the field is never empty
+- [X] T103 [US5] Create `requirements.in` from the current `requirements.txt` dependency list, compile a fully-pinned `requirements.txt` with `pip-tools` **from inside `python:3.11-slim`** so resolved wheels match the image, and update the `Dockerfile` to install from the compiled file
+- [X] T104 [P] [US5] Verify the frontend build uses `npm ci` (not `npm install`) against the existing `frontend_spa/package-lock.json` in `frontend_spa/Dockerfile`
+- [X] T105 [US5] Add structured JSON logging to Flask in `app/__init__.py` (replacing the `logging.basicConfig` format on lines 10-13) with `timestamp`, `level`, `logger`, `message`, `request_id`; generate a `request_id` per request, honoring an inbound `X-Request-ID`
+- [X] T106 [US5] Propagate `request_id` into Celery task headers when tasks are enqueued, and emit it in worker logs; tasks started without an originating request generate their own so the field is never empty
 - [ ] T107 [US5] Verify per `quickstart.md` §7: line counts under ~600, `radon cc` shows no refactored function above 20, two clean builds produce identical `pip freeze`, and a request ID from an app log line locates the corresponding worker lines
 
 **Checkpoint**: ✅ Hotspots maintainable, builds reproducible, runtime observable.

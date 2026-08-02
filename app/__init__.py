@@ -7,10 +7,9 @@ from sqlalchemy import text
 from config.settings import settings
 from app.extensions import db, migrate, celery_app, limiter
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s"
-)
+from app.logging_config import configure_logging
+
+configure_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -69,6 +68,9 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
     limiter.init_app(app)
+
+    from app import logging_config
+    logging_config.init_app(app)
     
     # Configure Celery
     celery_app.conf.update(app.config)

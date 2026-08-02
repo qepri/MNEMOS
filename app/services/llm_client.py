@@ -20,165 +20,155 @@ class LLMError(Exception):
     pass
 
 
+def _normalize_local_url(url: str | None) -> str | None:
+    """Make a user-supplied local base URL usable from inside a container."""
+    if not url:
+        return url
+    if ("localhost" in url or "127.0.0.1" in url) and os.path.exists('/.dockerenv'):
+        url = url.replace("localhost", "host.docker.internal").replace(
+            "127.0.0.1", "host.docker.internal"
+        )
+        logger.debug(f"Auto-corrected local URL to: {url}")
+    if not url.rstrip('/').endswith("/v1"):
+        url = f"{url.rstrip('/')}/v1"
+        logger.debug(f"Appended /v1 to URL: {url}")
+    return url
+
+
+class ProviderSpec:
+    """How to construct a client for one provider.
+
+    Replaces the previous if/elif ladder. Every provider except LM Studio and
+    the connection-driven CUSTOM path is fully described by this table.
+    """
+
+    def __init__(self, cred_key, model_setting, base_url=None, sdk=OpenAI, fallback_key=None):
+        self._cred_key = cred_key
+        self._model_setting = model_setting
+        self._base_url = base_url
+        self._sdk = sdk
+        self._fallback_key = fallback_key
+
+    def build_client(self, creds: dict, base_url_override: str | None):
+        key = creds.get(self._cred_key) or self._fallback_key
+        url = base_url_override or self._base_url
+        if self._sdk is Anthropic:
+            return Anthropic(api_key=key)
+        return self._sdk(base_url=url, api_key=key) if url else self._sdk(api_key=key)
+
+    def default_model(self):
+        return getattr(settings, self._model_setting, None)
+
+
+PROVIDER_SPECS = {
+    LLMProvider.OPENAI: ProviderSpec('openai_key', 'OPENAI_MODEL'),
+    LLMProvider.ANTHROPIC: ProviderSpec('anthropic_key', 'ANTHROPIC_MODEL', sdk=Anthropic),
+    LLMProvider.GROQ: ProviderSpec(
+        'groq_key', 'GROQ_MODEL',
+        base_url="https://api.groq.com/openai/v1", fallback_key="gsk_...",
+    ),
+    LLMProvider.CEREBRAS: ProviderSpec(
+        'cerebras_key', 'CEREBRAS_MODEL', base_url="https://api.cerebras.ai/v1",
+    ),
+    LLMProvider.DEEPSEEK: ProviderSpec(
+        'deepseek_key', 'DEEPSEEK_MODEL', base_url="https://api.deepseek.com/v1",
+    ),
+    LLMProvider.LLAMACPP: ProviderSpec(
+        'llamacpp_key', 'LOCAL_LLM_MODEL',
+        base_url=settings.LLAMACPP_BASE_URL, fallback_key="not-needed",
+    ),
+}
+
+
 class LLMClient:
-    def __init__(self, provider=None, api_key=None, base_url=None, model=None):
-        db_prefs = None
+    @staticmethod
+    def _load_prefs():
         try:
-            db_prefs = db.session.query(UserPreferences).first()
-            if db_prefs:
-                logger.debug(f"Found UserPreferences in DB. Provider: {db_prefs.llm_provider}")
-            else:
-                logger.debug("UserPreferences table empty.")
+            return db.session.query(UserPreferences).first()
         except Exception as e:
             logger.warning(f"Error loading LLM config from DB: {e}")
+            return None
 
-        # Provider priority: argument > DB > settings
-        if provider:
-            self.provider = provider
-            logger.debug(f"Using passed provider arg: {provider}")
-        elif db_prefs and db_prefs.llm_provider:
-            self.provider = db_prefs.llm_provider
-            logger.debug(f"Using DB provider: {self.provider}")
-        else:
-            self.provider = settings.LLM_PROVIDER
-            logger.debug(f"Fallback to Settings provider: {self.provider}")
+    @staticmethod
+    def _resolve_provider(provider, db_prefs):
+        """Priority: constructor arg > DB > settings."""
+        resolved = provider or (db_prefs.llm_provider if db_prefs else None) or settings.LLM_PROVIDER
 
         # Stored preferences may still name a retired provider (e.g. "ollama")
-        # when the data migration has not run — RUN_MIGRATIONS may be false.
-        # Degrade to llamacpp instead of raising.
-        if self.provider not in set(LLMProvider):
+        # when the data migration has not run - RUN_MIGRATIONS may be false.
+        # Degrade instead of raising.
+        if resolved not in set(LLMProvider):
             logger.warning(
-                f"Unknown LLM provider '{self.provider}' in stored config; "
+                f"Unknown LLM provider '{resolved}' in stored config; "
                 f"falling back to '{LLMProvider.LLAMACPP.value}'"
             )
-            self.provider = LLMProvider.LLAMACPP
+            return LLMProvider.LLAMACPP
+        return resolved
 
-        d_anthropic_key = db_prefs.anthropic_api_key if db_prefs else None
-        d_groq_key = db_prefs.groq_api_key if db_prefs else None
-        d_cerebras_key = getattr(db_prefs, 'cerebras_api_key', None)
-        d_local_base_url = db_prefs.local_llm_base_url if db_prefs else None
-        d_local_model = getattr(db_prefs, 'local_llm_model', None)
+    def _build_connection_client(self, db_prefs, api_key, model, local_base_url):
+        """CUSTOM provider: configuration comes from a stored LLMConnection."""
+        active_conn = None
+        if db_prefs and db_prefs.active_connection_id:
+            try:
+                active_conn = db.session.query(LLMConnection).filter_by(
+                    id=db_prefs.active_connection_id
+                ).first()
+            except Exception as e:
+                logger.warning(f"Error loading active connection: {e}")
 
-        s_local_model = settings.LOCAL_LLM_MODEL
-        s_local_base_url = settings.LOCAL_LLM_BASE_URL
-        s_openai_key = settings.OPENAI_API_KEY
-        d_openai_key = db_prefs.openai_api_key if db_prefs else None
-        s_anthropic_key = settings.ANTHROPIC_API_KEY
-        s_groq_key = settings.GROQ_API_KEY
-        s_cerebras_key = getattr(settings, 'CEREBRAS_API_KEY', None)
-        s_deepseek_key = getattr(settings, 'DEEPSEEK_API_KEY', None)
-
-        if self.provider == LLMProvider.OPENAI:
-            key = api_key or d_openai_key or s_openai_key
-            self.client = OpenAI(api_key=key)
-            self.model = model or settings.OPENAI_MODEL
-
-        elif self.provider == LLMProvider.ANTHROPIC:
-            key = api_key or d_anthropic_key or s_anthropic_key
-            self.client = Anthropic(api_key=key)
-            self.model = model or settings.ANTHROPIC_MODEL
-
-        elif self.provider == LLMProvider.GROQ:
-            key = api_key or d_groq_key or s_groq_key
-            self.client = OpenAI(
-                base_url="https://api.groq.com/openai/v1",
-                api_key=key or "gsk_..."
-            )
-            self.model = model or settings.GROQ_MODEL
-
-        elif self.provider == LLMProvider.LLAMACPP:
-            url = base_url or settings.LLAMACPP_BASE_URL
-            self.client = OpenAI(
-                base_url=url,
-                api_key="not-needed"
-            )
-            self.model = model or s_local_model
-            self.llamacpp_num_ctx = getattr(settings, 'LLAMACPP_NUM_CTX', 2048)
-
-        elif self.provider == LLMProvider.CEREBRAS:
-            key = api_key or d_cerebras_key or s_cerebras_key
-            self.client = OpenAI(
-                base_url="https://api.cerebras.ai/v1",
-                api_key=key
-            )
-            self.model = model or settings.CEREBRAS_MODEL
-
-        elif self.provider == LLMProvider.DEEPSEEK:
-            key = api_key or s_deepseek_key
-            self.client = OpenAI(
-                base_url="https://api.deepseek.com/v1",
-                api_key=key
-            )
-            self.model = model or settings.DEEPSEEK_MODEL
-
-        elif self.provider == LLMProvider.LM_STUDIO:
-            url = base_url or d_local_base_url or s_local_base_url
-
-            if url and ("localhost" in url or "127.0.0.1" in url):
-                if os.path.exists('/.dockerenv'):
-                    url = url.replace("localhost", "host.docker.internal").replace("127.0.0.1", "host.docker.internal")
-                    logger.debug(f"Auto-corrected LM Studio URL to: {url}")
-
-            if url and not url.endswith("/v1"):
-                url = f"{url.rstrip('/')}/v1"
-                logger.debug(f"Appended /v1 to LM Studio URL: {url}")
-
-            self.client = OpenAI(
-                base_url=url,
-                api_key="lm-studio"
-            )
-            self.model = model or s_local_model
-
+        if active_conn:
+            url = active_conn.base_url
+            key = active_conn.api_key
+            model = model or active_conn.default_model
         else:
-            url = None
-            key = None
-            active_conn = None
+            if self.provider == LLMProvider.CUSTOM:
+                raise ValueError(
+                    "LLM Provider is set to 'Custom' but no active connection is "
+                    "selected. Please select a connection in Settings."
+                )
+            url = local_base_url
+            key = api_key or (db_prefs.custom_api_key if db_prefs else None) or "custom"
 
-            if db_prefs and db_prefs.active_connection_id:
-                try:
-                    active_conn = db.session.query(LLMConnection).filter_by(id=db_prefs.active_connection_id).first()
-                except Exception as e:
-                    logger.warning(f"Error loading active connection: {e}")
+        client = OpenAI(base_url=_normalize_local_url(url), api_key=key or "not-needed")
+        return client, model or settings.LOCAL_LLM_MODEL
 
-            if active_conn:
-                url = active_conn.base_url
-                key = active_conn.api_key
-                if not model and active_conn.default_model:
-                    model = active_conn.default_model
-            else:
-                if self.provider == LLMProvider.CUSTOM:
-                    raise ValueError("LLM Provider is set to 'Custom' but no active connection is selected. Please select a connection in Settings.")
+    def __init__(self, provider=None, api_key=None, base_url=None, model=None):
+        db_prefs = self._load_prefs()
+        self.provider = self._resolve_provider(provider, db_prefs)
 
-                url = base_url or d_local_base_url or s_local_base_url
-                key = api_key or (db_prefs.custom_api_key if db_prefs else None) or "custom"
+        d = db_prefs
+        # Resolution order for every credential: constructor arg > DB > settings.
+        creds = {
+            'openai_key': api_key or (d.openai_api_key if d else None) or settings.OPENAI_API_KEY,
+            'anthropic_key': api_key or (d.anthropic_api_key if d else None) or settings.ANTHROPIC_API_KEY,
+            'groq_key': api_key or (d.groq_api_key if d else None) or settings.GROQ_API_KEY,
+            'cerebras_key': api_key or getattr(d, 'cerebras_api_key', None) or getattr(settings, 'CEREBRAS_API_KEY', None),
+            'deepseek_key': api_key or getattr(settings, 'DEEPSEEK_API_KEY', None),
+        }
+        local_base_url = base_url or (d.local_llm_base_url if d else None) or settings.LOCAL_LLM_BASE_URL
 
-            if url and ("localhost" in url or "127.0.0.1" in url):
-                if os.path.exists('/.dockerenv'):
-                    url = url.replace("localhost", "host.docker.internal").replace("127.0.0.1", "host.docker.internal")
-                    logger.debug(f"Auto-corrected Custom URL to: {url}")
-
-            if url and not url.endswith("/v1") and not url.endswith("/v1/"):
-                url = f"{url.rstrip('/')}/v1"
-                logger.debug(f"Appended /v1 to Custom URL: {url}")
-
-            self.client = OpenAI(
-                base_url=url,
-                api_key=key or "not-needed"
+        spec = PROVIDER_SPECS.get(self.provider)
+        if spec is not None:
+            self.client = spec.build_client(creds, base_url)
+            self.model = model or spec.default_model()
+            if self.provider == LLMProvider.LLAMACPP:
+                self.llamacpp_num_ctx = getattr(settings, 'LLAMACPP_NUM_CTX', 2048)
+        elif self.provider == LLMProvider.LM_STUDIO:
+            self.client = OpenAI(base_url=_normalize_local_url(local_base_url), api_key="lm-studio")
+            self.model = model or settings.LOCAL_LLM_MODEL
+        else:
+            self.client, self.model = self._build_connection_client(
+                db_prefs, api_key, model, local_base_url
             )
-            self.model = model or s_local_model
 
-        # Providers that support strict json_schema structured output
+        # Providers that support strict json_schema structured output.
         # deepseek-v4-pro doesn't support any response_format; flash does (json_object).
-        self.supports_json_schema = self.provider in (
-            LLMProvider.OPENAI,
-            LLMProvider.GROQ,
-        )
+        self.supports_json_schema = self.provider in (LLMProvider.OPENAI, LLMProvider.GROQ)
         self.supports_json_object = self.provider in (
-            LLMProvider.OPENAI,
-            LLMProvider.GROQ,
-            LLMProvider.DEEPSEEK,
+            LLMProvider.OPENAI, LLMProvider.GROQ, LLMProvider.DEEPSEEK,
         )
 
+        
         logger.debug(f"LLMClient Initialized. Provider: {self.provider}. Base URL: {self.client.base_url}")
 
     def chat(self, system: str, messages: list, images: list = None, model: str = None, json_schema: dict = None) -> str:

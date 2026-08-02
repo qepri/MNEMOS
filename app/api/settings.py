@@ -809,151 +809,115 @@ def get_chat_settings():
 
 from app.services.llm_client import reset_client
 
+def _clamp_int(lo, hi):
+    return lambda v: max(lo, min(hi, int(v)))
+
+
+def _nullable(v):
+    """Empty string / falsy -> None (used for optional FK columns)."""
+    return v if v else None
+
+
+def _or_empty(v):
+    return v or ""
+
+
+WHISPER_MODELS = frozenset({
+    'tiny', 'base', 'small', 'medium', 'large', 'large-v3',
+    'whisper-large-v3', 'whisper-large-v3-turbo',
+})
+
+# field name -> coercion applied when the key is present in the payload.
+# Declarative so adding a setting is one line, not another if-block.
+PREFERENCE_FIELDS = {
+    'use_conversation_context': bool,
+    'max_context_messages': _clamp_int(0, 20),
+    'selected_system_prompt_id': _nullable,
+    'chunk_size': _clamp_int(100, 2000),
+    'chunk_overlap': _clamp_int(0, 500),
+    'transcription_provider': str,
+    'memory_enabled': bool,
+    'memory_provider': str,
+    'max_memories': int,
+    'openai_api_key': str,
+    'anthropic_api_key': str,
+    'local_llm_base_url': str,
+    'groq_api_key': str,
+    'custom_api_key': str,
+    'active_connection_id': _nullable,
+    'web_search_provider': str,
+    'tavily_api_key': str,
+    'brave_search_api_key': str,
+    'deepgram_api_key': str,
+    'tts_provider': str,
+    'stt_provider': str,
+    'tts_voice': str,
+    'tts_enabled': bool,
+    'openai_tts_model': str,
+    'openai_stt_model': str,
+    'llm_max_tokens': int,
+    'llm_temperature': float,
+    'llm_top_p': float,
+    'llm_frequency_penalty': float,
+    'llm_presence_penalty': float,
+    'retrieval_top_k': _clamp_int(1, 50),
+    'hypergraph_llm_provider': _or_empty,
+    'hypergraph_llm_model': _or_empty,
+    'archive_enabled': bool,
+}
+
+# Present-but-empty values are ignored for these: the UI hides the field for
+# some providers and posts "", which must not wipe a configured value.
+IGNORE_IF_EMPTY = frozenset({'memory_llm_model', 'llm_provider'})
+
+
+def _apply_selected_llm_model(prefs, data):
+    """selected_llm_model also drives the ModelManager singleton."""
+    new_model = data['selected_llm_model']
+
+    # Do not clear a configured model when the frontend hides the input for
+    # local providers and posts an empty string.
+    provider = data.get('llm_provider', prefs.llm_provider)
+    if provider == 'llamacpp' and not new_model:
+        return
+
+    prefs.selected_llm_model = new_model
+    from app.services.model_manager import model_manager
+    model_manager.set_model(new_model)
+
+
 @bp.route('/chat', methods=['POST'])
 def save_chat_settings():
     """Save chat behavior settings."""
-    data = request.json
+    data = request.json or {}
 
     prefs = db.session.query(UserPreferences).first()
     if not prefs:
         prefs = UserPreferences()
         db.session.add(prefs)
 
-    # Update fields
-    if 'use_conversation_context' in data:
-        prefs.use_conversation_context = data['use_conversation_context']
+    for field, coerce in PREFERENCE_FIELDS.items():
+        if field in data:
+            setattr(prefs, field, coerce(data[field]))
 
-    if 'max_context_messages' in data:
-        prefs.max_context_messages = max(0, min(20, int(data['max_context_messages'])))
+    for field in IGNORE_IF_EMPTY:
+        if data.get(field):
+            setattr(prefs, field, data[field])
 
-    if 'selected_system_prompt_id' in data:
-        prompt_id = data['selected_system_prompt_id']
-        prefs.selected_system_prompt_id = prompt_id if prompt_id else None
-        
-    if 'chunk_size' in data:
-        # Validate logic limits (e.g. 100 to 2000 chars)
-        prefs.chunk_size = max(100, min(2000, int(data['chunk_size'])))
-        
-    if 'chunk_overlap' in data:
-        prefs.chunk_overlap = max(0, min(500, int(data['chunk_overlap'])))
+    if 'whisper_model' in data and data['whisper_model'] in WHISPER_MODELS:
+        prefs.whisper_model = data['whisper_model']
 
-    if 'transcription_provider' in data:
-        prefs.transcription_provider = data['transcription_provider']
-
-    if 'whisper_model' in data:
-        model = data['whisper_model']
-        # Expanded validation for local + groq models
-        valid_models = [
-            'tiny', 'base', 'small', 'medium', 'large', 'large-v3', 
-            'whisper-large-v3', 'whisper-large-v3-turbo'
-        ]
-        if model in valid_models:
-            prefs.whisper_model = model
-
-    # Memory Config
-    if 'memory_enabled' in data:
-        prefs.memory_enabled = data['memory_enabled']
-    if 'memory_provider' in data:
-        prefs.memory_provider = data['memory_provider']
-    if 'memory_llm_model' in data:
-        if data['memory_llm_model']: # Only update if not empty, similar to selected_llm_model
-            prefs.memory_llm_model = data['memory_llm_model']
-    if 'max_memories' in data:
-        prefs.max_memories = int(data['max_memories'])
-
-    # LLM Config
-    if 'llm_provider' in data:
-        # Normalize provider string
-        provider = data['llm_provider']
-        if provider:
-             prefs.llm_provider = provider
-             # Explicitly set active model based on provider defaults if not set?
-             # No, let the UI handle that or fallback logic in LLMClient.
-    
-    if 'openai_api_key' in data:
-        prefs.openai_api_key = data['openai_api_key']
-    if 'anthropic_api_key' in data:
-        prefs.anthropic_api_key = data['anthropic_api_key']
-    if 'local_llm_base_url' in data:
-        prefs.local_llm_base_url = data['local_llm_base_url']
-    if 'groq_api_key' in data:
-        prefs.groq_api_key = data['groq_api_key']
-    if 'custom_api_key' in data:
-        prefs.custom_api_key = data['custom_api_key']
-    
-    if 'active_connection_id' in data:
-        # data['active_connection_id'] can be None or a UUID string
-        val = data['active_connection_id']
-        prefs.active_connection_id = val if val else None
-    
     if 'selected_llm_model' in data:
-        new_model = data['selected_llm_model']
-        
-        # Prevent overwriting a properly set model with an empty string when the
-        # frontend hides the input field for local providers.
-        current_provider = data.get('llm_provider', prefs.llm_provider)
-        should_update = not (current_provider == 'llamacpp' and not new_model)
-
-        if should_update:
-            prefs.selected_llm_model = new_model
-            # Also update the ModelManager singleton to reflect immediate change
-            from app.services.model_manager import model_manager
-            model_manager.set_model(new_model)
-
-    # Web Search Config
-    if 'web_search_provider' in data:
-        prefs.web_search_provider = data['web_search_provider']
-    if 'tavily_api_key' in data:
-        prefs.tavily_api_key = data['tavily_api_key']
-    if 'brave_search_api_key' in data:
-        prefs.brave_search_api_key = data['brave_search_api_key']
-    if 'deepgram_api_key' in data:
-        prefs.deepgram_api_key = data['deepgram_api_key']
-
-    # Voice Config
-    if 'tts_provider' in data:
-        prefs.tts_provider = data['tts_provider']
-    if 'stt_provider' in data:
-        prefs.stt_provider = data['stt_provider']
-    if 'tts_voice' in data:
-        prefs.tts_voice = data['tts_voice']
-    if 'tts_enabled' in data:
-        prefs.tts_enabled = data['tts_enabled']
-    if 'openai_tts_model' in data:
-        prefs.openai_tts_model = data['openai_tts_model']
-    if 'openai_stt_model' in data:
-        prefs.openai_stt_model = data['openai_stt_model']
-
-    # LLM Generation Parameters
-    if 'llm_max_tokens' in data:
-        prefs.llm_max_tokens = int(data['llm_max_tokens'])
-    if 'llm_temperature' in data:
-        prefs.llm_temperature = float(data['llm_temperature'])
-    if 'llm_top_p' in data:
-        prefs.llm_top_p = float(data['llm_top_p'])
-    if 'llm_frequency_penalty' in data:
-        prefs.llm_frequency_penalty = float(data['llm_frequency_penalty'])
-    if 'llm_presence_penalty' in data:
-        prefs.llm_presence_penalty = float(data['llm_presence_penalty'])
-
-    if 'retrieval_top_k' in data:
-        prefs.retrieval_top_k = max(1, min(50, int(data['retrieval_top_k'])))
-
-    if 'hypergraph_llm_provider' in data:
-        prefs.hypergraph_llm_provider = data['hypergraph_llm_provider'] or ""
-    if 'hypergraph_llm_model' in data:
-        prefs.hypergraph_llm_model = data['hypergraph_llm_model'] or ""
-
-    if 'archive_enabled' in data:
-        prefs.archive_enabled = bool(data['archive_enabled'])
+        _apply_selected_llm_model(prefs, data)
 
     prefs.updated_at = datetime.utcnow()
     db.session.commit()
-    
-    # Reload LLM Client with new settings
+
+    # Reload LLM Client so the new settings take effect immediately.
     reset_client()
 
     return jsonify({"success": True})
+
 
 
 # ============= System Prompts Endpoints =============
