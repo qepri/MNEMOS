@@ -79,17 +79,21 @@ Output ONLY the queries, one per line. Do not include numbering or bullets."""
             return [question] # Fallback to original question
 
     
+    # Must stay in sync with chunk_ts_config() in the a006 migration and with
+    # the lang_map in app/tasks/processing.py. If index-time and query-time
+    # configurations disagree, keyword search silently returns nothing.
+    _PG_LANG_MAP = {
+        'en': 'english', 'es': 'spanish', 'de': 'german', 'fr': 'french',
+        'it': 'italian', 'ru': 'russian', 'pt': 'portuguese', 'nl': 'dutch',
+        'sv': 'swedish', 'no': 'norwegian', 'da': 'danish', 'fi': 'finnish',
+    }
+
     def _detect_query_language(self, text: str) -> str:
-        """Detects language of the query and maps to Postgres config."""
+        """Detects language of the query and maps to a Postgres TS config."""
         try:
             from langdetect import detect
-            code = detect(text)
-            lang_map = {
-                'en': 'english', 'es': 'spanish', 'de': 'german', 'fr': 'french',
-                'it': 'italian', 'ru': 'russian', 'pt': 'portuguese', 'nl': 'dutch'
-            }
-            return lang_map.get(code, 'english')
-        except:
+            return self._PG_LANG_MAP.get(detect(text), 'english')
+        except Exception:
             return 'english'
 
     def _retrieve_via_graph(self, query: str, document_ids: List[str] = None, top_k: int = 3) -> List[Union[DocumentSection, Chunk]]:

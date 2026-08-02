@@ -160,39 +160,39 @@ Brownfield repository, existing layout retained. Backend at `app/`, config at `c
 
 ### Baseline (the critical part — get this right before writing any revision)
 
-- [ ] T056 [US3] Run `flask db init` in the app container to create `migrations/env.py`, `alembic.ini`, and `versions/` (Flask-Migrate is already wired in `app/extensions.py`; no new dependencies needed)
-- [ ] T057 [US3] Hand-write the baseline revision in `migrations/versions/` reflecting the **verified live schema** per `data-model.md`: all 17 tables including the three VideoMix tables, the `vector` extension, and the `file_type_enum` / `status_enum` types. Do **not** paste a raw `--autogenerate` diff
-- [ ] T058 [US3] In the baseline, declare `chunks` exactly as live: `embedding vector(1024)`, `search_vector tsvector` (no trigger — it has never existed), plus indexes `chunks_pkey`, `ix_chunks_embedding` as **hnsw (embedding vector_cosine_ops) WITH (m=16, ef_construction=64)**, and `ix_chunks_search_vector` as gin. Exact HNSW parameters matter or a later autogenerate will propose an expensive rebuild
-- [ ] T059 [US3] In the baseline, encode the already-applied state: `document_sections.embedding`, `documents.summary_embedding`, `documents.summary_search_vector`, `hyper_edges.embedding` **absent** (phase2 was applied); `user_preferences.retrieval_top_k` / `hypergraph_llm_provider` / `hypergraph_llm_model` and `documents.embedding_model_used` **present** (startup ALTERs already applied)
-- [ ] T060 [US3] Stamp the live database with the baseline (`flask db stamp <baseline_rev>`) — never execute the baseline against the live DB
-- [ ] T061 [US3] **Baseline faithfulness gate**: run `flask db migrate -m "baseline-verification-DISCARD-ME"` and confirm the generated revision's `upgrade()` and `downgrade()` are both empty. Any operation means the baseline is wrong — fix T057–T059 and repeat. Delete the generated file either way. **Do not proceed until this passes.**
+- [X] T056 [US3] Run `flask db init` in the app container to create `migrations/env.py`, `alembic.ini`, and `versions/` (Flask-Migrate is already wired in `app/extensions.py`; no new dependencies needed)
+- [X] T057 [US3] Hand-write the baseline revision in `migrations/versions/` reflecting the **verified live schema** per `data-model.md`: all 17 tables including the three VideoMix tables, the `vector` extension, and the `file_type_enum` / `status_enum` types. Do **not** paste a raw `--autogenerate` diff
+- [X] T058 [US3] In the baseline, declare `chunks` exactly as live: `embedding vector(1024)`, `search_vector tsvector` (no trigger — it has never existed), plus indexes `chunks_pkey`, `ix_chunks_embedding` as **hnsw (embedding vector_cosine_ops) WITH (m=16, ef_construction=64)**, and `ix_chunks_search_vector` as gin. Exact HNSW parameters matter or a later autogenerate will propose an expensive rebuild
+- [X] T059 [US3] In the baseline, encode the already-applied state: `document_sections.embedding`, `documents.summary_embedding`, `documents.summary_search_vector`, `hyper_edges.embedding` **absent** (phase2 was applied); `user_preferences.retrieval_top_k` / `hypergraph_llm_provider` / `hypergraph_llm_model` and `documents.embedding_model_used` **present** (startup ALTERs already applied)
+- [X] T060 [US3] Stamp the live database with the baseline (`flask db stamp <baseline_rev>`) — never execute the baseline against the live DB
+- [X] T061 [US3] **Baseline faithfulness gate**: run `flask db migrate -m "baseline-verification-DISCARD-ME"` and confirm the generated revision's `upgrade()` and `downgrade()` are both empty. Any operation means the baseline is wrong — fix T057–T059 and repeat. Delete the generated file either way. **Do not proceed until this passes.**
 
 ### Revisions
 
-- [ ] T062 [US3] Revision 001 in `migrations/versions/`: `ALTER TABLE user_preferences ADD COLUMN local_llm_model VARCHAR(255)` (nullable, no default, no backfill) — verified absent from the live table
-- [ ] T063 [US3] Revision 002: the `collection_documents` backfill INSERT moved from `app/__init__.py:175-180`, written idempotently with `ON CONFLICT DO NOTHING` (a no-op against current data — it has run on every boot)
-- [ ] T064 [US3] Revision 003: ollama preference fallback data migration — `UPDATE user_preferences SET memory_provider='llamacpp' WHERE memory_provider='ollama'` (1 live row), plus the same for `llm_provider`, plus `UPDATE llm_connections SET provider_type='custom' WHERE provider_type='ollama'` (0 live rows, written for correctness against any DB state). `downgrade()` is a documented no-op, not a fake inverse
-- [ ] T065 [US3] Revision 004 ⚠ **THE ONE DESTRUCTIVE OPERATION**: `ALTER TABLE user_preferences DROP COLUMN ollama_num_ctx`, in its own revision containing no other change. `downgrade()` must be the exact restore: `ADD COLUMN ollama_num_ctx INTEGER NOT NULL DEFAULT 2048` (FR-024)
-- [ ] T066 [US3] Revision 005: create the `update_chunk_search_vector()` function building `to_tsvector(<config>, NEW.content)`, choosing the config from `NEW.language` with a `'simple'` fallback for unsupported languages. The config choice MUST match query-time selection in `app/services/rag.py::_detect_query_language` or matches will silently be empty (FR-035)
-- [ ] T067 [US3] Revision 005 (same file): create `TRIGGER update_chunk_search_vector BEFORE INSERT OR UPDATE OF content, language ON chunks FOR EACH ROW`, then backfill `UPDATE chunks SET search_vector = to_tsvector(...)` for all 6,150 rows. Writes **only** `search_vector` — must not read, alter, or invalidate `embedding`. `downgrade()` drops trigger + function and sets `search_vector = NULL`
-- [ ] T068 [US3] Review every revision for unintended `DROP TABLE` / `DROP COLUMN` / `DROP INDEX`; remove any that is not T065 (FR-033)
+- [X] T062 [US3] Revision 001 in `migrations/versions/`: `ALTER TABLE user_preferences ADD COLUMN local_llm_model VARCHAR(255)` (nullable, no default, no backfill) — verified absent from the live table
+- [X] T063 [US3] Revision 002: the `collection_documents` backfill INSERT moved from `app/__init__.py:175-180`, written idempotently with `ON CONFLICT DO NOTHING` (a no-op against current data — it has run on every boot)
+- [X] T064 [US3] Revision 003: ollama preference fallback data migration — `UPDATE user_preferences SET memory_provider='llamacpp' WHERE memory_provider='ollama'` (1 live row), plus the same for `llm_provider`, plus `UPDATE llm_connections SET provider_type='custom' WHERE provider_type='ollama'` (0 live rows, written for correctness against any DB state). `downgrade()` is a documented no-op, not a fake inverse
+- [X] T065 [US3] Revision 004 ⚠ **THE ONE DESTRUCTIVE OPERATION**: `ALTER TABLE user_preferences DROP COLUMN ollama_num_ctx`, in its own revision containing no other change. `downgrade()` must be the exact restore: `ADD COLUMN ollama_num_ctx INTEGER NOT NULL DEFAULT 2048` (FR-024)
+- [X] T066 [US3] Revision 005: create the `update_chunk_search_vector()` function building `to_tsvector(<config>, NEW.content)`, choosing the config from `NEW.language` with a `'simple'` fallback for unsupported languages. The config choice MUST match query-time selection in `app/services/rag.py::_detect_query_language` or matches will silently be empty (FR-035)
+- [X] T067 [US3] Revision 005 (same file): create `TRIGGER update_chunk_search_vector BEFORE INSERT OR UPDATE OF content, language ON chunks FOR EACH ROW`, then backfill `UPDATE chunks SET search_vector = to_tsvector(...)` for all 6,150 rows. Writes **only** `search_vector` — must not read, alter, or invalidate `embedding`. `downgrade()` drops trigger + function and sets `search_vector = NULL`
+- [X] T068 [US3] Review every revision for unintended `DROP TABLE` / `DROP COLUMN` / `DROP INDEX`; remove any that is not T065 (FR-033)
 
 ### Remove startup schema mutation
 
-- [ ] T069 [US3] Remove `db.create_all()` and the surrounding block from `app/__init__.py:164-186`, keeping the `from app import models` import so SQLAlchemy still registers models
-- [ ] T070 [US3] Remove the four ad-hoc `ALTER TABLE` blocks from `app/__init__.py:122-150` (their columns are captured by the baseline — these are deleted, not converted)
-- [ ] T071 [US3] Remove the `collection_documents` backfill INSERT from `app/__init__.py:173-182` (now revision 002)
-- [ ] T072 [US3] Keep the `CREATE EXTENSION IF NOT EXISTS vector` guard decision explicit: move it into the baseline revision and remove it from `app/__init__.py:115-120` so startup performs no DDL at all
-- [ ] T073 [US3] Replace the `getattr(db_prefs, 'local_llm_model', None)` workaround with normal attribute access everywhere it appears (now that revision 001 creates the column), and remove the note from `CLAUDE.md`
-- [ ] T074 [US3] Move the embedder pre-warm out of `create_app()` (`app/__init__.py:152-162`) so it no longer runs in all 4 gunicorn workers plus the Celery worker; make it explicit/opt-in via env, defaulting off, relying on the existing lazy-load path
-- [ ] T075 [US3] Add the gated migration run to `entrypoint.sh` before `exec "$@"`: `if [ "$RUN_MIGRATIONS" = "true" ]; then flask db upgrade; fi`. Default when unset is **do not run**; failure must be fatal (`set -e` already active)
-- [ ] T076 [US3] Ensure `RUN_MIGRATIONS=true` is set **only** on the `app` service in all compose files — the `worker` and `mcp` services must not race on schema
+- [X] T069 [US3] Remove `db.create_all()` and the surrounding block from `app/__init__.py:164-186`, keeping the `from app import models` import so SQLAlchemy still registers models
+- [X] T070 [US3] Remove the four ad-hoc `ALTER TABLE` blocks from `app/__init__.py:122-150` (their columns are captured by the baseline — these are deleted, not converted)
+- [X] T071 [US3] Remove the `collection_documents` backfill INSERT from `app/__init__.py:173-182` (now revision 002)
+- [X] T072 [US3] Keep the `CREATE EXTENSION IF NOT EXISTS vector` guard decision explicit: move it into the baseline revision and remove it from `app/__init__.py:115-120` so startup performs no DDL at all
+- [X] T073 [US3] Replace the `getattr(db_prefs, 'local_llm_model', None)` workaround with normal attribute access everywhere it appears (now that revision 001 creates the column), and remove the note from `CLAUDE.md`
+- [X] T074 [US3] Move the embedder pre-warm out of `create_app()` (`app/__init__.py:152-162`) so it no longer runs in all 4 gunicorn workers plus the Celery worker; make it explicit/opt-in via env, defaulting off, relying on the existing lazy-load path
+- [X] T075 [US3] Add the gated migration run to `entrypoint.sh` before `exec "$@"`: `if [ "$RUN_MIGRATIONS" = "true" ]; then flask db upgrade; fi`. Default when unset is **do not run**; failure must be fatal (`set -e` already active)
+- [X] T076 [US3] Ensure `RUN_MIGRATIONS=true` is set **only** on the `app` service in all compose files — the `worker` and `mcp` services must not race on schema
 
 ### Verification
 
-- [ ] T077 [US3] Run `quickstart.md` §3: `flask db upgrade` reaches head, re-running is a no-op, `docker-compose restart app` logs show no `create_all` / `ALTER TABLE`, and `\d chunks` still shows `vector(1024)` + hnsw
-- [ ] T078 [US3] Run `quickstart.md` §4: trigger exists, zero NULL `search_vector`, and — the check that actually matters — a keyword search through the SPA using a distinctive term now returns results where it previously returned none. Then process a small document and confirm its new chunks have non-NULL `search_vector`
-- [ ] T079 [US3] Re-verify row counts against T007: documents=58, chunks=6150, collections=8, conversations=143
+- [X] T077 [US3] Run `quickstart.md` §3: `flask db upgrade` reaches head, re-running is a no-op, `docker-compose restart app` logs show no `create_all` / `ALTER TABLE`, and `\d chunks` still shows `vector(1024)` + hnsw
+- [X] T078 [US3] Run `quickstart.md` §4: trigger exists, zero NULL `search_vector`, and — the check that actually matters — a keyword search through the SPA using a distinctive term now returns results where it previously returned none. Then process a small document and confirm its new chunks have non-NULL `search_vector`
+- [X] T079 [US3] Re-verify row counts against T007: documents=58, chunks=6150, collections=8, conversations=143
 
 **Checkpoint**: ✅ Alembic is the single migration path; full-text search works for the first time.
 
@@ -256,7 +256,7 @@ Brownfield repository, existing layout retained. Backend at `app/`, config at `c
 - [ ] T109 [P] Update `CLAUDE.md` architecture and commands sections: `flask db upgrade` / `RUN_MIGRATIONS` workflow, the new `/api/ready` endpoint, per-type upload limits, `CELERY_POOL` env, and the `tools` compose profile for adminer
 - [ ] T110 [P] Update `README.md` for the changed startup flow (no network needed at container start, non-root containers, adminer opt-in)
 - [ ] T111 [P] Remove the stale trigger comment at `app/models/chunk.py:27` or update it to reference the migration that now creates the trigger
-- [ ] T112 Reconcile `migrations/phase2_strip_embeddings.sql`: it was verified applied, so either delete it or move it to an archive path with a note that revision history now supersedes it
+- [X] T112 Reconcile `migrations/phase2_strip_embeddings.sql`: it was verified applied, so either delete it or move it to an archive path with a note that revision history now supersedes it
 - [ ] T113 Full `quickstart.md` pass — run every section end-to-end against the live system
 - [ ] T114 **Final data integrity gate**: re-run T007/T008 queries and confirm exact match with the recorded baseline (58 / 6150 / 8 / 143, and 6150 non-null 1024-dim embeddings). Then ask the SPA a question answerable from a pre-existing document and confirm cited results still return
 

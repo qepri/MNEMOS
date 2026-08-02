@@ -104,89 +104,24 @@ def create_app():
             _health_cache["at"] = now
         return jsonify(payload), code
 
-    from sqlalchemy.exc import SQLAlchemyError
-    # Import models to ensure they are registered with SQLAlchemy
-    with app.app_context():
-        try:
-            # Ensure pgvector extension exists
-            db.session.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-            pass
+    # Import models so SQLAlchemy (and Alembic autogenerate) know about them.
+    # Schema is owned entirely by migrations: `flask db upgrade`, run from
+    # entrypoint.sh when RUN_MIGRATIONS=true. Startup performs no DDL.
+    from app import models  # noqa: F401
 
-        try:
-            db.session.execute(text(
-                "ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS retrieval_top_k INTEGER NOT NULL DEFAULT 10"
-            ))
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-            pass
+    # Pre-warming loads the embedding model into VRAM. It must not happen in
+    # create_app(), which runs in every gunicorn worker and in Celery.
+    if os.getenv("PREWARM_EMBEDDER", "false").lower() == "true":
+        def _warm_embedder():
+            from app.services.embedder import EmbedderService
+            logger.info("Pre-warming embedding model...")
+            EmbedderService.get_instance()
+            logger.info("Embedding model ready.")
+        threading.Thread(target=_warm_embedder, daemon=True).start()
 
-        try:
-            db.session.execute(text(
-                "ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS hypergraph_llm_provider VARCHAR(50) DEFAULT ''"
-            ))
-            db.session.execute(text(
-                "ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS hypergraph_llm_model VARCHAR(255) DEFAULT ''"
-            ))
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-            pass
-
-        try:
-            db.session.execute(text(
-                "ALTER TABLE documents ADD COLUMN IF NOT EXISTS embedding_model_used VARCHAR(255)"
-            ))
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-            pass
-
-        # Pre-warm the embedding model in background so first wiki fuzzy lookup is fast
-        try:
-            def _warm_embedder():
-                from app.services.embedder import EmbedderService
-                logger.info("Pre-warming embedding model...")
-                EmbedderService.get_instance()
-                logger.info("Embedding model ready.")
-            t = threading.Thread(target=_warm_embedder, daemon=True)
-            t.start()
-        except Exception as e:
-            logger.warning(f"Embedding model pre-warm failed (will load on demand): {e}")
-
-        try:
-            # Import models so SQLAlchemy knows about them
-            from app import models
-
-            # Create all tables based on the model definitions
-            # This is idempotent - it won't recreate existing tables
-            db.create_all()
-            logger.info("Database tables created successfully")
-
-            # Migrate existing collection_id FK data into junction table
-            from sqlalchemy import text as sql_text
-            db.session.execute(sql_text("""
-                INSERT INTO collection_documents (collection_id, document_id)
-                SELECT collection_id, id FROM documents
-                WHERE collection_id IS NOT NULL
-                ON CONFLICT (collection_id, document_id) DO NOTHING
-            """))
-            db.session.commit()
-            logger.info("Legacy collection_id data migrated to collection_documents junction")
-
-        except SQLAlchemyError as e:
-            db.session.rollback()
-            logger.warning(f"Database initialization: {e}")
-
-        # Create VideoMix output directory
-        try:
-            videomix_output_dir = os.path.join(settings.UPLOAD_FOLDER, 'videomix_output')
-            os.makedirs(videomix_output_dir, exist_ok=True)
-            logger.info(f"VideoMix output directory ready: {videomix_output_dir}")
-        except Exception as e:
-            logger.warning(f"Could not create VideoMix output directory: {e}")
+    try:
+        os.makedirs(os.path.join(settings.UPLOAD_FOLDER, 'videomix_output'), exist_ok=True)
+    except OSError as e:
+        logger.warning(f"Could not create VideoMix output directory: {e}")
 
     return app

@@ -1,11 +1,18 @@
 #!/bin/bash
 set -e
 
-# Note: Database tables are now created automatically by SQLAlchemy's db.create_all()
-# No need for migrations - the models define the schema directly
+# Schema is owned by Alembic. Only the `app` service sets RUN_MIGRATIONS=true;
+# the worker and mcp services must not, or concurrent starts race on the same
+# schema. Default when unset is "do not run".
+#
+# A failed upgrade is fatal by design (set -e above): starting the app against
+# a schema that does not match the code is worse than not starting at all.
+if [ "$RUN_MIGRATIONS" = "true" ]; then
+    echo "[entrypoint] Applying database migrations..."
+    flask db upgrade
+    echo "[entrypoint] Migrations up to date."
+fi
 
-# Update yt-dlp on startup to prevent 403 errors (YouTube frequently updates anti-scraping)
-pip install --no-cache-dir --upgrade yt-dlp
-
-# Execute the main command
+# No package installation happens here. yt-dlp is pinned in requirements.txt
+# and updated by rebuilding the image, so container start needs no network.
 exec "$@"

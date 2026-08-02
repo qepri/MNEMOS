@@ -23,6 +23,7 @@ class UserPreferences(db.Model):
     
     # Persistence
     selected_llm_model = db.Column(db.String(255), nullable=True)
+    local_llm_model = db.Column(db.String(255), nullable=True)
     whisper_model = db.Column(db.String(50), default='base', nullable=False)
     
     # LLM Config (Clean Architecture)
@@ -82,6 +83,7 @@ class UserPreferences(db.Model):
             'chunk_overlap': self.chunk_overlap,
             'retrieval_top_k': self.retrieval_top_k,
             'selected_llm_model': self.selected_llm_model,
+            'local_llm_model': self.local_llm_model,
             'whisper_model': self.whisper_model,
             'llm_provider': self.llm_provider,
             'openai_api_key': self.openai_api_key,
