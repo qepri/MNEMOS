@@ -21,7 +21,9 @@ openai
 anthropic
 tiktoken
 pymupdf
-yt-dlp
+# Pinned deliberately: entrypoint.sh no longer pip-installs it at container
+# start. Bump this and rebuild the image when YouTube extraction breaks.
+yt-dlp==2026.7.4
 pydub
 mcp
 pydantic-settings

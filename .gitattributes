@@ -1,0 +1,12 @@
+# Shell scripts and container-side files MUST keep LF endings. A CRLF
+# entrypoint.sh fails inside Linux containers with "bad interpreter: ^M",
+# which is easy to hit when cloning on Windows with core.autocrlf=true.
+*.sh text eol=lf
+entrypoint.sh text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Windows-side launchers stay CRLF.
+*.bat text eol=crlf
+*.ps1 text eol=crlf

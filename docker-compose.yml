@@ -1,6 +1,7 @@
 services:
   frontend:
     build: ./frontend_spa
+    restart: unless-stopped
     ports:
       - "5200:80"
     depends_on:
@@ -14,6 +15,7 @@ services:
   app:
     build: .
     image: mnemos-backend:latest
+    restart: unless-stopped
     ports:
       - "5000:5000"
     environment:
@@ -36,13 +38,13 @@ services:
       - ./models:/app/models:ro
       - ./data/uploads:/app/uploads
       - ./data/archive:/app/archive
-      - ./data/whisper_cache:/root/.cache/whisper
-      - ./data/hf_cache:/root/.cache/huggingface
+      - ./data/whisper_cache:/home/mnemos/.cache/whisper
+      - ./data/hf_cache:/home/mnemos/.cache/huggingface
     depends_on:
       db:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     deploy:
       resources:
         reservations:
@@ -56,7 +58,15 @@ services:
   worker:
     build: .
     image: mnemos-backend:latest
-    command: celery -A app.celery_app worker --loglevel=info --pool=solo
+    restart: unless-stopped
+    # --pool=solo (one task at a time) is the default on purpose: the worker
+    # loads embedding models onto the same GPU that llama.cpp occupies, so
+    # concurrent tasks contend for VRAM. Override CELERY_POOL/CELERY_CONCURRENCY
+    # only if inference moves off this machine.
+    command: >
+      sh -c "celery -A app.celery_app worker --loglevel=info
+      --pool=${CELERY_POOL:-solo}
+      ${CELERY_CONCURRENCY:+--concurrency=$CELERY_CONCURRENCY}"
     environment:
       - DATABASE_URL=postgresql://mnemos_user:mnemos_pass@db:5432/mnemos_db
       - REDIS_URL=redis://redis:6379/0
@@ -72,14 +82,14 @@ services:
       - ./.env:/app/.env:ro
       - ./data/uploads:/app/uploads
       - ./data/archive:/app/archive
-      - ./data/whisper_cache:/root/.cache/whisper
-      - ./data/hf_cache:/root/.cache/huggingface
+      - ./data/whisper_cache:/home/mnemos/.cache/whisper
+      - ./data/hf_cache:/home/mnemos/.cache/huggingface
       - ./models:/app/models:rw
     depends_on:
       db:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     deploy:
       resources:
         reservations:
@@ -133,6 +143,7 @@ services:
     # Keep container running - MCP will be accessed via stdio (docker exec)
     # OpenCode will call: docker exec -i dev-mcp-1 python -m app.mcp_server.server
     command: tail -f /dev/null
+    restart: unless-stopped
     environment:
       - DATABASE_URL=postgresql://mnemos_user:mnemos_pass@db:5432/mnemos_db
       - PYTHONUNBUFFERED=1
@@ -156,10 +167,12 @@ services:
       - POSTGRES_USER=mnemos_user
       - POSTGRES_PASSWORD=mnemos_pass
       - POSTGRES_DB=mnemos_db
+    restart: unless-stopped
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5433:5432"
+      # Localhost only.
+      - "127.0.0.1:5433:5432"
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U mnemos_user -d mnemos_db" ]
       interval: 5s
@@ -171,16 +184,26 @@ services:
     # Optimization: Enable AOF (Append Only File) persistence
     # This prevents data loss (like Celery tasks) if the container restarts.
     command: [ "redis-server", "--appendonly", "yes" ]
+    restart: unless-stopped
     ports:
-      - "6380:6379"
+      # Localhost only: infrastructure ports are not exposed to the LAN.
+      - "127.0.0.1:6380:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   adminer:
     image: adminer
-    restart: always
+    # Opt-in only: `docker-compose --profile tools up -d adminer`
+    profiles: [ "tools" ]
+    restart: unless-stopped
     ports:
-      - "8080:8080"
+      # Localhost only.
+      - "127.0.0.1:8080:8080"
     environment:
       - ADMINER_DEFAULT_SERVER=db
     volumes:

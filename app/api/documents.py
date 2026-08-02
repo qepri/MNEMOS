@@ -14,17 +14,39 @@ logger = logging.getLogger(__name__)
 
 bp = Blueprint('documents', __name__, url_prefix='/api/documents')
 
+# Accepted extensions -> internal file_type. Anything not listed is rejected
+# at the boundary rather than being guessed at.
+ALLOWED_EXTENSIONS = {
+    'pdf': 'pdf',
+    'epub': 'epub',
+    'mp3': 'audio', 'wav': 'audio', 'm4a': 'audio', 'opus': 'audio',
+    'flac': 'audio', 'ogg': 'audio', 'aac': 'audio',
+    'mp4': 'video', 'webm': 'video', 'mov': 'video',
+    'mkv': 'video', 'avi': 'video',
+}
+
+MAX_UPLOAD_BY_TYPE = {
+    'pdf': settings.MAX_UPLOAD_DOCUMENT,
+    'epub': settings.MAX_UPLOAD_DOCUMENT,
+    'audio': settings.MAX_UPLOAD_AUDIO,
+    'video': settings.MAX_UPLOAD_VIDEO,
+}
+
+
 def detect_file_type(filename):
-    ext = filename.rsplit('.', 1)[1].lower()
-    if ext == 'pdf':
-        return 'pdf'
-    if ext == 'epub':
-        return 'epub'
-    if ext in ['mp3', 'wav', 'm4a', 'opus']:
-        return 'audio'
-    if ext in ['mp4', 'webm', 'mov']:
-        return 'video'
-    return 'audio' # Default / Fallback
+    """Map a filename to its internal file_type, or None if unsupported."""
+    _, _, ext = filename.rpartition('.')
+    return ALLOWED_EXTENSIONS.get(ext.lower()) if ext else None
+
+
+def _uploaded_size(file_storage) -> int:
+    """Size of an uploaded file without reading it into memory."""
+    stream = file_storage.stream
+    pos = stream.tell()
+    stream.seek(0, os.SEEK_END)
+    size = stream.tell()
+    stream.seek(pos)
+    return size
 
 @bp.route('/', methods=['GET'])
 def list_documents():
@@ -64,14 +86,33 @@ def upload_document():
     
     if file and file.filename:
         logger.info(f"Processing file upload: {file.filename}")
+
+        # Validate before anything is persisted or queued.
+        file_type = detect_file_type(file.filename)
+        if file_type is None:
+            accepted = ', '.join(sorted(ALLOWED_EXTENSIONS))
+            return jsonify({
+                "error": f"Unsupported file type. Accepted extensions: {accepted}"
+            }), 400
+
+        limit = MAX_UPLOAD_BY_TYPE[file_type]
+        size = _uploaded_size(file)
+        if size > limit:
+            return jsonify({
+                "error": (
+                    f"File too large: {size / (1024**2):.1f} MB exceeds the "
+                    f"{limit / (1024**2):.0f} MB limit for {file_type} uploads."
+                )
+            }), 413
+
         filename = secure_filename(file.filename)
         # Ensure unique filename to prevent overwrite
         saved_filename = f"{uuid4().hex}_{filename}"
-        
+
         doc = Document(
             filename=saved_filename,
             original_filename=file.filename,
-            file_type=detect_file_type(file.filename),
+            file_type=file_type,
             status='pending'
         )
         file_path_disk = os.path.join(settings.UPLOAD_FOLDER, doc.filename)

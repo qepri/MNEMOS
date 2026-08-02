@@ -31,8 +31,8 @@ services:
       - ./.env:/app/.env:ro
       - ./migrations:/app/migrations:rw
       - uploads_data_podman:/app/uploads
-      - whisper_cache_podman:/root/.cache/whisper
-      - hf_cache_podman:/root/.cache/huggingface
+      - whisper_cache_podman:/home/mnemos/.cache/whisper
+      - hf_cache_podman:/home/mnemos/.cache/huggingface
     depends_on:
       db:
         condition: service_healthy
@@ -62,8 +62,8 @@ services:
       - ./config:/app/config:rw
       - ./.env:/app/.env:ro
       - uploads_data_podman:/app/uploads
-      - whisper_cache_podman:/root/.cache/whisper
-      - hf_cache_podman:/root/.cache/huggingface
+      - whisper_cache_podman:/home/mnemos/.cache/whisper
+      - hf_cache_podman:/home/mnemos/.cache/huggingface
     depends_on:
       db:
         condition: service_healthy

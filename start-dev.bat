@@ -71,10 +71,30 @@ if %errorlevel%==1 (
 :: -------------------------
 
 echo Starting backend containers...
-docker-compose -f docker-compose.yml %DOCKER_ARGS% app worker llamacpp mcp db redis adminer -d
+:: adminer is opt-in (compose profile "tools"), so it is not started here.
+docker-compose -f docker-compose.yml %DOCKER_ARGS% app worker llamacpp mcp db redis -d
 
-echo Waiting for backend to be ready (15s)...
-timeout /t 15 /nobreak >nul
+:: Poll the API instead of guessing. /api/health self-caches for 5s, so a
+:: 3s interval is as fast as is useful. Cap ~90s to cover a cold start.
+echo Waiting for backend to report healthy...
+set /a HEALTH_TRIES=0
+:HEALTH_WAIT
+set /a HEALTH_TRIES+=1
+powershell -NoProfile -Command "try { $r = Invoke-WebRequest -Uri 'http://localhost:5000/api/health' -UseBasicParsing -TimeoutSec 3; exit ($(if ($r.StatusCode -eq 200) {0} else {1})) } catch { exit 1 }" >nul 2>&1
+if %ERRORLEVEL% EQU 0 goto HEALTH_OK
+if %HEALTH_TRIES% GEQ 30 goto HEALTH_FAIL
+timeout /t 3 /nobreak >nul
+goto HEALTH_WAIT
+
+:HEALTH_FAIL
+echo.
+echo [ERROR] Backend did not become healthy within ~90 seconds.
+echo         Inspect logs with: docker-compose logs app
+echo         Aborting so you do not debug against a half-started stack.
+exit /b 1
+
+:HEALTH_OK
+echo [OK] Backend healthy after %HEALTH_TRIES% attempt(s).
 
 :: --- LLAMACPP HEALTHCHECK ---
 echo [llamacpp] Checking container health (will fall back if broken)...

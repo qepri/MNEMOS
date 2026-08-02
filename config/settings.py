@@ -96,7 +96,13 @@ class Settings(BaseSettings):
     UPLOAD_FOLDER: str = os.path.join(os.getcwd(), 'uploads') if os.name == 'nt' else "/app/uploads"
     TRANSCRIPTION_FOLDER: str = os.path.join(UPLOAD_FOLDER, 'transcriptions')
     ARCHIVE_FOLDER: str = os.path.join(os.getcwd(), 'archive') if os.name == 'nt' else "/app/archive"
-    MAX_CONTENT_LENGTH: int = 50 * 1024 * 1024 * 1024  # 50GB
+    # Per-file-type upload ceilings. Enforced at the upload boundary before
+    # anything is written to disk or queued. MAX_CONTENT_LENGTH is the
+    # framework-level backstop and is set to the largest of these.
+    MAX_UPLOAD_DOCUMENT: int = 512 * 1024 * 1024      # 512 MB - pdf, epub
+    MAX_UPLOAD_AUDIO: int = 2 * 1024 * 1024 * 1024    # 2 GB
+    MAX_UPLOAD_VIDEO: int = 8 * 1024 * 1024 * 1024    # 8 GB
+    MAX_CONTENT_LENGTH: int = 8 * 1024 * 1024 * 1024  # backstop = largest above
 
     # VideoMix Settings
     VIDEOMIX_MAX_SEGMENTS: int = 50  # Maximum segments per video

@@ -13,6 +13,40 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+def _migration_status() -> dict:
+    """Compare the DB's Alembic revision against the migration scripts' head."""
+    try:
+        from alembic.script import ScriptDirectory
+        from alembic.runtime.migration import MigrationContext
+        from flask_migrate import current_app as _fm_app  # noqa: F401
+        from flask import current_app
+
+        config = current_app.extensions['migrate'].migrate.get_config()
+        script = ScriptDirectory.from_config(config)
+        head = script.get_current_head()
+
+        with db.engine.connect() as conn:
+            db_rev = MigrationContext.configure(conn).get_current_revision()
+
+        return {"ok": db_rev == head, "current": db_rev, "head": head}
+    except Exception as e:
+        return {"ok": False, "detail": str(e)}
+
+
+def _llamacpp_status() -> dict:
+    """Probe llama.cpp with a short timeout; it must never hang readiness."""
+    import requests
+    base = settings.LLAMACPP_BASE_URL.rstrip('/')
+    if base.endswith('/v1'):
+        base = base[:-3].rstrip('/')
+    try:
+        r = requests.get(f"{base}/health", timeout=2)
+        return {"ok": r.status_code == 200}
+    except Exception as e:
+        return {"ok": False, "detail": type(e).__name__}
+
+
 def create_app():
     app = Flask(__name__)
 
@@ -102,6 +136,55 @@ def create_app():
         with _health_lock:
             _health_cache["result"] = (payload, code)
             _health_cache["at"] = now
+        return jsonify(payload), code
+
+    _ready_cache: dict = {"result": None, "at": 0.0}
+    _ready_lock = threading.Lock()
+
+    @app.get('/api/ready')
+    def ready():
+        """Readiness: liveness plus migrations applied and llama.cpp reachable.
+
+        Distinct from /api/health on purpose. A cold llama.cpp start can take
+        minutes, which is a normal transient state - the process is alive, so
+        liveness stays 200 while readiness reports 503.
+        """
+        now = time.monotonic()
+        with _ready_lock:
+            cached = _ready_cache["result"]
+            if cached is not None and now - _ready_cache["at"] < 5.0:
+                return jsonify(cached[0]), cached[1]
+
+        payload: dict = {}
+
+        try:
+            db.session.execute(text("SELECT 1"))
+            payload["db"] = True
+        except Exception:
+            db.session.rollback()
+            payload["db"] = False
+
+        try:
+            celery_app.backend.client.ping()
+            payload["redis"] = True
+        except Exception:
+            payload["redis"] = False
+
+        payload["migrations"] = _migration_status()
+        payload["llamacpp"] = _llamacpp_status()
+
+        ok = (
+            payload["db"]
+            and payload["redis"]
+            and payload["migrations"]["ok"]
+            and payload["llamacpp"]["ok"]
+        )
+        payload["status"] = "ready" if ok else "not_ready"
+        code = 200 if ok else 503
+
+        with _ready_lock:
+            _ready_cache["result"] = (payload, code)
+            _ready_cache["at"] = now
         return jsonify(payload), code
 
     # Import models so SQLAlchemy (and Alembic autogenerate) know about them.
