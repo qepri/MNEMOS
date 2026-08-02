@@ -73,7 +73,7 @@ if ($Status) {
     Write-Host "  Database:  localhost:5434" -ForegroundColor White
     Write-Host "  Redis:     localhost:6381" -ForegroundColor White
     Write-Host "  Adminer:   http://localhost:8081" -ForegroundColor White
-    Write-Host "  Ollama:    http://localhost:11436" -ForegroundColor White
+    Write-Host "  llama.cpp: http://localhost:8083" -ForegroundColor White
     Write-Host "  MCP:       http://localhost:3001" -ForegroundColor White
     exit 0
 }
@@ -94,7 +94,7 @@ Write-Host "  API:       5001 (Docker: 5000)" -ForegroundColor Gray
 Write-Host "  Database:  5434 (Docker: 5433)" -ForegroundColor Gray
 Write-Host "  Redis:     6381 (Docker: 6380)" -ForegroundColor Gray
 Write-Host "  Adminer:   8081 (Docker: 8080)" -ForegroundColor Gray
-Write-Host "  Ollama:    11436 (Docker: 11435)" -ForegroundColor Gray
+Write-Host "  llama.cpp: 8083 (Docker: 8082)" -ForegroundColor Gray
 Write-Host "  MCP:       3001 (Docker: 3000)" -ForegroundColor Gray
 Write-Host ""
 

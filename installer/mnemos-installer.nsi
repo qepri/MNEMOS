@@ -91,7 +91,7 @@ Section "Mnemos Core" SecCore
   SetOutPath "$INSTDIR"
 
   ; Copy application files (excluding large model files and dev artifacts)
-  File /r /x "node_modules" /x ".git" /x "__pycache__" /x "*.pyc" /x "dist" /x "installer" /x "*.gguf" /x "ollama_models" /x ".venv" /x "venv" /x "*.tar" /x "docker-compose.podman.yml" /x "docker-compose.podman.test.yml" "..\*.*"
+  File /r /x "node_modules" /x ".git" /x "__pycache__" /x "*.pyc" /x "dist" /x "installer" /x "*.gguf" /x "models" /x ".venv" /x "venv" /x "*.tar" /x "docker-compose.podman.yml" /x "docker-compose.podman.test.yml" "..\*.*"
 
   ; Copy the podman compose file from installer directory
   SetOutPath "$INSTDIR"
@@ -150,7 +150,7 @@ Section "Pre-pull Docker Images" SecImages
   ; Pull images
   nsExec::ExecToLog 'podman pull pgvector/pgvector:pg16'
   nsExec::ExecToLog 'podman pull redis:7-alpine'
-  nsExec::ExecToLog 'podman pull ollama/ollama:latest'
+  nsExec::ExecToLog 'podman pull ghcr.io/ggml-org/llama.cpp:server-cuda'
   nsExec::ExecToLog 'podman pull adminer'
 
   DetailPrint "Container images downloaded."

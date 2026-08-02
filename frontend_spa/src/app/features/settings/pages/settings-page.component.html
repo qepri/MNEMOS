@@ -100,7 +100,7 @@
                 @if (activeTab() === 'discover') {
                 <app-settings-discover-tab [(searchQuery)]="searchQuery" [isSearching]="isSearching()"
                     [searchResults]="searchResults()" (onSearch)="searchLibrary()"
-                    (onPullModel)="handlePullModel($event)" (onOpenGgufModal)="openGgufModal($event)">
+                    (onOpenGgufModal)="openGgufModal($event)">
                 </app-settings-discover-tab>
                 }
 

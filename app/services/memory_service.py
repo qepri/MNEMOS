@@ -75,7 +75,7 @@ Do not use bullet points or numbering."""
             model_to_use = prefs.memory_llm_model 
             
             # Configure dedicated LLMClient for Memory
-            mem_provider = getattr(prefs, 'memory_provider', 'ollama')
+            mem_provider = getattr(prefs, 'memory_provider', 'llamacpp')
             api_key = None
             base_url = None
             

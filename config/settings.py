@@ -9,7 +9,6 @@ class LLMProvider(str, Enum):
     DEEPSEEK = "deepseek"
     LM_STUDIO = "lm_studio"
     LLAMACPP = "llamacpp"
-    OLLAMA = "ollama"
     CEREBRAS = "cerebras"
     CUSTOM = "custom"
 
@@ -46,23 +45,20 @@ class Settings(BaseSettings):
     CEREBRAS_API_KEY: str = ""
     CEREBRAS_MODEL: str = "llama-3.3-70b"
 
-    # LM Studio / Ollama (OpenAI-compatible)
+    # LM Studio / generic OpenAI-compatible local server
     LOCAL_LLM_BASE_URL: str = "http://host.docker.internal:1234/v1"
     LOCAL_LLM_MODEL: str = "local-model"
-    
+
     # llama.cpp (Dockerized) - Lightweight GGUF server
     LLAMACPP_BASE_URL: str = "http://llamacpp:8080/v1"
     LLAMACPP_NUM_CTX: int = 2048
 
-    # Ollama (Dockerized) - Optional, use --profile ollama to enable
-    # Using internal docker hostname 'ollama' and port 11434
-    OLLAMA_SERVICE_NAME: str = "ollama" # The docker-compose service name
-    OLLAMA_BASE_URL: str = "http://ollama:11434/v1"
-    OLLAMA_NUM_CTX: int = 2048 # Reduced to 2048 to fit in 6GB VRAM
-    
     # Embeddings
-    EMBEDDING_PROVIDER: str = "ollama"  # local (sentence-transformers), openai, lm_studio
-    EMBEDDING_MODEL: str = "bge-m3"  # Multilingual support
+    # Defaults must match the environment that produced the live vectors:
+    # local sentence-transformers with BAAI/bge-m3 at dimension 1024.
+    # Changing EMBEDDING_DIMENSION invalidates every stored chunk vector.
+    EMBEDDING_PROVIDER: str = "local"  # local (sentence-transformers), openai, lm_studio
+    EMBEDDING_MODEL: str = "BAAI/bge-m3"  # Multilingual support
     EMBEDDING_DIMENSION: int = 1024
 
     # Embedding Optimization (New - Auto-tuning enabled by default)

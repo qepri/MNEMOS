@@ -437,24 +437,10 @@ def reprocess_hypergraph_task(self, document_id: str):
 
 
 @celery_app.task(bind=True)
-def download_model_task(self, model_name):
-    """
-    DEPRECATED: Celery task for downloading Ollama models.
-    This is no longer used as the system now uses llama.cpp instead of Ollama.
-    Use download_gguf_task for GGUF model downloads instead.
-    """
-    logger.error(f"download_model_task called but Ollama is deprecated. Use download_gguf_task instead.")
-    return {
-        'status': 'error',
-        'model_name': model_name,
-        'error': 'Ollama model downloads are deprecated. Please use GGUF downloads for llama.cpp instead.'
-    }
-
-@celery_app.task(bind=True)
 def download_gguf_task(self, repo_id, filename, model_name):
     """
     Download a GGUF file from HF for llama.cpp.
-    Note: Ollama import functionality is deprecated. llama.cpp reads GGUF files directly from /models.
+    llama.cpp reads GGUF files directly from /models.
     """
     logger.info(f"Starting GGUF download: {repo_id}/{filename} as {model_name}")
     try:

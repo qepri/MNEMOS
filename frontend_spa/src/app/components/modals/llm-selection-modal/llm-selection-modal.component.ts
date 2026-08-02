@@ -77,14 +77,14 @@ export class LlmSelectionModalComponent {
       update = selector.getSnapshot();
     }
 
-    const { ollamaModel, ...prefs } = update;
+    const { localModel, ...prefs } = update;
 
     // Save prefs
     await this.settingsService.saveChatPreferences(prefs);
 
-    // Set Ollama model if needed
-    if (ollamaModel) {
-      await this.settingsService.setCurrentModel(ollamaModel);
+    // Set the active local model if one was chosen
+    if (localModel) {
+      await this.settingsService.setCurrentModel(localModel);
     }
 
     this.closeModal();

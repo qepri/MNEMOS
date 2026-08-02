@@ -30,7 +30,6 @@ requests
 langchain-text-splitters
 EbookLib
 beautifulsoup4
-docker>=7.0.0
 ddgs
 markdown2
 xhtml2pdf

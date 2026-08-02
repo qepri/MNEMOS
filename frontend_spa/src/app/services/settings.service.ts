@@ -9,7 +9,6 @@ import {
   SystemPromptsResponse,
   SystemPrompt,
   LibrarySearchResponse,
-  ModelPullRequest,
   ModelPullResponse,
   PullStatusResponse,
   MemoriesResponse,
@@ -152,9 +151,6 @@ export class SettingsService {
       const prefs = await firstValueFrom(
         this.http.get<ChatPreferences>(ApiEndpoints.SETTINGS_CHAT)
       );
-      if (prefs && !prefs.ollama_num_ctx) {
-        prefs.ollama_num_ctx = 2048;
-      }
       this.chatPreferences.set(prefs);
     } catch (error) {
       console.error('Failed to load chat preferences', error);
@@ -242,16 +238,6 @@ export class SettingsService {
     }
   }
 
-  async pullModel(request: ModelPullRequest): Promise<ModelPullResponse> {
-    try {
-      return await firstValueFrom(
-        this.http.post<ModelPullResponse>(ApiEndpoints.SETTINGS_PULL, request)
-      );
-    } catch (error) {
-      console.error('Failed to pull model', error);
-      throw error;
-    }
-  }
 
   async scanImports(): Promise<string[]> {
     try {
@@ -291,37 +277,6 @@ export class SettingsService {
       await this.loadModels();
     } catch (error) {
       console.error('Failed to import model', error);
-      throw error;
-    }
-  }
-
-  async getOllamaStatus(): Promise<{ status: string; id?: string }> {
-    try {
-      return await firstValueFrom(
-        this.http.get<{ status: string; id?: string }>(ApiEndpoints.SETTINGS_OLLAMA_STATUS)
-      );
-    } catch (error) {
-      console.error('Failed to get Ollama status', error);
-      return { status: 'error' };
-    }
-  }
-
-  // Returns an observable for streaming progress
-  installOllamaService() {
-    return this.http.post(ApiEndpoints.SETTINGS_OLLAMA_INSTALL, {}, {
-      responseType: 'text',
-      observe: 'events',
-      reportProgress: true
-    });
-  }
-
-  async startOllamaService(): Promise<{ status: string; id?: string }> {
-    try {
-      return await firstValueFrom(
-        this.http.post<{ status: string; id?: string }>(ApiEndpoints.SETTINGS_OLLAMA_START, {})
-      );
-    } catch (error) {
-      console.error('Failed to start Ollama service', error);
       throw error;
     }
   }

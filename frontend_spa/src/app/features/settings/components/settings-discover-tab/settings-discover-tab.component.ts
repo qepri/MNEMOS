@@ -14,15 +14,10 @@ export class SettingsDiscoverTabComponent {
     searchResults = input.required<any[]>();
 
     onSearch = output<void>();
-    onPullModel = output<string>();
     onOpenGgufModal = output<string>();
 
     searchLibrary() {
         this.onSearch.emit();
-    }
-
-    handlePullModel(ollamaName: string) {
-        this.onPullModel.emit(ollamaName);
     }
 
     openGgufModal(fullName: string) {

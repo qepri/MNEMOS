@@ -50,7 +50,7 @@ Funciona **en tu propio equipo** con modelos locales (llama.cpp) o usando APIs e
 | **Motor de Razonamiento** | Navegación BFS del grafo para descubrir conexiones no obvias entre conceptos de diferentes documentos |
 
 ### Modelos de IA Flexibles
-- **Local**: llama.cpp (GGUF con aceleración CUDA), LM Studio, Ollama
+- **Local**: llama.cpp (GGUF con aceleración CUDA), LM Studio
 - **Cloud**: OpenAI (GPT-4, GPT-4o), Anthropic (Claude Sonnet, Opus), Groq (inferencia ultrarrápida LPU)
 - **Conexiones personalizadas**: cualquier proveedor compatible con API OpenAI (vLLM, DeepSeek, etc.)
 
@@ -80,7 +80,7 @@ Funciona **en tu propio equipo** con modelos locales (llama.cpp) o usando APIs e
 │                 │  │                  │  │                   │
 │ - PDF Process   │  │ - Reasoning Eng  │  │ - OpenAI / Groq   │
 │ - Summarization │  │ - Hypergraph Ext │  │ - Anthropic       │
-│ - Transcribe    │  │ - Summary Svc    │  │ - Ollama / LM St. │
+│ - Transcribe    │  │ - Summary Svc    │  │ - llama.cpp/LM St.│
 │ - Embedder      │  │ - Search (RAG)   │  │ - Tavily/DuckDuck │
 └────────┬────────┘  └────────┬─────────┘  └───────┬───────────┘
          │                    │                    │
@@ -152,14 +152,14 @@ Motor principal de RAG que implementa:
 
 ### LLMClient (`app/services/llm_client.py`)
 Cliente unificado para múltiples proveedores:
-- Abstracción de APIs de OpenAI, Anthropic, llama.cpp, LM Studio y Ollama
+- Abstracción de APIs de OpenAI, Anthropic, llama.cpp y LM Studio
 - Soporte para modelos de visión (imágenes en conversación)
 - Manejo consistente de mensajes, respuestas y logging detallado
 
 ### EmbedderService (`app/services/embedder.py`)
 Generación de embeddings vectoriales:
 - Local con sentence-transformers (all-MiniLM-L6-v2, bge-m3, etc.)
-- Remoto con OpenAI / LM Studio / Ollama
+- Remoto con OpenAI / LM Studio
 - Procesamiento por lotes con auto-batching según VRAM
 - Cache LRU de modelos y soporte FP16 para mayor velocidad
 
@@ -281,7 +281,7 @@ Resúmenes estructurados con patrón Map-Reduce:
 
 | Variable | Valores | Propósito |
 |---|---|---|
-| `LLM_PROVIDER` | `openai`, `anthropic`, `lm_studio`, `ollama` | Selecciona el motor de LLM |
+| `LLM_PROVIDER` | `openai`, `anthropic`, `lm_studio`, `llamacpp`, `custom` | Selecciona el motor de LLM |
 | `OPENAI_API_KEY` | `sk-...` | API key de OpenAI |
 | `OPENAI_MODEL` | `gpt-4o-mini`, `gpt-4o`, etc. | Modelo de OpenAI |
 | `ANTHROPIC_API_KEY` | `sk-ant-...` | API key de Anthropic |
@@ -380,7 +380,7 @@ El LLM genera consultas de búsqueda automáticamente y los resultados se integr
 ### Memoria a Largo Plazo
 ```env
 MEMORY_ENABLED=true
-MEMORY_PROVIDER=ollama        # o openai
+MEMORY_PROVIDER=llamacpp      # o openai
 ```
 El sistema extrae hechos sobre el usuario y los recuerda entre conversaciones.
 
@@ -566,7 +566,7 @@ It runs **on your own hardware** with local models (llama.cpp) or connects to ex
 | **Reasoning Engine** | BFS graph traversal to discover non-obvious connections across documents |
 
 ### Flexible AI Models
-- **Local**: llama.cpp (GGUF with CUDA), LM Studio, Ollama
+- **Local**: llama.cpp (GGUF with CUDA), LM Studio
 - **Cloud**: OpenAI (GPT-4, GPT-4o), Anthropic (Claude), Groq (ultra-fast LPU)
 - **Custom endpoints**: Any OpenAI-compatible provider (vLLM, DeepSeek, etc.)
 
@@ -596,7 +596,7 @@ It runs **on your own hardware** with local models (llama.cpp) or connects to ex
 │                 │  │                  │  │                   │
 │ - PDF Process   │  │ - Reasoning Eng  │  │ - OpenAI / Groq   │
 │ - Summarization │  │ - Hypergraph Ext │  │ - Anthropic       │
-│ - Transcribe    │  │ - Summary Svc    │  │ - Ollama / LM St. │
+│ - Transcribe    │  │ - Summary Svc    │  │ - llama.cpp/LM St.│
 │ - Embedder      │  │ - Search (RAG)   │  │ - Tavily/DuckDuck │
 └────────┬────────┘  └────────┬─────────┘  └───────┬───────────┘
          │                    │                    │
@@ -668,14 +668,14 @@ Main RAG engine implementing:
 
 ### LLMClient (`app/services/llm_client.py`)
 Unified client for multiple providers:
-- API abstraction for OpenAI, Anthropic, llama.cpp, LM Studio, Ollama
+- API abstraction for OpenAI, Anthropic, llama.cpp, LM Studio
 - Vision model support (images in conversation)
 - Consistent message/response handling with detailed logging
 
 ### EmbedderService (`app/services/embedder.py`)
 Vector embedding generation:
 - Local with sentence-transformers (all-MiniLM-L6-v2, bge-m3, etc.)
-- Remote with OpenAI / LM Studio / Ollama
+- Remote with OpenAI / LM Studio
 - Batch processing with auto-batching by VRAM
 - LRU model cache and FP16 support for speed
 
@@ -797,7 +797,7 @@ Map-Reduce structured summaries:
 
 | Variable | Values | Purpose |
 |---|---|---|
-| `LLM_PROVIDER` | `openai`, `anthropic`, `lm_studio`, `ollama` | Selects the LLM engine |
+| `LLM_PROVIDER` | `openai`, `anthropic`, `lm_studio`, `llamacpp`, `custom` | Selects the LLM engine |
 | `OPENAI_API_KEY` | `sk-...` | OpenAI API key |
 | `OPENAI_MODEL` | `gpt-4o-mini`, `gpt-4o`, etc. | OpenAI model |
 | `ANTHROPIC_API_KEY` | `sk-ant-...` | Anthropic API key |
@@ -896,7 +896,7 @@ The LLM auto-generates search queries and results are integrated into context.
 ### Long-Term Memory
 ```env
 MEMORY_ENABLED=true
-MEMORY_PROVIDER=ollama        # or openai
+MEMORY_PROVIDER=llamacpp      # or openai
 ```
 The system extracts facts about the user and remembers them across conversations.
 

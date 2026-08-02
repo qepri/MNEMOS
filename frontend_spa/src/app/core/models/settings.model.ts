@@ -1,4 +1,4 @@
-export interface OllamaModel {
+export interface LocalModel {
   name: string;
   model: string;
   modified_at: string;
@@ -16,7 +16,7 @@ export interface OllamaModel {
 }
 
 export interface ModelsResponse {
-  models: OllamaModel[];
+  models: LocalModel[];
 }
 
 export interface CurrentModelResponse {
@@ -56,7 +56,6 @@ export interface ChatPreferences {
   openai_tts_model?: string;
   openai_stt_model?: string;
   deepgram_api_key?: string;
-  ollama_num_ctx?: number;
   llm_max_tokens?: number;
   llm_temperature?: number;
   llm_top_p?: number;
@@ -114,7 +113,6 @@ export interface SystemPromptsResponse {
 export interface Model {
   name: string;
   full_name: string;
-  ollama_name: string | null;
   author: string;
   description: string;
   size_gb: number;

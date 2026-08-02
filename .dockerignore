@@ -20,7 +20,6 @@ coverage.xml
 .gitignore
 .env
 .env.example
-ollama_models
 instance
 uploads
 whisper_cache

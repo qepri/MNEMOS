@@ -68,7 +68,7 @@ All processing is async via Celery. Flow in `app/tasks/processing.py`:
    - `audio`/`video`/`youtube` → `TranscriptionService.transcribe()` (Whisper)
 2. **Chunk** — `ChunkerService` (LangChain `RecursiveCharacterTextSplitter`)
 3. **Language detect** — `langdetect` → stored on `Document.language` for FTS
-4. **Embed** — `EmbedderService` (local sentence-transformers or remote OpenAI/Ollama/LM Studio), 100 chunks/batch
+4. **Embed** — `EmbedderService` (local sentence-transformers or remote OpenAI/LM Studio), 100 chunks/batch
 5. **Save** — `Chunk` rows with `embedding` (Vector), `search_vector` (TSVECTOR via DB trigger)
 6. **Summarize** — `SummaryService` parallel Map-Reduce via LLM
 7. **Hypergraph** — `HypergraphExtractor` two-pass LLM extraction → `Concept`, `HyperEdge`, `HyperEdgeMember`
@@ -91,7 +91,7 @@ Resume logic: if chunks already exist for a doc, skip extraction/embedding entir
 
 `LLMClient` is the unified abstraction. Provider priority: **constructor arg > DB (UserPreferences) > settings.py**.
 
-Supported providers (`LLMProvider` enum in `config/settings.py`): `openai`, `anthropic`, `groq`, `cerebras`, `llamacpp`, `ollama`, `lm_studio`, `custom`.
+Supported providers (`LLMProvider` enum in `config/settings.py`): `openai`, `anthropic`, `groq`, `cerebras`, `deepseek`, `llamacpp`, `lm_studio`, `custom`.
 
 All non-Anthropic providers use the OpenAI SDK with a custom `base_url`. Images are passed as base64 in `chat(images=[...])`.
 

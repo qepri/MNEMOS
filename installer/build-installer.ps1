@@ -97,7 +97,7 @@ if ($BundleImages) {
         @{Name="mnemos-frontend"; Build=$true; Dockerfile="frontend_spa"; Output="dist\mnemos-frontend.tar"},
         @{Name="pgvector/pgvector:pg16"; Build=$false; Output="dist\pgvector.tar"},
         @{Name="redis:7-alpine"; Build=$false; Output="dist\redis.tar"},
-        @{Name="ollama/ollama:latest"; Build=$false; Output="dist\ollama.tar"},
+        @{Name="ghcr.io/ggml-org/llama.cpp:server-cuda"; Build=$false; Output="dist\llamacpp.tar"},
         @{Name="adminer"; Build=$false; Output="dist\adminer.tar"}
     )
 

@@ -220,19 +220,6 @@ export class SettingsPage implements OnInit {
         }
     }
 
-    async handlePullModel(modelName: string) {
-        try {
-            const res = await this.settingsService.pullModel({ model: modelName });
-            this.activeDownloads.update(d => ({
-                ...d,
-                [res.task_id]: { task_id: res.task_id, model: modelName, status: 'starting', progress: 0 }
-            }));
-            this.toastr.info(`Started pulling ${modelName}`);
-        } catch (err) {
-            this.toastr.error('Failed to start pull');
-        }
-    }
-
     async scanImports() {
         const files = await this.settingsService.scanImports();
         this.importFiles.set(files);

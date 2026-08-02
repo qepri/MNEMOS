@@ -79,7 +79,7 @@ class EmbedderService:
 
             return cls._model
         else:
-            # Use OpenAI client for LM Studio / Ollama / OpenAI
+            # Use OpenAI client for LM Studio / OpenAI
             if cls._client is None:
                 # Determine Base URL and API Key based on provider
                 base_url = settings.LOCAL_LLM_BASE_URL
@@ -88,9 +88,6 @@ class EmbedderService:
                 if settings.EMBEDDING_PROVIDER == "openai":
                     base_url = None # Default
                     api_key = settings.OPENAI_API_KEY
-                elif settings.EMBEDDING_PROVIDER == "ollama":
-                    base_url = settings.OLLAMA_BASE_URL
-                    api_key = "ollama"
 
                 cls._client = openai.OpenAI(base_url=base_url, api_key=api_key)
             return cls._client
@@ -182,7 +179,7 @@ class EmbedderService:
 
     def _embed_remote(self, client, texts: Union[str, List[str]], is_single: bool):
         """
-        Embed using remote API (OpenAI, LM Studio, Ollama) with parallel batching.
+        Embed using remote API (OpenAI, LM Studio) with parallel batching.
 
         Args:
             client: OpenAI client instance

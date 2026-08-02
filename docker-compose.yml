@@ -38,7 +38,6 @@ services:
       - ./data/archive:/app/archive
       - ./data/whisper_cache:/root/.cache/whisper
       - ./data/hf_cache:/root/.cache/huggingface
-      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       db:
         condition: service_healthy
@@ -76,7 +75,6 @@ services:
       - ./data/whisper_cache:/root/.cache/whisper
       - ./data/hf_cache:/root/.cache/huggingface
       - ./models:/app/models:rw
-      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       db:
         condition: service_healthy

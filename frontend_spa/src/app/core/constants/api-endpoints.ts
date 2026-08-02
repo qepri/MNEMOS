@@ -27,7 +27,6 @@ export const ApiEndpoints = {
   SETTINGS_PROMPT_DELETE: (id: string) => `/api/settings/prompts/${id}`,
   SETTINGS_PROMPT_UPDATE: (id: string) => `/api/settings/prompts/${id}`,
   SETTINGS_LIBRARY_SEARCH: '/api/settings/library/search',
-  SETTINGS_PULL: '/api/settings/pull',
   SETTINGS_PULL_STATUS: (taskId: string) => `/api/settings/pull/status/${taskId}`,
   SETTINGS_PULL_DELETE: (taskId: string) => `/api/settings/pull/${taskId}`,
   SETTINGS_PULL_ACTIVE: '/api/settings/pull/active',
@@ -40,11 +39,6 @@ export const ApiEndpoints = {
   SETTINGS_PULL_GGUF: '/api/settings/pull_gguf',
   SETTINGS_DOWNLOADS: '/api/settings/downloads',
 
-
-  // Ollama Service
-  SETTINGS_OLLAMA_STATUS: '/api/settings/ollama/status',
-  SETTINGS_OLLAMA_INSTALL: '/api/settings/ollama/install',
-  SETTINGS_OLLAMA_START: '/api/settings/ollama/start',
 
   MEMORY_GET: '/api/memory',
   MEMORY_DELETE: (id: string) => `/api/memory/${id}`,

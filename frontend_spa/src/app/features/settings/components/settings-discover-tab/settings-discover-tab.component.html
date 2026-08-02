@@ -64,10 +64,6 @@
             </div>
 
             <div class="flex gap-2">
-                <!-- <button (click)="handlePullModel(model.ollama_name || model.name)"
-                    class="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-dark transition-colors text-sm font-medium">
-                    Pull (Ollama)
-                </button> -->
                 @if (model.full_name && model.full_name.includes('/')) {
                 <button (click)="openGgufModal(model.full_name)"
                     class="w-full px-4 py-2 bg-secondary text-base-100 rounded-lg hover:bg-primary-focus transition-colors text-sm font-medium hover:bg-accent-dark"

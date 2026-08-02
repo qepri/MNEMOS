@@ -17,13 +17,3 @@ services:
         reservations:
           devices: []
 
-  ollama:
-    # Remove GPU reservation
-    deploy:
-      resources:
-        reservations:
-          devices: []
-    # Disable GPU layers
-    environment:
-      - OLLAMA_GPU_LAYERS=0
-      - CUDA_VISIBLE_DEVICES=

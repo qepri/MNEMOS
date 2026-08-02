@@ -98,7 +98,13 @@
           },
           "file_type": {
             "type": "string",
-            "enum": ["pdf", "audio", "video", "youtube", "epub"],
+            "enum": [
+              "pdf",
+              "audio",
+              "video",
+              "youtube",
+              "epub"
+            ],
             "example": "pdf"
           },
           "youtube_url": {
@@ -108,7 +114,12 @@
           },
           "status": {
             "type": "string",
-            "enum": ["pending", "processing", "completed", "error"],
+            "enum": [
+              "pending",
+              "processing",
+              "completed",
+              "error"
+            ],
             "example": "completed"
           },
           "processing_progress": {
@@ -138,7 +149,9 @@
               "type": "string",
               "format": "uuid"
             },
-            "example": ["c5d3e4f5-7a8b-9c0d-1e2f-3a4b5c6d7e8f"]
+            "example": [
+              "c5d3e4f5-7a8b-9c0d-1e2f-3a4b5c6d7e8f"
+            ]
           },
           "tag": {
             "type": "string",
@@ -261,7 +274,10 @@
           },
           "role": {
             "type": "string",
-            "enum": ["user", "assistant"],
+            "enum": [
+              "user",
+              "assistant"
+            ],
             "example": "user"
           },
           "content": {
@@ -306,7 +322,9 @@
       },
       "ChatRequest": {
         "type": "object",
-        "required": ["question"],
+        "required": [
+          "question"
+        ],
         "properties": {
           "question": {
             "type": "string",
@@ -318,7 +336,9 @@
               "type": "string",
               "format": "uuid"
             },
-            "example": ["a3f1c2b4-5e6d-7f8a-9b0c-1d2e3f4a5b6c"]
+            "example": [
+              "a3f1c2b4-5e6d-7f8a-9b0c-1d2e3f4a5b6c"
+            ]
           },
           "conversation_id": {
             "type": "string",
@@ -411,7 +431,13 @@
           },
           "llm_provider": {
             "type": "string",
-            "enum": ["ollama", "openai", "anthropic", "groq", "custom"],
+            "enum": [
+              "llamacpp",
+              "openai",
+              "anthropic",
+              "groq",
+              "custom"
+            ],
             "example": "openai"
           },
           "selected_llm_model": {
@@ -548,7 +574,14 @@
           },
           "status": {
             "type": "string",
-            "enum": ["draft", "generating_script", "script_ready", "rendering", "completed", "error"],
+            "enum": [
+              "draft",
+              "generating_script",
+              "script_ready",
+              "rendering",
+              "completed",
+              "error"
+            ],
             "example": "completed"
           },
           "user_prompt": {
@@ -564,7 +597,12 @@
           },
           "resolution": {
             "type": "string",
-            "enum": ["1080p", "720p", "480p", "source"],
+            "enum": [
+              "1080p",
+              "720p",
+              "480p",
+              "source"
+            ],
             "example": "1080p"
           },
           "created_at": {
@@ -651,7 +689,13 @@
           },
           "status": {
             "type": "string",
-            "enum": ["queued", "processing", "completed", "failed", "cancelled"],
+            "enum": [
+              "queued",
+              "processing",
+              "completed",
+              "failed",
+              "cancelled"
+            ],
             "example": "completed"
           },
           "progress": {
@@ -689,7 +733,9 @@
   "paths": {
     "/api/documents/": {
       "get": {
-        "tags": ["Documents"],
+        "tags": [
+          "Documents"
+        ],
         "summary": "List all documents",
         "description": "Retrieve all documents with optional filtering by collection. Returns HTML partial for HTMX requests or JSON.",
         "parameters": [
@@ -721,7 +767,9 @@
     },
     "/api/documents/upload": {
       "post": {
-        "tags": ["Documents"],
+        "tags": [
+          "Documents"
+        ],
         "summary": "Upload a document",
         "description": "Upload a file or provide a YouTube URL for processing. Supported formats: PDF, EPUB, audio (MP3, WAV, M4A), video (MP4, WebM, MOV).",
         "requestBody": {
@@ -772,7 +820,9 @@
     },
     "/api/documents/{doc_id}": {
       "put": {
-        "tags": ["Documents"],
+        "tags": [
+          "Documents"
+        ],
         "summary": "Update document metadata",
         "description": "Update document tags, stars, comments, or collection assignment.",
         "parameters": [
@@ -841,7 +891,9 @@
         }
       },
       "delete": {
-        "tags": ["Documents"],
+        "tags": [
+          "Documents"
+        ],
         "summary": "Delete a document",
         "description": "Delete document and associated files from the system.",
         "parameters": [
@@ -874,7 +926,9 @@
     },
     "/api/documents/{doc_id}/status": {
       "get": {
-        "tags": ["Documents"],
+        "tags": [
+          "Documents"
+        ],
         "summary": "Get document processing status",
         "description": "Get current processing status (for HTMX polling).",
         "parameters": [
@@ -904,7 +958,9 @@
     },
     "/api/documents/{doc_id}/content": {
       "get": {
-        "tags": ["Documents"],
+        "tags": [
+          "Documents"
+        ],
         "summary": "Download document file",
         "description": "Download the original document file.",
         "parameters": [
@@ -938,7 +994,9 @@
     },
     "/api/documents/{doc_id}/sections": {
       "get": {
-        "tags": ["Documents"],
+        "tags": [
+          "Documents"
+        ],
         "summary": "Get document sections",
         "description": "Retrieve all sections/chapters for a document (for video/audio files).",
         "parameters": [
@@ -971,7 +1029,9 @@
     },
     "/api/documents/{doc_id}/transcribe": {
       "post": {
-        "tags": ["Documents"],
+        "tags": [
+          "Documents"
+        ],
         "summary": "Generate transcription",
         "description": "Generate or retrieve transcription for audio/video documents.",
         "parameters": [
@@ -997,7 +1057,9 @@
     },
     "/api/documents/{doc_id}/transcription": {
       "get": {
-        "tags": ["Documents"],
+        "tags": [
+          "Documents"
+        ],
         "summary": "Download transcription",
         "description": "Download transcription as text file.",
         "parameters": [
@@ -1027,7 +1089,9 @@
     },
     "/api/documents/{doc_id}/summary": {
       "post": {
-        "tags": ["Documents"],
+        "tags": [
+          "Documents"
+        ],
         "summary": "Generate document summary",
         "description": "Trigger background task to generate document summary using LLM.",
         "parameters": [
@@ -1050,7 +1114,9 @@
     },
     "/api/documents/reprocess-hypergraph": {
       "post": {
-        "tags": ["Documents"],
+        "tags": [
+          "Documents"
+        ],
         "summary": "Reprocess hypergraph extraction",
         "description": "Trigger hypergraph (knowledge graph) reprocessing for all or missing documents.",
         "requestBody": {
@@ -1077,7 +1143,9 @@
     },
     "/api/chat/": {
       "post": {
-        "tags": ["Chat"],
+        "tags": [
+          "Chat"
+        ],
         "summary": "Send chat message",
         "description": "Send a chat message with optional RAG (Retrieval-Augmented Generation) context from documents, web search, or knowledge graph.",
         "requestBody": {
@@ -1116,7 +1184,9 @@
     },
     "/api/conversations/": {
       "get": {
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "summary": "List all conversations",
         "description": "Retrieve all conversation history with optional search.",
         "parameters": [
@@ -1146,7 +1216,9 @@
         }
       },
       "post": {
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "summary": "Create new conversation",
         "description": "Create a new conversation with optional title.",
         "requestBody": {
@@ -1180,7 +1252,9 @@
     },
     "/api/conversations/{id}": {
       "get": {
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "summary": "Get conversation details",
         "description": "Retrieve conversation with all messages and related documents.",
         "parameters": [
@@ -1226,7 +1300,9 @@
         }
       },
       "delete": {
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "summary": "Delete conversation",
         "description": "Delete conversation and all associated messages.",
         "parameters": [
@@ -1252,7 +1328,9 @@
     },
     "/api/collections/": {
       "get": {
-        "tags": ["Collections"],
+        "tags": [
+          "Collections"
+        ],
         "summary": "List all collections",
         "description": "Retrieve all document collections.",
         "responses": {
@@ -1272,7 +1350,9 @@
         }
       },
       "post": {
-        "tags": ["Collections"],
+        "tags": [
+          "Collections"
+        ],
         "summary": "Create collection",
         "description": "Create a new document collection.",
         "requestBody": {
@@ -1281,7 +1361,9 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["name"],
+                "required": [
+                  "name"
+                ],
                 "properties": {
                   "name": {
                     "type": "string",
@@ -1315,7 +1397,9 @@
     },
     "/api/collections/{id}": {
       "put": {
-        "tags": ["Collections"],
+        "tags": [
+          "Collections"
+        ],
         "summary": "Update collection",
         "description": "Update collection name or description.",
         "parameters": [
@@ -1363,7 +1447,9 @@
         }
       },
       "delete": {
-        "tags": ["Collections"],
+        "tags": [
+          "Collections"
+        ],
         "summary": "Delete collection",
         "description": "Delete collection (documents remain but become uncollected).",
         "parameters": [
@@ -1389,7 +1475,9 @@
     },
     "/api/collections/{id}/documents": {
       "get": {
-        "tags": ["Collections"],
+        "tags": [
+          "Collections"
+        ],
         "summary": "List documents in collection",
         "description": "Retrieve all documents belonging to a collection (many-to-many).",
         "parameters": [
@@ -1425,7 +1513,9 @@
     },
     "/api/collections/{id}/documents/{document_id}": {
       "post": {
-        "tags": ["Collections"],
+        "tags": [
+          "Collections"
+        ],
         "summary": "Add document to collection",
         "description": "Add a document to a collection via many-to-many relationship.",
         "parameters": [
@@ -1474,7 +1564,9 @@
         }
       },
       "delete": {
-        "tags": ["Collections"],
+        "tags": [
+          "Collections"
+        ],
         "summary": "Remove document from collection",
         "description": "Remove a document from a collection.",
         "parameters": [
@@ -1525,7 +1617,9 @@
     },
     "/api/documents/{document_id}/collections": {
       "get": {
-        "tags": ["Documents"],
+        "tags": [
+          "Documents"
+        ],
         "summary": "List collections for a document",
         "description": "Retrieve all collections a document belongs to.",
         "parameters": [
@@ -1561,7 +1655,9 @@
     },
     "/api/settings/models": {
       "get": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "List llama.cpp models",
         "description": "List available GGUF models for llama.cpp with vision capability detection.",
         "responses": {
@@ -1591,7 +1687,9 @@
         }
       },
       "delete": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Delete model",
         "description": "Delete a GGUF model file.",
         "requestBody": {
@@ -1600,7 +1698,9 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["model"],
+                "required": [
+                  "model"
+                ],
                 "properties": {
                   "model": {
                     "type": "string",
@@ -1623,7 +1723,9 @@
     },
     "/api/settings/llamacpp/models": {
       "get": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "List GGUF models",
         "description": "List all GGUF model files available for llama.cpp with file sizes.",
         "responses": {
@@ -1653,39 +1755,11 @@
         }
       }
     },
-    "/api/settings/pull": {
-      "post": {
-        "tags": ["Settings"],
-        "summary": "Download model",
-        "description": "DEPRECATED: Use llama.cpp model import instead. Download a model (kept for backward compatibility).",
-        "deprecated": true,
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "model": {
-                    "type": "string"
-                  },
-                  "display_name": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Download started"
-          }
-        }
-      }
-    },
     "/api/settings/pull/status/{task_id}": {
       "get": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Get download status",
         "description": "DEPRECATED: Use llama.cpp instead. Get model download progress.",
         "deprecated": true,
@@ -1708,7 +1782,9 @@
     },
     "/api/settings/pull/active": {
       "get": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Get active downloads",
         "description": "DEPRECATED: Use llama.cpp instead. List active download tasks.",
         "deprecated": true,
@@ -1721,7 +1797,9 @@
     },
     "/api/settings/pull/{task_id}": {
       "delete": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Cancel download",
         "description": "DEPRECATED: Use llama.cpp instead. Cancel a download task.",
         "deprecated": true,
@@ -1744,7 +1822,9 @@
     },
     "/api/settings/library/search": {
       "get": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Search HuggingFace models",
         "description": "Search HuggingFace for GGUF models.",
         "parameters": [
@@ -1782,7 +1862,9 @@
     },
     "/api/settings/files/{repo_id}": {
       "get": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "List HuggingFace repo files",
         "description": "List GGUF files in a HuggingFace repository.",
         "parameters": [
@@ -1804,7 +1886,9 @@
     },
     "/api/settings/pull_gguf": {
       "post": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Download GGUF model",
         "description": "Download GGUF model from HuggingFace.",
         "requestBody": {
@@ -1813,7 +1897,11 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["repo_id", "filename", "model_name"],
+                "required": [
+                  "repo_id",
+                  "filename",
+                  "model_name"
+                ],
                 "properties": {
                   "repo_id": {
                     "type": "string",
@@ -1841,7 +1929,9 @@
     },
     "/api/settings/import/scan": {
       "get": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Scan for GGUF files",
         "description": "Scan system for GGUF model files.",
         "responses": {
@@ -1853,7 +1943,9 @@
     },
     "/api/settings/import/upload": {
       "post": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Upload GGUF file",
         "description": "Upload a GGUF model file.",
         "requestBody": {
@@ -1881,7 +1973,9 @@
     },
     "/api/settings/import": {
       "post": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Import GGUF model",
         "description": "Import a GGUF model file into llama.cpp.",
         "requestBody": {
@@ -1890,7 +1984,10 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["filename", "model_name"],
+                "required": [
+                  "filename",
+                  "model_name"
+                ],
                 "properties": {
                   "filename": {
                     "type": "string",
@@ -1914,7 +2011,9 @@
     },
     "/api/settings/current-model": {
       "get": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Get current LLM model",
         "description": "Get the currently selected LLM model and provider.",
         "responses": {
@@ -1941,7 +2040,9 @@
         }
       },
       "post": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Set current LLM model",
         "description": "Set the active LLM model.",
         "requestBody": {
@@ -1950,7 +2051,9 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["model"],
+                "required": [
+                  "model"
+                ],
                 "properties": {
                   "model": {
                     "type": "string",
@@ -1970,7 +2073,9 @@
     },
     "/api/settings/chat": {
       "get": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Get chat settings",
         "description": "Retrieve all chat and LLM settings.",
         "responses": {
@@ -1987,7 +2092,9 @@
         }
       },
       "post": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Update chat settings",
         "description": "Update chat settings, LLM configuration, API keys, etc.",
         "requestBody": {
@@ -2008,7 +2115,9 @@
     },
     "/api/settings/prompts": {
       "get": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "List system prompts",
         "description": "Get all available system prompts (default and custom).",
         "responses": {
@@ -2028,7 +2137,9 @@
         }
       },
       "post": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Create custom system prompt",
         "description": "Create a new custom system prompt.",
         "requestBody": {
@@ -2037,7 +2148,10 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["title", "content"],
+                "required": [
+                  "title",
+                  "content"
+                ],
                 "properties": {
                   "title": {
                     "type": "string",
@@ -2068,7 +2182,9 @@
     },
     "/api/settings/prompts/{id}": {
       "put": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Update system prompt",
         "description": "Update a custom system prompt.",
         "parameters": [
@@ -2106,7 +2222,9 @@
         }
       },
       "delete": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Delete system prompt",
         "description": "Delete a custom system prompt (default prompts cannot be deleted).",
         "parameters": [
@@ -2129,7 +2247,9 @@
     },
     "/api/settings/hardware": {
       "get": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Get hardware info",
         "description": "Get system RAM and VRAM information.",
         "responses": {
@@ -2158,7 +2278,9 @@
     },
     "/api/settings/models/lookup": {
       "post": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Lookup provider models",
         "description": "Fetch available models from a specific LLM provider.",
         "requestBody": {
@@ -2167,11 +2289,18 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["provider", "api_key"],
+                "required": [
+                  "provider",
+                  "api_key"
+                ],
                 "properties": {
                   "provider": {
                     "type": "string",
-                    "enum": ["openai", "anthropic", "groq"],
+                    "enum": [
+                      "openai",
+                      "anthropic",
+                      "groq"
+                    ],
                     "example": "openai"
                   },
                   "api_key": {
@@ -2192,7 +2321,9 @@
     },
     "/api/settings/connections/": {
       "get": {
-        "tags": ["Connections"],
+        "tags": [
+          "Connections"
+        ],
         "summary": "List LLM connections",
         "description": "Get all custom LLM connection configurations.",
         "responses": {
@@ -2212,7 +2343,9 @@
         }
       },
       "post": {
-        "tags": ["Connections"],
+        "tags": [
+          "Connections"
+        ],
         "summary": "Create LLM connection",
         "description": "Create a new custom LLM connection.",
         "requestBody": {
@@ -2221,7 +2354,11 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["name", "base_url", "api_key"],
+                "required": [
+                  "name",
+                  "base_url",
+                  "api_key"
+                ],
                 "properties": {
                   "name": {
                     "type": "string",
@@ -2264,7 +2401,9 @@
     },
     "/api/settings/connections/{id}": {
       "put": {
-        "tags": ["Connections"],
+        "tags": [
+          "Connections"
+        ],
         "summary": "Update LLM connection",
         "description": "Update a custom LLM connection.",
         "parameters": [
@@ -2308,7 +2447,9 @@
         }
       },
       "delete": {
-        "tags": ["Connections"],
+        "tags": [
+          "Connections"
+        ],
         "summary": "Delete LLM connection",
         "description": "Delete a custom LLM connection.",
         "parameters": [
@@ -2331,7 +2472,9 @@
     },
     "/api/settings/connections/active": {
       "post": {
-        "tags": ["Connections"],
+        "tags": [
+          "Connections"
+        ],
         "summary": "Set active connection",
         "description": "Set the active LLM connection.",
         "requestBody": {
@@ -2340,7 +2483,9 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["connection_id"],
+                "required": [
+                  "connection_id"
+                ],
                 "properties": {
                   "connection_id": {
                     "type": "string",
@@ -2360,7 +2505,9 @@
     },
     "/api/memory/": {
       "get": {
-        "tags": ["Memory"],
+        "tags": [
+          "Memory"
+        ],
         "summary": "Get user memories",
         "description": "Retrieve all long-term user memory facts.",
         "responses": {
@@ -2393,7 +2540,9 @@
     },
     "/api/memory/{id}": {
       "delete": {
-        "tags": ["Memory"],
+        "tags": [
+          "Memory"
+        ],
         "summary": "Delete memory",
         "description": "Delete a specific user memory.",
         "parameters": [
@@ -2416,7 +2565,9 @@
     },
     "/api/voice/transcribe": {
       "post": {
-        "tags": ["Voice"],
+        "tags": [
+          "Voice"
+        ],
         "summary": "Transcribe audio",
         "description": "Transcribe audio file to text using Whisper or configured STT provider.",
         "requestBody": {
@@ -2463,7 +2614,9 @@
     },
     "/api/voice/synthesize": {
       "post": {
-        "tags": ["Voice"],
+        "tags": [
+          "Voice"
+        ],
         "summary": "Synthesize speech",
         "description": "Convert text to speech using configured TTS provider.",
         "requestBody": {
@@ -2472,7 +2625,9 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["text"],
+                "required": [
+                  "text"
+                ],
                 "properties": {
                   "text": {
                     "type": "string",
@@ -2500,7 +2655,9 @@
     },
     "/api/voice/message/{id}/audio": {
       "get": {
-        "tags": ["Voice"],
+        "tags": [
+          "Voice"
+        ],
         "summary": "Get message audio",
         "description": "Get or generate audio for a specific message.",
         "parameters": [
@@ -2531,7 +2688,9 @@
     },
     "/api/reasoning/traverse": {
       "post": {
-        "tags": ["Reasoning"],
+        "tags": [
+          "Reasoning"
+        ],
         "summary": "Traverse knowledge graph",
         "description": "Find reasoning path between two concepts using the knowledge graph.",
         "requestBody": {
@@ -2540,7 +2699,10 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["start", "goal"],
+                "required": [
+                  "start",
+                  "goal"
+                ],
                 "properties": {
                   "start": {
                     "type": "string",
@@ -2618,7 +2780,9 @@
     },
     "/api/reasoning/reprocess": {
       "post": {
-        "tags": ["Reasoning"],
+        "tags": [
+          "Reasoning"
+        ],
         "summary": "Reprocess hypergraph",
         "description": "Reprocess knowledge graph extraction for all documents.",
         "requestBody": {
@@ -2645,7 +2809,9 @@
     },
     "/api/reasoning/reprocess/status": {
       "get": {
-        "tags": ["Reasoning"],
+        "tags": [
+          "Reasoning"
+        ],
         "summary": "Get reprocessing status",
         "description": "Get status of hypergraph reprocessing task.",
         "responses": {
@@ -2674,7 +2840,9 @@
     },
     "/api/wiki/concepts": {
       "get": {
-        "tags": ["Wiki"],
+        "tags": [
+          "Wiki"
+        ],
         "summary": "List concepts",
         "description": "List all concepts in the knowledge base with pagination.",
         "parameters": [
@@ -2730,7 +2898,9 @@
     },
     "/api/wiki/article/{name}": {
       "get": {
-        "tags": ["Wiki"],
+        "tags": [
+          "Wiki"
+        ],
         "summary": "Get concept article",
         "description": "Get detailed article for a concept with relations and sources.",
         "parameters": [
@@ -2792,7 +2962,9 @@
     },
     "/api/wiki/search": {
       "get": {
-        "tags": ["Wiki"],
+        "tags": [
+          "Wiki"
+        ],
         "summary": "Search concepts",
         "description": "Search concepts by name or description.",
         "parameters": [
@@ -2832,7 +3004,9 @@
     },
     "/api/videomix/projects": {
       "get": {
-        "tags": ["VideoMix"],
+        "tags": [
+          "VideoMix"
+        ],
         "summary": "List video projects",
         "description": "Get all video mix projects.",
         "responses": {
@@ -2852,7 +3026,9 @@
         }
       },
       "post": {
-        "tags": ["VideoMix"],
+        "tags": [
+          "VideoMix"
+        ],
         "summary": "Create video project",
         "description": "Create a new video mix project.",
         "requestBody": {
@@ -2861,7 +3037,11 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["title", "user_prompt", "document_ids"],
+                "required": [
+                  "title",
+                  "user_prompt",
+                  "document_ids"
+                ],
                 "properties": {
                   "title": {
                     "type": "string",
@@ -2884,7 +3064,12 @@
                   },
                   "resolution": {
                     "type": "string",
-                    "enum": ["1080p", "720p", "480p", "source"],
+                    "enum": [
+                      "1080p",
+                      "720p",
+                      "480p",
+                      "source"
+                    ],
                     "default": "1080p"
                   },
                   "title_cards_enabled": {
@@ -2920,7 +3105,9 @@
     },
     "/api/videomix/projects/{id}": {
       "get": {
-        "tags": ["VideoMix"],
+        "tags": [
+          "VideoMix"
+        ],
         "summary": "Get project details",
         "description": "Get video project with scripts and render jobs.",
         "parameters": [
@@ -2944,7 +3131,9 @@
         }
       },
       "put": {
-        "tags": ["VideoMix"],
+        "tags": [
+          "VideoMix"
+        ],
         "summary": "Update project",
         "description": "Update video project details.",
         "parameters": [
@@ -2985,7 +3174,9 @@
         }
       },
       "delete": {
-        "tags": ["VideoMix"],
+        "tags": [
+          "VideoMix"
+        ],
         "summary": "Delete project",
         "description": "Delete video project and associated files.",
         "parameters": [
@@ -3008,7 +3199,9 @@
     },
     "/api/videomix/projects/{id}/generate-script": {
       "post": {
-        "tags": ["VideoMix"],
+        "tags": [
+          "VideoMix"
+        ],
         "summary": "Generate video script",
         "description": "Generate video script using LLM based on project prompt and documents.",
         "parameters": [
@@ -3038,7 +3231,9 @@
     },
     "/api/videomix/projects/{id}/refine-script": {
       "post": {
-        "tags": ["VideoMix"],
+        "tags": [
+          "VideoMix"
+        ],
         "summary": "Refine video script",
         "description": "Refine existing script based on user feedback.",
         "parameters": [
@@ -3058,7 +3253,9 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["message"],
+                "required": [
+                  "message"
+                ],
                 "properties": {
                   "message": {
                     "type": "string",
@@ -3085,7 +3282,9 @@
     },
     "/api/videomix/scripts/{id}/render": {
       "post": {
-        "tags": ["VideoMix"],
+        "tags": [
+          "VideoMix"
+        ],
         "summary": "Render video",
         "description": "Start rendering video from script.",
         "parameters": [
@@ -3115,7 +3314,9 @@
     },
     "/api/videomix/render-jobs/{id}": {
       "get": {
-        "tags": ["VideoMix"],
+        "tags": [
+          "VideoMix"
+        ],
         "summary": "Get render status",
         "description": "Get status of a render job.",
         "parameters": [
@@ -3145,7 +3346,9 @@
     },
     "/api/videomix/render-jobs/{id}/cancel": {
       "post": {
-        "tags": ["VideoMix"],
+        "tags": [
+          "VideoMix"
+        ],
         "summary": "Cancel render",
         "description": "Cancel an in-progress render job.",
         "parameters": [
@@ -3168,7 +3371,9 @@
     },
     "/api/videomix/render-jobs/{id}/download": {
       "get": {
-        "tags": ["VideoMix"],
+        "tags": [
+          "VideoMix"
+        ],
         "summary": "Download rendered video",
         "description": "Download completed video file.",
         "parameters": [
@@ -3196,45 +3401,6 @@
           },
           "404": {
             "description": "Video not found or not ready"
-          }
-        }
-      }
-    },
-    "/api/settings/ollama/status": {
-      "get": {
-        "tags": ["Settings"],
-        "summary": "Check Ollama status",
-        "description": "DEPRECATED: Use llama.cpp instead. Check Ollama container status.",
-        "deprecated": true,
-        "responses": {
-          "200": {
-            "description": "Ollama status"
-          }
-        }
-      }
-    },
-    "/api/settings/ollama/install": {
-      "post": {
-        "tags": ["Settings"],
-        "summary": "Install Ollama",
-        "description": "DEPRECATED: Use llama.cpp instead. Pull Ollama Docker image.",
-        "deprecated": true,
-        "responses": {
-          "200": {
-            "description": "Installation progress (streaming)"
-          }
-        }
-      }
-    },
-    "/api/settings/ollama/start": {
-      "post": {
-        "tags": ["Settings"],
-        "summary": "Start Ollama",
-        "description": "DEPRECATED: Use llama.cpp instead. Start Ollama container.",
-        "deprecated": true,
-        "responses": {
-          "200": {
-            "description": "Container started"
           }
         }
       }

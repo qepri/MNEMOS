@@ -48,7 +48,7 @@ export class ChatPage {
     const prefs = this.settingsService.chatPreferences();
     if (!prefs) return '...';
 
-    const provider = prefs.llm_provider || 'ollama';
+    const provider = prefs.llm_provider || 'llamacpp';
 
     if (provider === 'custom') {
       const connId = prefs.active_connection_id;
@@ -59,9 +59,9 @@ export class ChatPage {
       return `${name} / ${prefs.selected_llm_model || '...'}`;
     }
 
-    if (provider === 'ollama') {
+    if (provider === 'llamacpp') {
       const model = this.settingsService.currentModel();
-      return `ollama / ${model || '...'}`;
+      return `llamacpp / ${model || '...'}`;
     }
 
     return `${provider} / ${prefs.selected_llm_model || '...'}`;

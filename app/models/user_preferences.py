@@ -36,12 +36,9 @@ class UserPreferences(db.Model):
 
     # Long-term Memory
     memory_enabled = db.Column(db.Boolean, default=False, nullable=False)
-    memory_provider = db.Column(db.String(50), default='ollama', nullable=False)
-    memory_llm_model = db.Column(db.String(255), nullable=True) # e.g. 'llama3:8b'
+    memory_provider = db.Column(db.String(50), default='llamacpp', nullable=False)
+    memory_llm_model = db.Column(db.String(255), nullable=True)
     max_memories = db.Column(db.Integer, default=50, nullable=False)
-    
-    # Ollama Specifics
-    ollama_num_ctx = db.Column(db.Integer, default=2048, server_default='2048', nullable=False)
 
     # LLM Generation Parameters
     llm_max_tokens = db.Column(db.Integer, default=4096, nullable=False)
@@ -92,13 +89,11 @@ class UserPreferences(db.Model):
             "groq_api_key": self.groq_api_key,
             "custom_api_key": self.custom_api_key,
             "transcription_provider": self.transcription_provider,
-            "transcription_provider": self.transcription_provider,
             'local_llm_base_url': self.local_llm_base_url,
             'memory_enabled': self.memory_enabled,
             'memory_provider': self.memory_provider,
             'memory_llm_model': self.memory_llm_model,
             'max_memories': self.max_memories,
-            'ollama_num_ctx': self.ollama_num_ctx,
             'llm_max_tokens': self.llm_max_tokens,
             'llm_temperature': self.llm_temperature,
             'llm_top_p': self.llm_top_p,

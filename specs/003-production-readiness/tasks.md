@@ -98,53 +98,53 @@ Brownfield repository, existing layout retained. Backend at `app/`, config at `c
 
 ### Backend code removal
 
-- [ ] T024 [US2] Remove the `ollama_manage_bp` import (`app/__init__.py:49`) and its registration at `url_prefix='/api/settings/ollama'` (line 60)
-- [ ] T025 [US2] Delete `app/api/ollama_manage.py`
-- [ ] T026 [US2] Remove `OLLAMA = "ollama"` from the `LLMProvider` enum in `config/settings.py:12`
-- [ ] T027 [P] [US2] Remove all Ollama provider branches from `app/services/llm_client.py`
-- [ ] T028 [P] [US2] Remove all Ollama provider branches from `app/services/embedder.py`
-- [ ] T029 [US2] Add a graceful provider fallback in `app/services/llm_client.py`: an unrecognized stored provider value (notably `ollama`) resolves to `llamacpp` with a warning log instead of raising — required because migrations may not have run yet (FR-022)
-- [ ] T030 [P] [US2] Remove Ollama references from `app/services/memory_service.py`
-- [ ] T031 [P] [US2] Remove Ollama references from `app/utils/hf_downloader.py`
-- [ ] T032 [P] [US2] Remove Ollama references from `app/mcp_server/server.py`
-- [ ] T033 [P] [US2] Remove Ollama references from `app/tasks/processing.py`
-- [ ] T034 [P] [US2] Remove Ollama references from `app/models/user_preferences.py` (leave the `ollama_num_ctx` **column** in place — it is dropped by migration T063, not by model edits alone)
-- [ ] T035 [US2] Remove `map_hf_to_ollama` and all Ollama pull/download logic from `app/api/settings.py`
+- [X] T024 [US2] Remove the `ollama_manage_bp` import (`app/__init__.py:49`) and its registration at `url_prefix='/api/settings/ollama'` (line 60)
+- [X] T025 [US2] Delete `app/api/ollama_manage.py`
+- [X] T026 [US2] Remove `OLLAMA = "ollama"` from the `LLMProvider` enum in `config/settings.py:12`
+- [X] T027 [P] [US2] Remove all Ollama provider branches from `app/services/llm_client.py`
+- [X] T028 [P] [US2] Remove all Ollama provider branches from `app/services/embedder.py`
+- [X] T029 [US2] Add a graceful provider fallback in `app/services/llm_client.py`: an unrecognized stored provider value (notably `ollama`) resolves to `llamacpp` with a warning log instead of raising — required because migrations may not have run yet (FR-022)
+- [X] T030 [P] [US2] Remove Ollama references from `app/services/memory_service.py`
+- [X] T031 [P] [US2] Remove Ollama references from `app/utils/hf_downloader.py`
+- [X] T032 [P] [US2] Remove Ollama references from `app/mcp_server/server.py`
+- [X] T033 [P] [US2] Remove Ollama references from `app/tasks/processing.py`
+- [X] T034 [P] [US2] Remove Ollama references from `app/models/user_preferences.py` (leave the `ollama_num_ctx` **column** in place — it is dropped by migration T063, not by model edits alone)
+- [X] T035 [US2] Remove `map_hf_to_ollama` and all Ollama pull/download logic from `app/api/settings.py`
 
 ### Configuration
 
-- [ ] T036 [US2] Remove `OLLAMA_SERVICE_NAME`, `OLLAMA_BASE_URL`, and `OLLAMA_NUM_CTX` from `config/settings.py:57-61`
-- [ ] T037 [US2] Fix the diverged embedding defaults in `config/settings.py:64-65`: `EMBEDDING_PROVIDER = "local"` and `EMBEDDING_MODEL = "BAAI/bge-m3"` (both currently contradict the live compose environment that produced the existing vectors). Leave `EMBEDDING_DIMENSION = 1024` untouched
-- [ ] T038 [P] [US2] Remove `OLLAMA_*` entries from `.env.example` and `.env`
-- [ ] T039 [P] [US2] Remove Ollama entries from `.dockerignore` and `.gitignore`
+- [X] T036 [US2] Remove `OLLAMA_SERVICE_NAME`, `OLLAMA_BASE_URL`, and `OLLAMA_NUM_CTX` from `config/settings.py:57-61`
+- [X] T037 [US2] Fix the diverged embedding defaults in `config/settings.py:64-65`: `EMBEDDING_PROVIDER = "local"` and `EMBEDDING_MODEL = "BAAI/bge-m3"` (both currently contradict the live compose environment that produced the existing vectors). Leave `EMBEDDING_DIMENSION = 1024` untouched
+- [X] T038 [P] [US2] Remove `OLLAMA_*` entries from `.env.example` and `.env`
+- [X] T039 [P] [US2] Remove Ollama entries from `.dockerignore` and `.gitignore`
 
 ### Frontend (must land WITH the backend blueprint removal — T024/T025 — or the settings page 404s)
 
-- [ ] T040 [P] [US2] Remove Ollama endpoint constants from `frontend_spa/src/app/core/constants/api-endpoints.ts`
-- [ ] T041 [P] [US2] Remove Ollama fields from `frontend_spa/src/app/core/models/settings.model.ts`
-- [ ] T042 [US2] Remove Ollama API calls (pull, download polling) from `frontend_spa/src/app/services/settings.service.ts`
-- [ ] T043 [US2] Remove the Ollama pull/GGUF modals and `pollDownloads` logic from `frontend_spa/src/app/features/settings/components/settings-discover-tab/settings-discover-tab.component.ts` and `.html`
-- [ ] T044 [P] [US2] Remove Ollama options from `frontend_spa/src/app/components/modals/llm-selection-modal/llm-selection-modal.component.ts` and `.html`
-- [ ] T045 [P] [US2] Remove Ollama options from `frontend_spa/src/app/shared/components/llm-selector/llm-selector.component.ts`
-- [ ] T046 [P] [US2] Remove Ollama references from `frontend_spa/src/app/features/chat/components/chat-input/chat-input.component.ts`
-- [ ] T047 [P] [US2] Remove Ollama references from `frontend_spa/src/app/features/chat/pages/chat-page/chat-page.component.ts`
+- [X] T040 [P] [US2] Remove Ollama endpoint constants from `frontend_spa/src/app/core/constants/api-endpoints.ts`
+- [X] T041 [P] [US2] Remove Ollama fields from `frontend_spa/src/app/core/models/settings.model.ts`
+- [X] T042 [US2] Remove Ollama API calls (pull, download polling) from `frontend_spa/src/app/services/settings.service.ts`
+- [X] T043 [US2] Remove the Ollama pull/GGUF modals and `pollDownloads` logic from `frontend_spa/src/app/features/settings/components/settings-discover-tab/settings-discover-tab.component.ts` and `.html`
+- [X] T044 [P] [US2] Remove Ollama options from `frontend_spa/src/app/components/modals/llm-selection-modal/llm-selection-modal.component.ts` and `.html`
+- [X] T045 [P] [US2] Remove Ollama options from `frontend_spa/src/app/shared/components/llm-selector/llm-selector.component.ts`
+- [X] T046 [P] [US2] Remove Ollama references from `frontend_spa/src/app/features/chat/components/chat-input/chat-input.component.ts`
+- [X] T047 [P] [US2] Remove Ollama references from `frontend_spa/src/app/features/chat/pages/chat-page/chat-page.component.ts`
 
 ### Infrastructure — remove the root-equivalent socket mount
 
-- [ ] T048 [US2] Delete `app/utils/docker_helpers.py` (verified: its only consumer was `app/api/ollama_manage.py`, deleted in T025; the only other `import docker` was the stray one removed in T022)
-- [ ] T049 [US2] Remove the `/var/run/docker.sock:/var/run/docker.sock` mounts from the `app` (line 41) and `worker` (line 79) services in `docker-compose.yml`, and any equivalent in `docker-compose.dev.yml` and `docker-compose.cpu.yml`
-- [ ] T050 [US2] Remove `docker>=7.0.0` from `requirements.txt`
-- [ ] T051 [US2] Remove the `ollama` service definition from `docker-compose.cpu.yml:20` (the main and dev compose files do not declare it)
+- [X] T048 [US2] Delete `app/utils/docker_helpers.py` (verified: its only consumer was `app/api/ollama_manage.py`, deleted in T025; the only other `import docker` was the stray one removed in T022)
+- [X] T049 [US2] Remove the `/var/run/docker.sock:/var/run/docker.sock` mounts from the `app` (line 41) and `worker` (line 79) services in `docker-compose.yml`, and any equivalent in `docker-compose.dev.yml` and `docker-compose.cpu.yml`
+- [X] T050 [US2] Remove `docker>=7.0.0` from `requirements.txt`
+- [X] T051 [US2] Remove the `ollama` service definition from `docker-compose.cpu.yml:20` (the main and dev compose files do not declare it)
 
 ### Documentation
 
-- [ ] T052 [P] [US2] Remove Ollama references from `CLAUDE.md` and `README.md`
-- [ ] T053 [P] [US2] Remove Ollama references from `presets/`
-- [ ] T054 [P] [US2] Remove Ollama references from `installer/install.ps1`, `installer/build-installer.ps1`, `installer/mnemos-installer.nsi`, `installer/docker-compose.podman.yml`, `installer/docker-compose.podman.test.yml`
+- [X] T052 [P] [US2] Remove Ollama references from `CLAUDE.md` and `README.md`
+- [X] T053 [P] [US2] Remove Ollama references from `presets/`
+- [X] T054 [P] [US2] Remove Ollama references from `installer/install.ps1`, `installer/build-installer.ps1`, `installer/mnemos-installer.nsi`, `installer/docker-compose.podman.yml`, `installer/docker-compose.podman.test.yml`
 
 ### Verification
 
-- [ ] T055 [US2] Rebuild the frontend and run the grep gate from `quickstart.md` §2 — zero hits excluding `frontend_spa/dist/`, `.agent/`, `backups/`, `migrations/`. Confirm no `docker.sock` in any compose file, the app boots, chat works, and the settings page has no console 404s
+- [X] T055 [US2] Rebuild the frontend and run the grep gate from `quickstart.md` §2 — zero hits excluding `frontend_spa/dist/`, `.agent/`, `backups/`, `migrations/`. Confirm no `docker.sock` in any compose file, the app boots, chat works, and the settings page has no console 404s
 
 **Checkpoint**: ✅ Ollama fully purged; privileged socket mount gone.
 

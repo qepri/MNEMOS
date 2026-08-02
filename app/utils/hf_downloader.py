@@ -97,19 +97,3 @@ class HFDownloader:
                 os.remove(dest_path)
             raise e
 
-    @staticmethod
-    def create_modelfile(model_name, filename):
-        """
-        Create a Modelfile for the given GGUF.
-        Note: The path in FROM must be viewed from the OLLAMA container.
-        Ollama container sees the import dir at /root/.ollama/import
-        """
-        modelfile_content = f"FROM /root/.ollama/import/{filename}\n"
-        
-        # Determine path to save Modelfile. Ideally alongside the GGUF for temporary usage.
-        modelfile_path = os.path.join(HFDownloader.IMPORT_DIR, f"{model_name}.Modelfile")
-        
-        with open(modelfile_path, 'w') as f:
-            f.write(modelfile_content)
-            
-        return modelfile_content

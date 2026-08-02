@@ -1,6 +1,6 @@
 # Mnemos Windows Installer
 
-This document explains the Windows installer system for Mnemos, which packages the entire application stack (PostgreSQL, pgvector, Flask, Celery, Redis, Ollama, Angular) as a one-click executable.
+This document explains the Windows installer system for Mnemos, which packages the entire application stack (PostgreSQL, pgvector, Flask, Celery, Redis, llama.cpp, Angular) as a one-click executable.
 
 ## Overview
 
@@ -71,7 +71,7 @@ README.INSTALLER.md             # This file
    - Redis
    - Flask backend
    - Celery worker
-   - Ollama (LLM server)
+   - llama.cpp (LLM server)
    - Angular frontend
 4. **Browser opens to http://localhost:5200**
 
@@ -149,7 +149,7 @@ C:\Program Files\Mnemos\.env
 
 Key settings:
 - `EMBEDDING_DEVICE=cuda` (or `cpu` for non-GPU)
-- `OLLAMA_NUM_CTX=2048` (context window)
+- `LLAMACPP_NUM_CTX=16384` (context window)
 - Database credentials (if changed)
 
 ### Resource Allocation

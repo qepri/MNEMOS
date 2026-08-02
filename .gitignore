@@ -71,9 +71,6 @@ data/
 # Archive folder (persistent file storage)
 archive/
 
-# Ollama models (can be large)
-ollama_models/
-!ollama_models/import/.gitkeep
 
 # Logs
 *.log

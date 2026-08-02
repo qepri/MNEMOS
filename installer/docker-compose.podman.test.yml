@@ -20,7 +20,6 @@ services:
       - DATABASE_URL=postgresql://mnemos_user:mnemos_pass@db:5432/mnemos_db
       - REDIS_URL=redis://redis:6379/0
       - PYTHONUNBUFFERED=1
-      - OLLAMA_NUM_CTX=2048
       - EMBEDDING_PROVIDER=local
       - EMBEDDING_DEVICE=cuda
       - EMBEDDING_MODEL=BAAI/bge-m3
@@ -31,11 +30,9 @@ services:
       - ./config:/app/config:rw
       - ./.env:/app/.env:ro
       - ./migrations:/app/migrations:rw
-      - ./ollama_models/import:/app/ollama_import:rw
       - uploads_data_podman:/app/uploads
       - whisper_cache_podman:/root/.cache/whisper
       - hf_cache_podman:/root/.cache/huggingface
-      - /run/podman/podman.sock:/var/run/docker.sock
     depends_on:
       db:
         condition: service_healthy
@@ -55,7 +52,6 @@ services:
       - DATABASE_URL=postgresql://mnemos_user:mnemos_pass@db:5432/mnemos_db
       - REDIS_URL=redis://redis:6379/0
       - PYTHONUNBUFFERED=1
-      - OLLAMA_NUM_CTX=2048
       - EMBEDDING_PROVIDER=local
       - EMBEDDING_DEVICE=cuda
       - EMBEDDING_MODEL=BAAI/bge-m3
@@ -68,8 +64,6 @@ services:
       - uploads_data_podman:/app/uploads
       - whisper_cache_podman:/root/.cache/whisper
       - hf_cache_podman:/root/.cache/huggingface
-      - ./ollama_models/import:/app/ollama_import:rw
-      - /run/podman/podman.sock:/var/run/docker.sock
     depends_on:
       db:
         condition: service_healthy
@@ -82,25 +76,31 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-  ollama:
-    image: ollama/ollama:latest
+  llamacpp:
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda
+    pull_policy: missing
     ports:
-      - "11436:11434"  # Changed from 11435
+      - "8082:8080"
     volumes:
-      - ollama_models_podman:/root/.ollama
-      - ./ollama_models/import:/root/.ollama/import
+      - ./models:/models
+    command: >
+      --port 8080
+      --host 0.0.0.0
+      -m ${LLAMACPP_MODEL_PATH:-/models/Hermes-3-Llama-3.2-3B.Q4_K_M.gguf}
+      -ngl ${LLAMACPP_GPU_LAYERS:-99}
+      -c ${LLAMACPP_NUM_CTX:-16384}
+      --fit off
     devices:
       - nvidia.com/gpu=all
     security_opt:
       - label=disable
-    environment:
-      - OLLAMA_HOST=0.0.0.0
-      - OLLAMA_FLASH_ATTENTION=1
-      - OLLAMA_GPU_LAYERS=-1
-      - CUDA_VISIBLE_DEVICES=0
-      - OLLAMA_MAX_LOADED_MODELS=1
-      - OLLAMA_NUM_CTX=2048
     restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
+      interval: 15s
+      timeout: 10s
+      retries: 25
+      start_period: 300s
 
   mcp:
     build: .
@@ -160,4 +160,3 @@ volumes:
   whisper_cache_podman:
   redis_data_podman:
   hf_cache_podman:
-  ollama_models_podman:

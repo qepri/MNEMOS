@@ -43,6 +43,16 @@ class LLMClient:
             self.provider = settings.LLM_PROVIDER
             logger.debug(f"Fallback to Settings provider: {self.provider}")
 
+        # Stored preferences may still name a retired provider (e.g. "ollama")
+        # when the data migration has not run — RUN_MIGRATIONS may be false.
+        # Degrade to llamacpp instead of raising.
+        if self.provider not in set(LLMProvider):
+            logger.warning(
+                f"Unknown LLM provider '{self.provider}' in stored config; "
+                f"falling back to '{LLMProvider.LLAMACPP.value}'"
+            )
+            self.provider = LLMProvider.LLAMACPP
+
         d_anthropic_key = db_prefs.anthropic_api_key if db_prefs else None
         d_groq_key = db_prefs.groq_api_key if db_prefs else None
         d_cerebras_key = getattr(db_prefs, 'cerebras_api_key', None)
@@ -57,8 +67,6 @@ class LLMClient:
         s_groq_key = settings.GROQ_API_KEY
         s_cerebras_key = getattr(settings, 'CEREBRAS_API_KEY', None)
         s_deepseek_key = getattr(settings, 'DEEPSEEK_API_KEY', None)
-
-        self.ollama_num_ctx = db_prefs.ollama_num_ctx if db_prefs else settings.OLLAMA_NUM_CTX
 
         if self.provider == LLMProvider.OPENAI:
             key = api_key or d_openai_key or s_openai_key
@@ -86,14 +94,6 @@ class LLMClient:
             )
             self.model = model or s_local_model
             self.llamacpp_num_ctx = getattr(settings, 'LLAMACPP_NUM_CTX', 2048)
-
-        elif self.provider == LLMProvider.OLLAMA:
-            url = base_url or settings.OLLAMA_BASE_URL
-            self.client = OpenAI(
-                base_url=url,
-                api_key="ollama"
-            )
-            self.model = model or s_local_model
 
         elif self.provider == LLMProvider.CEREBRAS:
             key = api_key or d_cerebras_key or s_cerebras_key
@@ -270,11 +270,7 @@ class LLMClient:
                 logger.info(f"Using model: {active_model}")
 
                 extra_body = {}
-                if self.provider == LLMProvider.OLLAMA:
-                    extra_body["options"] = {
-                        "num_ctx": getattr(self, 'ollama_num_ctx', 2048) or settings.OLLAMA_NUM_CTX
-                    }
-                elif self.provider == LLMProvider.LLAMACPP:
+                if self.provider == LLMProvider.LLAMACPP:
                     extra_body["n_predict"] = max_tokens
 
                 request_params = {

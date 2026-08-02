@@ -1458,7 +1458,7 @@ def get_active_settings() -> str:
             output = f"# Active Settings\n\n"
 
             output += f"## LLM Configuration\n\n"
-            output += f"- **Provider:** {prefs.llm_provider or 'ollama'}\n"
+            output += f"- **Provider:** {prefs.llm_provider or 'llamacpp'}\n"
             output += f"- **Model:** {prefs.selected_llm_model or 'Not set'}\n"
             output += f"- **Temperature:** {getattr(prefs, 'llm_temperature', 0.7)}\n"
             output += f"- **Max Tokens:** {getattr(prefs, 'llm_max_tokens', 4096)}\n\n"

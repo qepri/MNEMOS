@@ -242,7 +242,7 @@ function Create-EnvironmentFile {
 FLASK_ENV=production
 DATABASE_URL=postgresql://mnemos_user:mnemos_pass@db:5432/mnemos_db
 REDIS_URL=redis://redis:6379/0
-OLLAMA_NUM_CTX=2048
+LLAMACPP_NUM_CTX=16384
 EMBEDDING_PROVIDER=local
 EMBEDDING_DEVICE=cuda
 EMBEDDING_MODEL=BAAI/bge-m3

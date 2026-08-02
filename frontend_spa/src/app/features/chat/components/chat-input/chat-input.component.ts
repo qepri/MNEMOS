@@ -39,12 +39,12 @@ export class ChatInputComponent {
         const prefs = this.settingsService.chatPreferences();
         if (!prefs) return false;
 
-        const provider = prefs.llm_provider || 'ollama';
-        const model = (provider === 'ollama' ? this.settingsService.currentModel() : prefs.selected_llm_model) || '';
+        const provider = prefs.llm_provider || 'llamacpp';
+        const model = (provider === 'llamacpp' ? this.settingsService.currentModel() : prefs.selected_llm_model) || '';
 
         if (!model) return false;
 
-        if (provider === 'ollama') {
+        if (provider === 'llamacpp') {
             const m = this.settingsService.models()?.models.find(x => x.name === model);
             return !!m?.vision;
         }
@@ -62,12 +62,12 @@ export class ChatInputComponent {
 
     currentModel = computed(() => {
         const prefs = this.settingsService.chatPreferences() || {
-            llm_provider: 'ollama',
-            selected_llm_model: 'llama3:8b'
+            llm_provider: 'llamacpp',
+            selected_llm_model: ''
         } as any;
 
-        const provider = prefs.llm_provider || 'ollama';
-        if (provider === 'ollama') {
+        const provider = prefs.llm_provider || 'llamacpp';
+        if (provider === 'llamacpp') {
             return `local / ${this.settingsService.currentModel() || '...'}`;
         }
 

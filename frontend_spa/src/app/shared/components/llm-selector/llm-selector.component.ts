@@ -313,7 +313,7 @@ export class LlmSelectorComponent {
   }
 
   // Helper to get current state (for parent to save)
-  getSnapshot(): Partial<ChatPreferences> & { ollamaModel?: string } {
+  getSnapshot(): Partial<ChatPreferences> & { localModel?: string } {
     const provider = this.selectedProvider();
     const update: any = { llm_provider: provider };
 

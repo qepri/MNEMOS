@@ -10,73 +10,46 @@ from datetime import datetime
 
 bp = Blueprint('settings', __name__, url_prefix='/api/settings')
 
+def _list_gguf_models():
+    """Scan the models/ directory for GGUF files served by llama.cpp."""
+    import os
+    import glob
+
+    models_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'models'
+    )
+    if not os.path.exists(models_dir):
+        return []
+
+    models = []
+    for file_path in glob.glob(os.path.join(models_dir, '*.gguf')):
+        filename = os.path.basename(file_path)
+        file_size = os.path.getsize(file_path)
+        models.append({
+            'name': filename,
+            'filename': filename,
+            'size': file_size,
+            'size_mb': round(file_size / (1024 * 1024), 2),
+            'path': f'/models/{filename}',
+            'description': 'Local GGUF model (llama.cpp)',
+        })
+    models.sort(key=lambda x: x['size'])
+    return models
+
+
 @bp.route('/models', methods=['GET'])
-
 def get_models():
-    """List available models from Ollama."""
+    """List locally available GGUF models served by llama.cpp."""
     try:
-        base_url = settings.OLLAMA_BASE_URL.replace("/v1", "")
-
-        # Static descriptions for common models to enhance UI
-        MODEL_DESCRIPTIONS = {
-            'llama3': 'Meta Llama 3: The most capable openly available LLM to date.',
-            'qwen2.5': 'Qwen2.5: A comprehensive series of language models by Alibaba Cloud, optimized for code and reasoning.',
-            'mistral': 'Mistral: A high-performance 7B model that outperforms Llama 2 13B on all benchmarks.',
-            'gemma': 'Gemma: A family of lightweight, state-of-the-art open models from Google.',
-            'phi': 'Phi: A small language model by Microsoft that achieves performance comparable to much larger models.',
-            'hermes': 'Hermes: A series of uncensored, instruct-tuned models focused on creative writing and roleplay.'
-        }
-
-        try:
-            # Single call to get tags
-            resp = requests.get(f"{base_url}/api/tags", timeout=5)
-            # If successful, we consider the server running
-            is_running = resp.status_code == 200
-            
-            if is_running:
-                data = resp.json()
-                models = data.get('models', [])
-                
-                # Enhance models with descriptions and detailed vision check
-                for m in models:
-                    families = m.get('details', {}).get('families', []) or []
-                    name_lower = m.get('name', '').lower()
-                    
-                    # Vision detection
-                    is_vision = 'clip' in families or 'mllm' in families
-                    if not is_vision:
-                        if any(x in name_lower for x in ['llava', 'bakllava', 'moondream', 'minicpm', 'vision']):
-                            is_vision = True
-                    # In-place update for internal logic if needed, but we return 'models' list
-                    
-                    # Inject description
-                    m['description'] = "Local Ollama Model" # Default
-                    for key, desc in MODEL_DESCRIPTIONS.items():
-                        if key in name_lower:
-                            m['description'] = desc
-                            break
-
-                has_vision = any('vision' in m.get('name', '').lower() or 
-                               ('details' in m and ('clip' in m['details'].get('families', []) or 'mllm' in m['details'].get('families', [])))
-                               for m in models)
-            else:
-                models = []
-                has_vision = False
-
-        except requests.exceptions.RequestException:
-            is_running = False
-            has_vision = False
-            models = []
-
+        models = _list_gguf_models()
         return jsonify({
             'status': 'success',
-            'is_running': is_running,
-            'has_vision': has_vision,
+            'is_running': True,
+            'has_vision': False,
             'models': models
         })
-
     except Exception as e:
-        print(f"Error listing models: {e}")
+        logging.error(f"Error listing models: {e}")
         return jsonify({
             'status': 'error',
             'message': str(e),
@@ -86,62 +59,40 @@ def get_models():
 
 @bp.route('/models', methods=['DELETE'])
 def delete_model():
-    """Delete a model from Ollama."""
-    data = request.json
+    """Delete a GGUF model file from the models/ directory."""
+    import os
+
+    data = request.json or {}
     model_name = data.get('model')
     if not model_name:
         return jsonify({"error": "Model name required"}), 400
 
+    # Reject path traversal - only a bare filename inside models/ is valid.
+    if os.path.basename(model_name) != model_name:
+        return jsonify({"error": "Invalid model name"}), 400
+
+    models_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'models'
+    )
+    target = os.path.join(models_dir, model_name)
+    if not os.path.isfile(target):
+        return jsonify({"error": "Model not found"}), 404
+
     try:
-        base_url = settings.OLLAMA_BASE_URL.replace("/v1", "")
-        # Ollama API: DELETE /api/delete {"name": "model:tag"}
-        resp = requests.delete(f"{base_url}/api/delete", json={"name": model_name}, timeout=30)
-        resp.raise_for_status()
+        os.remove(target)
         return jsonify({"success": True, "model": model_name})
-    except Exception as e:
+    except OSError as e:
         return jsonify({"error": str(e)}), 500
 
 @bp.route('/llamacpp/models', methods=['GET'])
 def get_llamacpp_models():
     """List available GGUF models in the models/ directory for llamacpp."""
     try:
-        import os
-        import glob
-
-        # Path to models directory (same as mounted in llamacpp container)
-        models_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'models')
-
-        if not os.path.exists(models_dir):
-            return jsonify({
-                'models': [],
-                'message': 'Models directory not found'
-            })
-
-        # Find all .gguf files
-        gguf_files = glob.glob(os.path.join(models_dir, '*.gguf'))
-
-        models = []
-        for file_path in gguf_files:
-            filename = os.path.basename(file_path)
-            file_size = os.path.getsize(file_path)
-            size_mb = round(file_size / (1024 * 1024), 2)
-
-            models.append({
-                'name': filename,
-                'filename': filename,
-                'size': file_size,
-                'size_mb': size_mb,
-                'path': f'/models/{filename}'
-            })
-
-        # Sort by size (smallest first for faster loading)
-        models.sort(key=lambda x: x['size'])
-
+        models = _list_gguf_models()
         return jsonify({
             'models': models,
             'count': len(models)
         })
-
     except Exception as e:
         logging.error(f"Error listing llamacpp models: {e}")
         return jsonify({
@@ -151,7 +102,7 @@ def get_llamacpp_models():
 
 @bp.route('/library/search', methods=['GET'])
 def search_library():
-    """Search Hugging Face for GGUF models compatible with Ollama."""
+    """Search Hugging Face for GGUF models compatible with llama.cpp."""
     query = request.args.get('q', '').strip()
     sort = request.args.get('sort', 'downloads')  # downloads, trending, created
     limit = int(request.args.get('limit', '30'))
@@ -161,7 +112,7 @@ def search_library():
         hf_api_url = "https://huggingface.co/api/models"
 
         params = {
-            'filter': 'gguf',  # Only GGUF models (Ollama compatible)
+            'filter': 'gguf',  # Only GGUF models (llama.cpp compatible)
             'sort': sort,
             'limit': limit,
             'full': 'true'  # Get full model info including tags
@@ -194,14 +145,10 @@ def search_library():
             downloads = model.get('downloads', 0)
             likes = model.get('likes', 0)
 
-            # Map HF model to Ollama-compatible name
-            ollama_name = map_hf_to_ollama(model_id, name)
-
             # Build model entry
             catalog.append({
                 "name": name,
                 "full_name": model_id,  # Use full HF model ID
-                "ollama_name": ollama_name,  # Ollama-compatible name
                 "author": author,
                 "description": extract_description(model, name),
                 "size_gb": size_info['size_gb'],
@@ -214,7 +161,7 @@ def search_library():
                 "likes": likes,
                 "updated_at": model.get('lastModified', ''),
                 "hf_url": f"https://huggingface.co/{model_id}",
-                "is_hf_only": ollama_name is None  # True if not in Ollama library
+                "is_hf_only": True
             })
 
         return jsonify({"models": catalog, "total": len(catalog)})
@@ -279,89 +226,6 @@ def extract_description(model, name):
 
     # Fallback: generate from name and tags
     return f"GGUF model: {name}"
-
-
-def map_hf_to_ollama(hf_id, name):
-    """
-    Map Hugging Face model IDs to Ollama library names.
-    Returns None if the model is not in Ollama's library.
-    """
-    # Common mappings from HF to Ollama
-    hf_to_ollama = {
-        # Llama models
-        'meta-llama/Llama-3.2-1B': 'llama3.2:1b',
-        'meta-llama/Llama-3.2-3B': 'llama3.2:latest',
-        'meta-llama/Meta-Llama-3.1-8B': 'llama3.1:latest',
-        'meta-llama/Meta-Llama-3.1-70B': 'llama3.1:70b',
-
-        # Mistral
-        'mistralai/Mistral-7B-Instruct-v0.3': 'mistral:latest',
-        'mistralai/Mixtral-8x7B-Instruct': 'mixtral:latest',
-
-        # Qwen
-        'Qwen/Qwen2.5-7B': 'qwen2.5:latest',
-        'Qwen/Qwen2.5-14B': 'qwen2.5:14b',
-        'Qwen/Qwen2-7B': 'qwen:7b',
-
-        # Phi
-        'microsoft/Phi-3-mini-4k-instruct': 'phi3:latest',
-
-        # Gemma
-        'google/gemma-2-9b': 'gemma2:latest',
-
-        # CodeLlama
-        'codellama/CodeLlama-7b-Instruct': 'codellama:latest',
-    }
-
-    # Check exact match
-    if hf_id in hf_to_ollama:
-        return hf_to_ollama[hf_id]
-
-    # Try to extract base model name from GGUF repos
-    # Many GGUF models follow pattern: author/ModelName-GGUF
-    if '-gguf' in hf_id.lower():
-        # Extract base model name
-        base_name = name.lower().replace('-gguf', '').replace('_gguf', '')
-
-        # Common base model patterns
-        if 'hermes' in base_name and '3' in base_name:
-            if '405b' in base_name:
-                 return 'hermes3:405b'
-            elif '70b' in base_name:
-                 return 'hermes3:70b'
-            return 'hermes3:latest'
-        elif 'dolphin' in base_name and 'llama3' in base_name:
-            if '2.9' in base_name or '2_9' in base_name:
-                 return 'dolphin-llama3:latest' # v2.9 is common
-            return 'dolphin-llama3:latest'
-        
-        # Generic Llama detection
-        elif 'llama' in base_name and '3.2' in base_name:
-            if '1b' in base_name:
-                return 'llama3.2:1b'
-            return 'llama3.2:latest'
-        elif 'llama' in base_name and '3.1' in base_name:
-            if 'hermes' in base_name or 'dolphin' in base_name:
-                # Avoid mapping fine-tunes to base model if we missed the specific check above
-                return None
-            if '70b' in base_name:
-                return 'llama3.1:70b'
-            return 'llama3.1:latest'
-        elif 'mistral' in base_name:
-            if 'hermes' in base_name:
-                return 'hermes:latest' # Old hermes mistral
-            return 'mistral:latest'
-        elif 'qwen' in base_name:
-            return 'qwen2.5:latest'
-        elif 'phi' in base_name:
-            return 'phi3:latest'
-        elif 'gemma' in base_name:
-            return 'gemma2:latest'
-        elif 'codellama' in base_name or 'code-llama' in base_name:
-            return 'codellama:latest'
-
-    # Not found in Ollama library - this is HF-only
-    return None
 
 
 def estimate_model_size(name, tags):
@@ -447,7 +311,7 @@ def get_fallback_catalog(query=None):
 
     return jsonify({"models": catalog, "total": len(catalog), "fallback": True})
 
-from app.tasks.processing import download_model_task, download_gguf_task
+from app.tasks.processing import download_gguf_task
 from app.utils.hf_downloader import HFDownloader
 import uuid
 import os
@@ -518,37 +382,6 @@ def get_active_downloads():
         
     return jsonify({"tasks": tasks})
 
-@bp.route('/pull', methods=['POST'])
-def pull_model():
-    """Trigger a model pull in Ollama with Celery background task."""
-    data = request.json
-    model_name = data.get('model')
-    display_name = data.get('display_name', model_name) # Capture display name
-    if not model_name:
-        return jsonify({"error": "Model name required"}), 400
-
-    try:
-        # Generate a task ID to track this download
-        task_id = str(uuid.uuid4())
-
-        # Start the download as a background task
-        task = download_model_task.apply_async(
-            args=[model_name],
-            task_id=task_id
-        )
-
-        # Track this download peristently
-        add_active_download(task_id, display_name)
-
-        return jsonify({
-            "task_id": task_id,
-            "status": "started",
-            "model": model_name
-        })
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 # Dictionary to keep track of active downloads (in a real app, this might be in Redis)
 # For now, we'll use browser storage to remember active downloads between page reloads
 # This is stored client-side, but in a real system, you might want to track this server-side
@@ -605,7 +438,7 @@ def get_active_pulls():
                 task_info['result'] = task_result.result
                 task_info['progress'] = 100
                 
-                # Check for nested error in result (Ollama sometimes returns success with error json)
+                # Check for nested error in a successful result payload
                 if task_result.result and 'last_progress' in task_result.result:
                     try:
                         lp = json.loads(task_result.result['last_progress'])
@@ -868,7 +701,7 @@ def get_current_model():
     # Fallback to default if not set
     if not current:
          # Try global settings default
-         if provider == 'ollama':
+         if provider == 'llamacpp':
              current = settings.LOCAL_LLM_MODEL
          elif provider == 'openai':
              current = settings.OPENAI_MODEL
@@ -948,7 +781,7 @@ def get_chat_settings():
         "transcription_provider": getattr(prefs, 'transcription_provider', 'local'),
         "selected_llm_model": prefs.selected_llm_model or "",
         "memory_enabled": getattr(prefs, 'memory_enabled', False),
-        "memory_provider": getattr(prefs, 'memory_provider', 'ollama'),
+        "memory_provider": getattr(prefs, 'memory_provider', 'llamacpp'),
         "memory_llm_model": getattr(prefs, 'memory_llm_model', 'llama3:8b'),
         "max_memories": getattr(prefs, 'max_memories', 50),
         "active_connection_id": str(prefs.active_connection_id) if prefs.active_connection_id else None,
@@ -962,7 +795,6 @@ def get_chat_settings():
         "tts_enabled": getattr(prefs, 'tts_enabled', False),
         "openai_tts_model": getattr(prefs, 'openai_tts_model', 'tts-1'),
         "openai_stt_model": getattr(prefs, 'openai_stt_model', 'whisper-1'),
-        "ollama_num_ctx": getattr(prefs, 'ollama_num_ctx', 2048),
         "llm_max_tokens": getattr(prefs, 'llm_max_tokens', 4096),
         "llm_temperature": getattr(prefs, 'llm_temperature', 0.7),
         "llm_top_p": getattr(prefs, 'llm_top_p', 0.9),
@@ -1057,14 +889,11 @@ def save_chat_settings():
     if 'selected_llm_model' in data:
         new_model = data['selected_llm_model']
         
-        # Prevent overwriting properly set model with empty string if using Ollama
-        # (Frontend might send empty string because the input field is hidden)
+        # Prevent overwriting a properly set model with an empty string when the
+        # frontend hides the input field for local providers.
         current_provider = data.get('llm_provider', prefs.llm_provider)
-        should_update = True
-        
-        if current_provider == 'ollama' and not new_model:
-            should_update = False
-            
+        should_update = not (current_provider == 'llamacpp' and not new_model)
+
         if should_update:
             prefs.selected_llm_model = new_model
             # Also update the ModelManager singleton to reflect immediate change
@@ -1106,10 +935,6 @@ def save_chat_settings():
         prefs.llm_frequency_penalty = float(data['llm_frequency_penalty'])
     if 'llm_presence_penalty' in data:
         prefs.llm_presence_penalty = float(data['llm_presence_penalty'])
-
-    # Ollama Context Window
-    if 'ollama_num_ctx' in data:
-        prefs.ollama_num_ctx = int(data['ollama_num_ctx'])
 
     if 'retrieval_top_k' in data:
         prefs.retrieval_top_k = max(1, min(50, int(data['retrieval_top_k'])))
