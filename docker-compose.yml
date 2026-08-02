@@ -144,6 +144,7 @@ services:
     volumes:
       - ./app:/app/app:rw
       - ./config:/app/config:rw
+      - ./data/uploads:/app/uploads
 
   db:
     image: pgvector/pgvector:pg16

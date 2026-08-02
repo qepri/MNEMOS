@@ -1,0 +1,25 @@
+# Dependencies / build output
+node_modules/
+frontend_spa/dist/
+frontend_spa/.angular/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Data / artifacts (root-level only — app/models is code)
+/backups/
+/data/
+/models/
+uploads/
+*.sql
+*.zst
+*.gguf
+
+# Docs / specs / misc non-code
+specs/
+conductor/
+landing/
+presets/
+migrations/versions/
+.codebase-memory/

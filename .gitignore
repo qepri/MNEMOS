@@ -186,6 +186,10 @@ node_modules/
 # Documentation (User requested to exclude non-README md files)
 *.md
 !README.md
+!CLAUDE.md
+!AGENTS.md
+!TASKS.md
+!specs/**/*.md
 
 # Unversioned folder
 unversioned/
