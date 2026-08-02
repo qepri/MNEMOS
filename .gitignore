@@ -30,6 +30,7 @@ app/static/audio/
 
 # Virtual Environment
 venv/
+.venv/
 env/
 ENV/
 env.bak/
@@ -59,7 +60,6 @@ instance/
 *.db
 *.sqlite
 *.sqlite3
-migrations/
 
 # Docker volumes (data directories)
 postgres_data/
