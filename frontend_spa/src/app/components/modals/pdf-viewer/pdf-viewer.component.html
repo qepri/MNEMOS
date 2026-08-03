@@ -1,5 +1,6 @@
-@if (isVisible()) {
+@if (hasOpened()) {
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity anime-fade-in"
+    [class.pdf-viewer-hidden]="!isVisible()" [attr.inert]="isVisible() ? null : ''"
     (click)="closeModal()">
     <!-- Modal Container -->
     <div class="bg-panel border border-divider rounded-xl w-full max-w-6xl mx-4 flex flex-col h-[90vh] shadow-2xl anime-scale-in"
@@ -25,10 +26,10 @@
 
         <!-- Body -->
         <div class="flex-1 bg-neutral-900 relative overflow-hidden">
-            @if (pdfSrc()) {
-            <ngx-extended-pdf-viewer [src]="pdfSrc()" [textLayer]="true" [showHandToolButton]="true"
+            @if (src()) {
+            <ngx-extended-pdf-viewer [src]="src()" [textLayer]="true" [showHandToolButton]="true"
                 [showPresentationModeButton]="true" [showPrintButton]="true" [showDownloadButton]="true"
-                (pdfLoaded)="onPdfLoaded($event)" (pdfLoadingFailed)="onPdfError($event)" [page]="page()"
+                (textLayerRendered)="onTextLayerRendered()" (pdfLoadingFailed)="onPdfError($event)" [page]="page()"
                 [showSecondaryToolbarButton]="true" [height]="'calc(90vh - 65px)'" [theme]="theme()"
                 backgroundColor="#1b1b1b">
             </ngx-extended-pdf-viewer>
