@@ -101,6 +101,13 @@ services:
       - "host.docker.internal:host-gateway"
 
   llamacpp:
+    # Opt-in: excluded from a plain `docker compose up` so the default start is
+    # slim (no GPU, no model download). Start it with:
+    #   docker compose --profile local-llm up -d
+    # Slim deployments point LOCAL_LLM_BASE_URL at an Ollama/LM Studio server
+    # on the host instead. No service depends_on this one, so excluding it
+    # cannot block another service's startup.
+    profiles: ["local-llm"]
     # Rolling release with automatic fallback. llamacpp-preflight.ps1 backs
     # up the current image before pulling the latest. If the new image fails
     # health checks, llamacpp-healthcheck.ps1 reverts to the previous version.

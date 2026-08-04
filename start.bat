@@ -81,7 +81,7 @@ if %errorlevel%==1 (
 dir /b models\*.gguf >nul 2>&1
 if %errorlevel%==0 (
     echo Model detected. Starting with llamacpp...
-    docker-compose -f docker-compose.yml --profile llamacpp %DOCKER_CMD%
+    docker-compose -f docker-compose.yml --profile local-llm %DOCKER_CMD%
 ) else (
     echo No model found. Starting without llamacpp.
     docker-compose -f docker-compose.yml %DOCKER_CMD%

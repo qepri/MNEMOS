@@ -4,7 +4,7 @@ import time
 import threading
 from flask import Flask, jsonify
 from sqlalchemy import text
-from config.settings import settings
+from config.settings import LLMProvider, settings
 from app.extensions import db, migrate, celery_app, limiter
 
 from app.logging_config import configure_logging
@@ -147,11 +147,16 @@ def create_app():
 
     @app.get('/api/ready')
     def ready():
-        """Readiness: liveness plus migrations applied and llama.cpp reachable.
+        """Readiness: liveness plus migrations applied, and llama.cpp reachable
+        when this deployment actually runs it.
 
         Distinct from /api/health on purpose. A cold llama.cpp start can take
         minutes, which is a normal transient state - the process is alive, so
         liveness stays 200 while readiness reports 503.
+
+        In slim mode (any LLM provider other than llamacpp) the llamacpp key is
+        omitted from the payload entirely rather than reported as ok - saying a
+        service is healthy when it was never probed would mislead an operator.
         """
         now = time.monotonic()
         with _ready_lock:
@@ -175,13 +180,21 @@ def create_app():
             payload["redis"] = False
 
         payload["migrations"] = _migration_status()
-        payload["llamacpp"] = _llamacpp_status()
+
+        # Slim deployments never start the llamacpp container, so probing it
+        # would pin readiness at 503 forever. Keyed on settings (a deploy-time
+        # value that tracks which containers compose started) rather than
+        # UserPreferences, which a user can flip at runtime without changing
+        # any infrastructure - readiness would flap for no reason.
+        uses_llamacpp = settings.LLM_PROVIDER == LLMProvider.LLAMACPP
+        if uses_llamacpp:
+            payload["llamacpp"] = _llamacpp_status()
 
         ok = (
             payload["db"]
             and payload["redis"]
             and payload["migrations"]["ok"]
-            and payload["llamacpp"]["ok"]
+            and (not uses_llamacpp or payload["llamacpp"]["ok"])
         )
         payload["status"] = "ready" if ok else "not_ready"
         code = 200 if ok else 503

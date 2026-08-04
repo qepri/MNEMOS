@@ -277,7 +277,48 @@ Resúmenes estructurados con patrón Map-Reduce:
 ### Notas importantes
 - **Primera ejecución**: tarda unos minutos en descargar dependencias y construir imágenes.
 - **Modelos GGUF**: coloca tus modelos `.gguf` en la carpeta `models/`. Si hay al menos uno, `start.bat` activa el servidor llama.cpp automáticamente.
-- **Sin GPU**: si no tienes NVIDIA CUDA, usa `docker-compose up -d` (el servicio llama.cpp fallará pero el resto funciona) o edita `docker-compose.yml` para deshabilitar `llamacpp`.
+- **Sin GPU**: no hace falta hacer nada — `docker compose up -d` ya no arranca `llamacpp`. Ver la sección siguiente.
+
+### Usa tu propio servidor LLM (modo slim)
+
+MNEMOS incluye un contenedor llama.cpp, pero probablemente ya tengas Ollama o LM Studio corriendo. El modo slim omite el servidor incluido: sin segunda descarga de modelo y sin GPU.
+
+**Requisitos**: Docker, y un servidor compatible con OpenAI ya corriendo:
+- **Ollama** → `http://localhost:11434/v1`
+- **LM Studio** → `http://localhost:1234/v1` (arranca el servidor desde la pestaña Developer)
+
+```bash
+git clone https://github.com/qepri/MNEMOS.git
+cd mnemos/dev
+
+# Crea .env desde el preset slim
+powershell -ExecutionPolicy Bypass -File presets/apply.ps1 -Preset slim
+
+# Arranca todo excepto el servidor LLM incluido
+docker compose up -d
+```
+
+Abre <http://localhost:5200>.
+
+El preset apunta a Ollama por defecto. Para LM Studio u otro puerto, edita `.env`:
+
+```env
+LLM_PROVIDER=lm_studio
+LOCAL_LLM_BASE_URL=http://host.docker.internal:1234/v1
+```
+
+Usa `host.docker.internal`, no `localhost`: dentro de un contenedor `localhost` es el contenedor mismo.
+
+> `LLM_PROVIDER=lm_studio` funciona con **cualquier** servidor compatible con OpenAI (Ollama, vLLM, llama-server). El nombre es histórico. No uses `custom`: esa ruta requiere una conexión guardada en la base de datos y falla en una instalación nueva.
+
+**Verifica**: `curl http://localhost:5000/api/ready` debe devolver `200` y `"status": "ready"`. En modo slim la respuesta no incluye el campo `llamacpp` — es correcto, no hay servidor incluido que reportar.
+
+**¿Prefieres el servidor incluido?** `docker compose --profile local-llm up -d` (requiere GPU NVIDIA; pon `LLM_PROVIDER=llamacpp` en `.env`).
+
+Notas:
+- Los **embeddings corren en CPU** en modo slim, dejando la GPU libre para tu propio servidor.
+- **Cambiar de modo es seguro**: el preset slim no toca `EMBEDDING_MODEL` ni `EMBEDDING_DIMENSION`, así que tus documentos y vectores siguen siendo válidos.
+- Los presets solo escriben `.env` si no existe. Para migrar una instalación existente, edita esas tres claves a mano.
 
 ---
 
@@ -797,7 +838,48 @@ Map-Reduce structured summaries:
 ### Important notes
 - **First run**: takes a few minutes to download dependencies and build images.
 - **GGUF models**: put your `.gguf` models in `models/`. If at least one is present, `start.bat` auto-enables the llama.cpp server.
-- **No GPU**: run `docker-compose up -d` (llamacpp will fail but everything else works), or edit `docker-compose.yml` to disable `llamacpp`.
+- **No GPU**: nothing to do — `docker compose up -d` no longer starts `llamacpp`. See the next section.
+
+### Bring your own LLM server (slim mode)
+
+MNEMOS ships with a bundled llama.cpp container, but you probably already run Ollama or LM Studio. Slim mode skips the bundled server entirely — no second model download, no GPU required.
+
+**Requirements**: Docker, and an OpenAI-compatible server already running:
+- **Ollama** → `http://localhost:11434/v1`
+- **LM Studio** → `http://localhost:1234/v1` (start the server from the Developer tab)
+
+```bash
+git clone https://github.com/qepri/MNEMOS.git
+cd mnemos/dev
+
+# Create .env from the slim preset
+powershell -ExecutionPolicy Bypass -File presets/apply.ps1 -Preset slim
+
+# Start everything except the bundled LLM server
+docker compose up -d
+```
+
+Open <http://localhost:5200>.
+
+The preset targets Ollama by default. For LM Studio or a different port, edit `.env`:
+
+```env
+LLM_PROVIDER=lm_studio
+LOCAL_LLM_BASE_URL=http://host.docker.internal:1234/v1
+```
+
+Use `host.docker.internal`, not `localhost` — inside a container `localhost` is the container itself.
+
+> `LLM_PROVIDER=lm_studio` works with **any** OpenAI-compatible server (Ollama, vLLM, llama-server). The name is historical. Don't use `custom`: that path requires a stored connection in the database and fails on a fresh install.
+
+**Verify**: `curl http://localhost:5000/api/ready` should return `200` and `"status": "ready"`. In slim mode the response has no `llamacpp` field — that's correct, there's no bundled server to report on.
+
+**Want the bundled server instead?** `docker compose --profile local-llm up -d` (needs an NVIDIA GPU; set `LLM_PROVIDER=llamacpp` in `.env`).
+
+Notes:
+- **Embeddings run on CPU** in slim mode, leaving your GPU entirely to your own LLM server.
+- **Switching modes is safe**: the slim preset doesn't touch `EMBEDDING_MODEL` or `EMBEDDING_DIMENSION`, so your existing documents and vectors stay valid.
+- Presets only write `.env` when one doesn't exist. To convert an existing install, edit those three keys by hand.
 
 ---
 
