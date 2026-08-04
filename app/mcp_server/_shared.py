@@ -5,6 +5,8 @@ package __init__ imports every module so all tools are registered by the time
 the server runs.
 """
 
+import os
+
 try:
     # mcp >= 2.0 renamed FastMCP to MCPServer and moved it. The decorator and
     # run() APIs are compatible, so either import gives the same behaviour.
@@ -20,6 +22,9 @@ flask_app = create_app()
 mcp = _MCPServer("mnemos-daemon")
 
 VERSION = "2.0"
+
+# The MCP server runs in its own container, so "localhost" is not the API.
+API_BASE = os.getenv("MNEMOS_API_URL", "http://app:5000")
 
 
 def _validate_uuid(id_string: str, field_name: str = "ID") -> str | None:

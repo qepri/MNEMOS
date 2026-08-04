@@ -18,6 +18,8 @@ from config.settings import settings
 from app.mcp_server._shared import (
     flask_app, mcp, _validate_uuid, _version_footer, _format_document,
 )
+# @mcp.tool() returns the plain function, so this stays directly callable.
+from app.mcp_server.tools_search import search_documents_advanced
 
 
 # ============================================================================

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mnemos": {
+      "command": "docker",
+      "args": ["exec", "-i", "dev-mcp-1", "python", "-m", "app.mcp_server.server"]
+    }
+  }
+}

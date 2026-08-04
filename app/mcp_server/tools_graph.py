@@ -16,7 +16,7 @@ from app.services.rag import RAGService
 from config.settings import settings
 
 from app.mcp_server._shared import (
-    flask_app, mcp, _validate_uuid, _version_footer, _format_document,
+    flask_app, mcp, API_BASE, _validate_uuid, _version_footer, _format_document,
 )
 
 
@@ -161,8 +161,9 @@ def search_concepts(query: str, limit: int = 20) -> str:
 
             # Call internal wiki API
             response = requests.get(
-                f"http://localhost:{settings.PORT or 5000}/api/wiki/search",
-                params={'q': query, 'limit': limit}
+                f"{API_BASE}/api/wiki/search",
+                params={'q': query, 'limit': limit},
+                timeout=30,
             )
 
             if response.status_code != 200:
@@ -225,7 +226,8 @@ def get_concept_article(concept_name: str) -> str:
 
             # Call internal wiki API
             response = requests.get(
-                f"http://localhost:{settings.PORT or 5000}/api/wiki/article/{quote(concept_name)}"
+                f"{API_BASE}/api/wiki/article/{quote(concept_name)}",
+                timeout=30,
             )
 
             if response.status_code == 404:
@@ -310,8 +312,9 @@ def list_concepts(letter: str = None, limit: int = 100, offset: int = 0) -> str:
                 params['letter'] = letter.lower()
 
             response = requests.get(
-                f"http://localhost:{settings.PORT or 5000}/api/wiki/concepts",
-                params=params
+                f"{API_BASE}/api/wiki/concepts",
+                params=params,
+                timeout=30,
             )
 
             if response.status_code != 200:
