@@ -56,10 +56,14 @@ one-liner and measure wall-clock time to first search.
 1. **Given** a machine with no cached MNEMOS images, **When** the user runs the
    installer, **Then** no compile step runs — output shows pulls, not apt/pip.
 2. **Given** a normal broadband connection, **When** the install runs, **Then**
-   time from command to a usable UI is [NEEDS CLARIFICATION: target wall-clock
-   budget — under 5 minutes? under 10? Sets the compression/layer-splitting
-   effort and whether the embedding model is baked into the image or downloaded
-   on first index.]
+   time from command to a usable UI is **under 5 minutes**. The embedding model
+   is **not** baked into the image — it downloads on first index, inside the
+   existing per-stage processing UX, and is reported as a separate number.
+   *(Resolved 2026-08-04. Decisive reason: the hardware presets use different
+   models — MiniLM / bge-base / bge-m3 — so no single baked model is right, and
+   the `./data/hf_cache` bind mount already persists the download across image
+   updates and even runtime migrations. Baking would re-ship gigabytes on every
+   release for a file that downloads once ever.)*
 3. **Given** the images are already cached, **When** the user re-runs the
    launcher, **Then** startup is near-instant with no re-download.
 4. **Given** an interrupted download, **When** the user re-runs, **Then** it
@@ -115,19 +119,37 @@ tool asking people to pull a binary blob should make that blob accountable.
   so plainly and offer the build-from-source fallback, not hang.
 - Image and repo out of step: a user pulls image `v1.2` but their downloaded
   repo is `main` — compose files, migrations and the SPA must agree.
-  [NEEDS CLARIFICATION: how are repo and image version pinned together?
-  Installer downloads the tagged release zip matching the image tag, or compose
-  pulls `:latest` and the repo is always `main`? The first is safer, the second
-  is simpler.]
+  **Resolved (2026-08-04): pin them together.** The installer downloads the
+  release zip for a tag, and that tag's compose override references image
+  `:same-tag` — repo and images always travel as one versioned unit, and
+  `:latest` is never what an end user runs. The cost is a release step (tag →
+  CI builds → images published); the benefit is that a migration in the repo
+  can never meet a container that predates it.
 - Architecture: the gate machine is x86_64, but Podman/Docker on Apple Silicon
-  is arm64. [NEEDS CLARIFICATION: publish multi-arch (amd64+arm64) or amd64-only
-  with a documented fallback? Multi-arch roughly doubles CI time and MNEMOS is
-  currently Windows-focused.]
+  is arm64. **Resolved (2026-08-04): amd64-only for v1, arm64 explicitly
+  deferred.** Not for CI cost — because an arm64 image would ship unverified
+  (no Apple Silicon hardware to boot it on, and QEMU-emulated builds of
+  torch/PyMuPDF/Whisper are exactly the kind that build fine and misbehave at
+  runtime), and because the install path itself is Windows-only today
+  (`install.ps1`, WSL2), so a Mac user cannot run the one-liner regardless.
+  Deferring is additive: `platforms: linux/arm64` on the same workflow later,
+  no breaking change. Documented fallback: Apple Silicon builds from source
+  (`build: .` remains for developers, and macOS builds arm64 natively).
+  Revisit trigger: real Mac demand appears (e.g. from the r/LocalLLaMA post)
+  AND someone can test the image on M-series hardware.
 - Image size: the backend carries torch and Whisper. Pulling several GB is still
-  much faster than compiling, but is worth measuring — and CUDA-vs-CPU torch is
-  the single biggest lever. [NEEDS CLARIFICATION: one image, or separate CPU and
-  GPU variants? Slim/LLM-optional mode does not need CUDA torch at all, and that
-  is now the default path.]
+  much faster than compiling, and CUDA-vs-CPU torch is the single biggest lever.
+  **Resolved (2026-08-04): publish ONE image, CPU-only torch. Never ask the
+  user.** "CPU or CUDA torch?" is a maintainer-vocabulary question an end user
+  cannot answer, a wrong answer costs a 4+ GB download or a broken start (CUDA
+  image without the container toolkit — the exact failure class 005/007
+  eliminated), and every installer prompt costs completions. The default path
+  already decides it: the one-liner runs slim mode with `EMBEDDING_DEVICE=cpu`,
+  where CUDA torch is dead weight — and a GPU user's GPU is still fully used in
+  slim mode, by their LLM server, which does not go through torch. GPU
+  embedding users self-select onto `start.bat` + build-from-source, which gives
+  them CUDA torch exactly as today. A published `-cuda` variant is additive
+  later if demand appears — same deferral shape as arm64.
 - First index still downloads the embedding model (~2 GB for `bge-m3`) unless it
   is baked in. Relevant to the US1 time budget.
 - A stale local `mnemos-backend:latest` from a previous source build could
