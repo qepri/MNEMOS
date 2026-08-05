@@ -1,0 +1,89 @@
+# Builds and publishes the MNEMOS images on every version tag.
+#
+# End users pull these instead of compiling torch/Whisper/PyMuPDF on their own
+# machines (observed cost of building from source: 40+ minutes, one death
+# mid-build - specs/008-prebuilt-images/spec.md).
+#
+# Traceability (FR-004): every image is pushed under both the version tag and
+# sha-<commit>, so a published image is always mappable to the exact source
+# that produced it. :latest is never published - end users always run a
+# version-pinned image (spec resolution #2).
+name: Release images
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write   # gh release create
+  packages: write   # push to GHCR
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      BACKEND: ghcr.io/${{ github.repository_owner }}/mnemos-backend
+      FRONTEND: ghcr.io/${{ github.repository_owner }}/mnemos-frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      # The Dockerfile pins torch for the CPU install-first step; the pin must
+      # track the lock file or the two could diverge silently (research R-002).
+      - name: Torch pin drift check
+        run: |
+          lock=$(grep -oP '^torch==\S+' requirements.lock.txt)
+          dockerfile=$(grep -oP 'torch==\S+' Dockerfile | head -1)
+          echo "lock=$lock dockerfile=$dockerfile"
+          test "$lock" = "$dockerfile"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve tags
+        id: meta
+        run: |
+          echo "version=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          echo "sha=sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      # CPU-only torch on purpose: the published image serves the slim/default
+      # path where embeddings run on CPU and the GPU belongs to the user's LLM
+      # server. GPU-embedding users build from source (spec resolution #4).
+      - name: Build backend (CPU torch)
+        run: >
+          docker build
+          --build-arg TORCH_INDEX=https://download.pytorch.org/whl/cpu
+          -t "$BACKEND:${{ steps.meta.outputs.version }}"
+          -t "$BACKEND:${{ steps.meta.outputs.sha }}"
+          .
+
+      - name: Build frontend
+        run: >
+          docker build
+          -t "$FRONTEND:${{ steps.meta.outputs.version }}"
+          -t "$FRONTEND:${{ steps.meta.outputs.sha }}"
+          ./frontend_spa
+
+      - name: Smoke-check the backend image
+        run: |
+          v=$(docker run --rm "$BACKEND:${{ steps.meta.outputs.version }}" python -c "import torch; print(torch.__version__)")
+          echo "torch=$v"
+          case "$v" in *+cpu) ;; *) echo "expected a +cpu torch build"; exit 1;; esac
+
+      - name: Push images
+        run: |
+          docker push "$BACKEND:${{ steps.meta.outputs.version }}"
+          docker push "$BACKEND:${{ steps.meta.outputs.sha }}"
+          docker push "$FRONTEND:${{ steps.meta.outputs.version }}"
+          docker push "$FRONTEND:${{ steps.meta.outputs.sha }}"
+
+      # releases/latest only sees Release objects, not bare git tags - without
+      # this step install.ps1 would resolve nothing (gate G2).
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "${{ steps.meta.outputs.version }}" --generate-notes --verify-tag

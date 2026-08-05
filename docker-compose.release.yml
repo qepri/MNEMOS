@@ -1,0 +1,33 @@
+# Release override: pull published images instead of building from source.
+#
+# Used only when MNEMOS_VERSION is set (install.ps1 writes it to .env; no dev
+# machine has it, so the dev build-from-source path is untouched by absence).
+#
+#   docker-compose -f docker-compose.yml -f docker-compose.slim.yml \
+#     -f docker-compose.release.yml up -d --no-build
+#
+# --no-build matters: the base file still declares `build:` for these
+# services, and without it a failed pull would silently fall back to the
+# 40-minute source compile this feature exists to eliminate. With it, a
+# failed pull is a loud error (FR-006/SC-002).
+#
+# Deltas only - ports, volumes, environment, healthchecks all inherit from
+# docker-compose.yml. Never fork the service graph (the deleted
+# installer/docker-compose.podman.yml is the cautionary precedent).
+
+services:
+  app:
+    image: ghcr.io/qepri/mnemos-backend:${MNEMOS_VERSION}
+    pull_policy: missing
+
+  worker:
+    image: ghcr.io/qepri/mnemos-backend:${MNEMOS_VERSION}
+    pull_policy: missing
+
+  mcp:
+    image: ghcr.io/qepri/mnemos-backend:${MNEMOS_VERSION}
+    pull_policy: missing
+
+  frontend:
+    image: ghcr.io/qepri/mnemos-frontend:${MNEMOS_VERSION}
+    pull_policy: missing

@@ -117,10 +117,31 @@ Install Podman manually from https://podman.io/ then run this installer again.
 # ---------------------------------------------------------------- 3. Repo ---
 Step "Getting MNEMOS into $InstallDir ..."
 
+# Prefer a tagged release: its zip and its published container images were
+# built from the same commit, so compose files, migrations and images can
+# never skew (specs/008-prebuilt-images/data-model.md). Falls back to main +
+# build-from-source when the API is unreachable or no release exists yet -
+# loudly, never hanging (FR-006).
+$ReleaseTag = $null
+try {
+    $rel = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" `
+                             -TimeoutSec 10 -ErrorAction Stop
+    $ReleaseTag = $rel.tag_name
+    Ok "Latest release: $ReleaseTag (prebuilt images - nothing compiles on this machine)"
+} catch {
+    Warn 'Could not resolve a release (none published yet, or no connection to the GitHub API).'
+    Warn 'Falling back to the development branch - the first start will BUILD the'
+    Warn 'images from source, which takes considerably longer than pulling.'
+}
+
 if (Test-Path (Join-Path $InstallDir 'start-lite.bat')) {
     Ok 'Already downloaded - keeping what is there (your data lives here).'
 } else {
-    $zipUrl  = "https://github.com/$Repo/archive/refs/heads/$Branch.zip"
+    $zipUrl = if ($ReleaseTag) {
+        "https://github.com/$Repo/archive/refs/tags/$ReleaseTag.zip"
+    } else {
+        "https://github.com/$Repo/archive/refs/heads/$Branch.zip"
+    }
     $tmpZip  = Join-Path $env:TEMP "mnemos-$Branch.zip"
     $tmpDir  = Join-Path $env:TEMP "mnemos-extract-$([guid]::NewGuid().ToString('N'))"
 
@@ -145,6 +166,24 @@ if (Test-Path (Join-Path $InstallDir 'start-lite.bat')) {
     Remove-Item $tmpZip -Force -ErrorAction SilentlyContinue
     Remove-Item $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
     Ok "Downloaded to $InstallDir"
+}
+
+# -------------------------------------------------- 3b. Pin the version ---
+# MNEMOS_VERSION in .env is what flips start-lite.bat onto the pulled-image
+# path. The launcher normally creates .env on first run; when we install a
+# release we create it here first (same preset script, called earlier, no
+# duplicated logic) so the version can ride along. Idempotent: an existing
+# pin is left alone.
+if ($ReleaseTag) {
+    $envFile = Join-Path $InstallDir '.env'
+    if (-not (Test-Path $envFile)) {
+        & powershell -NoProfile -ExecutionPolicy Bypass `
+            -File (Join-Path $InstallDir 'presets\apply.ps1') -Preset slim
+    }
+    if (-not (Select-String -Path $envFile -Pattern '^MNEMOS_VERSION=' -Quiet -ErrorAction SilentlyContinue)) {
+        Add-Content -Path $envFile -Value "MNEMOS_VERSION=$ReleaseTag"
+        Ok "Pinned to $ReleaseTag - repo and images now come from the same commit."
+    }
 }
 
 # --------------------------------------------------------------- 4. Start ---

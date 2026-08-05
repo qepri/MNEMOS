@@ -18,6 +18,20 @@ RUN apt-get update && apt-get install -y \
 # pip-compile inside this same base image) so builds are reproducible.
 # Edit requirements.in, then regenerate - never hand-edit the lock file.
 COPY requirements.lock.txt .
+
+# TORCH_INDEX selects the torch wheel index. Empty (default) = today's
+# behaviour: the lock resolves torch from PyPI, which ships the CUDA build.
+# CI release builds pass https://download.pytorch.org/whl/cpu to publish a
+# CPU-only image several GB smaller (specs/008-prebuilt-images).
+#
+# Installed FIRST, on purpose: with two indexes visible, `torch==X` matches
+# both the CUDA wheel and X+cpu and pip's pick is not guaranteed. Installing
+# torch beforehand makes the lock's torch line a no-op. The pin below MUST
+# match requirements.lock.txt - the release workflow has a drift check.
+ARG TORCH_INDEX=""
+RUN if [ -n "$TORCH_INDEX" ]; then \
+      pip install --no-cache-dir --prefix=/install --index-url "$TORCH_INDEX" torch==2.13.0; \
+    fi
 RUN pip install --no-cache-dir --prefix=/install -r requirements.lock.txt
 
 # Pre-download Whisper base model (will be copied to runtime stage).

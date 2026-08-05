@@ -49,12 +49,33 @@ if %errorlevel% neq 0 (
 )
 :: ------------------------
 
+:: --- RELEASE vs SOURCE ---
+:: MNEMOS_VERSION in .env (written by install.ps1 for tagged installs) flips
+:: this launcher onto published images. --no-build is the structural
+:: guarantee: if a pull fails, error loudly - never fall back to a silent
+:: 40-minute source compile. Dev machines have no MNEMOS_VERSION, so their
+:: invocation is byte-identical to before.
+:: No parenthesized block here: %MNEMOS_VERSION% would expand at parse time,
+:: before the for-loop sets it.
+set "MNEMOS_COMPOSE_EXTRA="
+set "MNEMOS_BUILD_FLAG="
+findstr /B "MNEMOS_VERSION=" .env >nul 2>&1
+if %errorlevel% neq 0 goto :source_build
+for /f "tokens=2 delims==" %%v in ('findstr /B "MNEMOS_VERSION=" .env') do set "MNEMOS_VERSION=%%v"
+set "MNEMOS_COMPOSE_EXTRA=-f docker-compose.release.yml"
+set "MNEMOS_BUILD_FLAG=--no-build"
+echo [lite] Release install %MNEMOS_VERSION%: pulling prebuilt images...
+echo        ^(a few GB on first install - nothing compiles on this machine^)
+docker-compose -f docker-compose.yml -f docker-compose.slim.yml -f docker-compose.release.yml pull
+:source_build
+:: -------------------------
+
 echo Starting MNEMOS Lite ^(no bundled llama.cpp^)...
 echo.
 :: The slim override is required, not optional: the base file requests an nvidia
 :: device driver on app/worker, which fails container creation on a machine
 :: without the NVIDIA toolkit — exactly the machines slim mode targets.
-docker-compose -f docker-compose.yml -f docker-compose.slim.yml up -d --wait
+docker-compose -f docker-compose.yml -f docker-compose.slim.yml %MNEMOS_COMPOSE_EXTRA% up -d --wait %MNEMOS_BUILD_FLAG%
 :: Note: docker-compose (the Go binary) drives Podman too - runtime-detect.bat
 :: points DOCKER_HOST at Podman's compat socket. Same command, either runtime.
 if %errorlevel% neq 0 (

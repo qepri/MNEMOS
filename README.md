@@ -259,8 +259,18 @@ irm https://raw.githubusercontent.com/qepri/MNEMOS/main/install.ps1 | iex
 ```
 
 Comprueba WSL2, instala Podman **solo si no tienes ningún runtime de
-contenedores**, descarga MNEMOS (no necesitas git) y lo arranca. La primera vez
-tarda varios minutos porque construye las imágenes.
+contenedores**, descarga la última versión publicada de MNEMOS (no necesitas
+git) y la arranca **descargando imágenes ya construidas** — en tu máquina no se
+compila nada. Unos minutos en una conexión normal.
+
+> **Privacidad**: el registro de imágenes aloja el *software*, no tus datos —
+> la misma relación que tiene una descarga de instalador con la app que
+> instala. Tus documentos, la base de datos y las búsquedas nunca salen de tu
+> máquina, y una vez instalado MNEMOS funciona sin conexión.
+>
+> ¿Desarrollas o quieres embeddings por GPU? La compilación desde código sigue
+> siendo el camino: clona el repo y usa `start.bat` — sin `MNEMOS_VERSION` en
+> tu `.env`, nada de la maquinaria de releases se activa.
 
 No necesitas Docker Desktop. No necesitas GPU. No necesitas modelo de lenguaje
 para subir y buscar documentos.
@@ -883,8 +893,18 @@ irm https://raw.githubusercontent.com/qepri/MNEMOS/main/install.ps1 | iex
 ```
 
 It checks WSL2, installs Podman **only if you have no container runtime**,
-downloads MNEMOS (no git required), and starts it. The first run takes several
-minutes because it builds the container images.
+downloads the latest MNEMOS release (no git required), and starts it by
+**pulling prebuilt images** — nothing compiles on your machine. A few minutes
+on a normal connection.
+
+> **Privacy**: the image registry hosts the *software*, not your data — the
+> same relationship an installer download has to the app it installs. Your
+> documents, database and searches never leave your machine, and MNEMOS runs
+> offline once installed.
+>
+> Developing, or want GPU embeddings? Building from source remains the path:
+> clone the repo and use `start.bat` — without `MNEMOS_VERSION` in your
+> `.env`, none of the release machinery activates.
 
 No Docker Desktop required. No GPU required. No language model required to
 upload and search documents.
