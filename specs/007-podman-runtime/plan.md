@@ -83,6 +83,10 @@ specs/007-podman-runtime/
 ### Source Code (repository root)
 
 ```text
+install.ps1                   # NEW — one-command bootstrap (FR-011/FR-012):
+                              #   WSL2 check → runtime install if absent →
+                              #   repo download (zip, no git) → start-lite.bat.
+                              #   Bootstraps and hands off; owns no launcher logic.
 runtime-detect.bat            # NEW — shared detection block (R-007)
 start.bat                     # MODIFY — call detection block instead of inline Docker check
 start-lite.bat                # MODIFY — same
@@ -121,6 +125,14 @@ podman override (G1/G2/G3 remedies), in override-only form.
 the terminal-only install path (ES + EN), explicit Docker→Podman migration
 (`pg_dump` → restore; uploads carry over), GPU-under-Podman
 detect-and-message note. CLAUDE.md: detection order and the R-001 data rule.
+
+**Phase 4b — Bootstrap (`install.ps1`).** After the launcher work is proven,
+because the bootstrap's last line *is* the launcher. Idempotent steps: WSL2
+present (message or enable+reboot note) → runtime present (else
+`winget install RedHat.Podman`) → repo present (else download the release/main
+zip and extract — git must not be required) → run `start-lite.bat`. The
+published one-liner (`irm <raw-url>/install.ps1 | iex`) goes in the README as
+the headline install path.
 
 **Phase 5 — Verification.** SC-001..SC-006, including the full suite under a
 Podman-provided testcontainers session and the zero-change check on a Docker

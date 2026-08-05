@@ -81,6 +81,40 @@ upload a PDF; search it; confirm all 006 acceptance behaviour holds.
 
 ---
 
+### User Story 1b - One command from nothing to running (Priority: P1)
+
+A user with a stock Windows 11 machine — no Podman, no Docker, no git — pastes
+a single command into PowerShell. When it finishes, MNEMOS is open in their
+browser and they can upload and search.
+
+**Why this priority**: this is the distribution artifact. Everything else in
+005-007 exists so that this command can end in a working app; it is the line
+that gets pasted into a forum post.
+
+**Independent Test**: on a clean Windows VM, paste the one-liner; verify the
+browser opens on a working MNEMOS with no other user action.
+
+**Acceptance Scenarios**:
+
+1. **Given** a machine with no container runtime and no git, **When** the user
+   runs the bootstrap one-liner, **Then** it installs Podman, downloads MNEMOS
+   (as an archive — git must not be required), and hands off to the launcher,
+   ending with the browser open on the running app.
+2. **Given** a machine that already has Docker or Podman, **When** the
+   bootstrap runs, **Then** it skips runtime installation and reuses what is
+   there (same detection order as the launcher).
+3. **Given** WSL2 is not enabled, **When** the bootstrap runs, **Then** it says
+   exactly what to enable (or enables it and requests the reboot), and is safe
+   to re-run afterwards — every step is idempotent.
+4. **Given** the bootstrap is interrupted at any point, **When** it is run
+   again, **Then** it resumes without damage (no half-installed states that
+   block a retry).
+5. **Given** the first run, **Then** the script is honest about time: image
+   pulls and builds take minutes, and the script says so rather than sitting
+   silent.
+
+---
+
 ### User Story 2 - Existing Docker users are not disturbed (Priority: P2)
 
 A user already running MNEMOS under Docker Desktop pulls this version and
@@ -185,6 +219,17 @@ operation — not something the launcher does implicitly. The existing
   steps (US3).
 - **FR-009**: Existing Docker deployments MUST continue to work with zero
   changes to their invocation or data.
+- **FR-011**: A bootstrap script (`install.ps1`, fetchable and runnable as a
+  single PowerShell command) MUST take a machine from "no runtime, no git, no
+  repo" to the running app: verify/enable WSL2, install Podman only if no
+  runtime exists, download the repo as an archive, delegate to the launcher.
+  Every step MUST be idempotent — re-running after any interruption resumes
+  safely — and the script MUST NOT duplicate launcher logic (it bootstraps,
+  then hands off; the launcher stays the single owner of runtime detection and
+  compose invocation).
+- **FR-012**: The bootstrap MUST state what it is about to install before
+  installing it, and long steps (VM image, container builds) MUST print
+  progress honestly rather than appearing hung.
 - **FR-010**: The test suite MUST remain runtime-agnostic: testcontainers
   sessions run against whichever runtime the host provides, and no test may
   hardcode Docker-only assumptions. [NEEDS CLARIFICATION: current
@@ -201,6 +246,10 @@ detection, and documentation.
 
 - **SC-001**: A machine with Podman and no Docker goes from launcher to first
   search result — the 006 walkthrough — with no manual container commands.
+- **SC-001b**: A clean Windows 11 VM goes from pasting the one-liner to a
+  browser open on working MNEMOS with zero further user action (reboot for
+  WSL2 enablement being the one permitted interruption, after which re-running
+  the same command completes the job).
 - **SC-002**: `git grep` shows no full-copy compose fork in the repo; the
   podman override contains only deltas.
 - **SC-003**: Port exposure under Podman is identical to Docker (`db`/`redis`/
