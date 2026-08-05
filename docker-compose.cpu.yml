@@ -1,4 +1,13 @@
-version: '3.8'
+# CPU-only override. Use with:
+#   docker-compose -f docker-compose.yml -f docker-compose.cpu.yml up -d
+#
+# `devices: []` used to be here and never worked: Compose merges that sequence
+# rather than replacing it, so the base file's nvidia reservation survived and
+# container creation still failed without the NVIDIA toolkit. Caught by
+# `docker-compose config` during 007 gate G1. `!reset` (Compose 2.24+) is what
+# actually clears it.
+#
+# `version:` removed - obsolete since Compose v2 and it emits a warning.
 
 services:
   app:
@@ -7,7 +16,7 @@ services:
     deploy:
       resources:
         reservations:
-          devices: []
+          devices: !reset null
 
   worker:
     environment:
@@ -15,5 +24,4 @@ services:
     deploy:
       resources:
         reservations:
-          devices: []
-
+          devices: !reset null

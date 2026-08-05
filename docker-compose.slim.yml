@@ -27,7 +27,12 @@ services:
     deploy:
       resources:
         reservations:
-          devices: []
+          # `devices: []` does NOT work here - Compose merges this sequence
+          # instead of replacing it, so the base file's nvidia reservation
+          # survives and container creation still fails without the toolkit.
+          # Verified with `docker-compose config` (007 gate G1).
+          # `!reset` (Compose 2.24+) is the only thing that actually clears it.
+          devices: !reset null
 
   worker:
     environment:
@@ -35,4 +40,9 @@ services:
     deploy:
       resources:
         reservations:
-          devices: []
+          # `devices: []` does NOT work here - Compose merges this sequence
+          # instead of replacing it, so the base file's nvidia reservation
+          # survives and container creation still fails without the toolkit.
+          # Verified with `docker-compose config` (007 gate G1).
+          # `!reset` (Compose 2.24+) is the only thing that actually clears it.
+          devices: !reset null

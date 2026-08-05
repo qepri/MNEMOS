@@ -164,6 +164,63 @@ Podman presented as the terminal-only option. The R-000 orphan case (machine
 distro exists, CLI gone) falls out naturally: no `podman` on PATH means the
 distro is ignored and the guidance message shows.
 
+## Gate results
+
+**Date**: 2026-08-04 · **Podman**: 5.8.3 (winget `RedHat.Podman`) ·
+**Machine**: `podman-machine-default`, WSL, created 6 months ago — the orphaned
+one from R-000, **adopted successfully** (`podman machine start` worked; no
+re-init needed). **Compose**: `docker-compose` v5.0.2 (Go binary).
+**Socket**: `npipe:////./pipe/podman-machine-default` — note Podman explicitly
+declined the default `docker_engine` pipe because Docker Desktop already owns
+it, and printed that exact `DOCKER_HOST` value. `runtime-detect.bat` hardcodes
+it for that reason.
+
+### G1 — compose provider: **PASS, and it found a real bug**
+
+- ✅ `config --services` → 6 services, no `llamacpp`
+- ✅ `--profile local-llm` → 7, `llamacpp` included
+- ✅ `EMBEDDING_DEVICE` override: base `cuda` → slim `cpu`
+- ❌ → ✅ **`devices: []` does NOT clear the GPU reservation.** The merged
+  config still contained `driver: nvidia`. Compose *merges*
+  `deploy.resources.reservations.devices` instead of replacing it, so the
+  005 slim fix was a silent no-op and would still have failed on a GPU-less
+  machine. **`docker-compose.cpu.yml` carried the identical bug** since it was
+  written — that file was the precedent 005 copied.
+  Fixed with `devices: !reset null` (Compose 2.24+) in both
+  `docker-compose.slim.yml` and `docker-compose.cpu.yml`; re-verified with
+  `config` (no `nvidia` in merged output, `EMBEDDING_DEVICE: cpu`).
+
+This is the single most valuable thing the gate-first sequencing bought: the
+bug was invisible to reasoning and only `docker-compose config` exposed it.
+
+### G4 — testcontainers: **INCONCLUSIVE (retry)**
+
+`pywintypes.error (231, 'CreateFile', 'All pipe instances are busy.')` — named
+pipe contention with the concurrent image build, not an incompatibility. Retry
+when the runtime is idle. No fixture change attempted.
+
+### Launcher contract verification
+
+- ✅ auto-detect on this dual-runtime machine → `docker`, `DOCKER_HOST` untouched
+  (the data-safety ordering behaving as designed)
+- ✅ `MNEMOS_RUNTIME=podman` → `podman` + `DOCKER_HOST` set
+- ✅ `MNEMOS_RUNTIME=docker` → `docker`
+- ✅ `MNEMOS_RUNTIME=banana` → error, exit 1, no fallback
+- ⚠️ A shell started *before* the Podman install cannot see `podman` on PATH and
+  reports it as not installed. Correct behaviour, and why `install.ps1` refreshes
+  the process PATH after `winget` — worth keeping in mind when testing by hand.
+
+### Still open
+
+- **G2** (`host.docker.internal` from inside a Podman container) — needs the
+  stack running; the image build was still in progress. **Highest-risk gate**;
+  until it runs, slim-mode chat under Podman is unproven.
+- **G3** (uid-1000 bind mounts) — same dependency.
+- **G4** retry once the runtime is idle.
+- **005 T001/T002** on genuinely GPU-less hardware. Note the G1 finding means
+  the earlier 005 fix would NOT have worked; the `!reset` version is the one to
+  test.
+
 ## Summary
 
 | ID | Question | Working decision | Gate |

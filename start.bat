@@ -1,35 +1,13 @@
 @echo off
 
-:: --- DOCKER DESKTOP CHECK ---
-docker info >nul 2>&1
+:: --- CONTAINER RUNTIME (Docker or Podman) ---
+call "%~dp0runtime-detect.bat"
 if %errorlevel% neq 0 (
-    if exist "C:\Program Files\Docker\Docker\Docker Desktop.exe" (
-        echo Docker Desktop is installed but not running. Launching it...
-        start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
-        echo Waiting for Docker to be ready...
-        :wait_docker
-        timeout /t 5 /nobreak >nul
-        docker info >nul 2>&1
-        if %errorlevel% neq 0 goto wait_docker
-        echo Docker Desktop is now ready.
-    ) else (
-        cls
-        echo =================================================================
-        echo   MNEMOS requires Docker Desktop to run.
-        echo.
-        echo   It looks like Docker Desktop is not installed.
-        echo.
-        echo   Official download:
-        echo   https://docs.docker.com/desktop/setup/install/windows-install/
-        echo.
-        echo   Opening the URL in your browser...
-        echo =================================================================
-        start "" "https://docs.docker.com/desktop/setup/install/windows-install/"
-        pause
-        exit /b 1
-    )
+    pause
+    exit /b 1
 )
-:: ----------------------------
+echo Using container runtime: %MNEMOS_DETECTED_RUNTIME%
+:: --------------------------------------------
 
 :: --- FIRST-RUN .env BOOTSTRAP ---
 if not exist ".env" (

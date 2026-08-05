@@ -8,7 +8,14 @@ Verified against a real run: the full backend suite (47 tests), the migration ch
 
 ## Prerequisites
 
-- **Docker running** — testcontainers starts a throwaway Postgres and Redis. Nothing to create by hand.
+- **A container runtime running** — testcontainers starts a throwaway Postgres and Redis. Nothing to create by hand.
+  Under Podman instead of Docker, point testcontainers at Podman's Docker-compatible socket first:
+  ```powershell
+  $env:DOCKER_HOST = 'npipe:////./pipe/podman-machine-default'
+  # add this only if Ryuk (the container reaper) misbehaves under rootless Podman:
+  # $env:TESTCONTAINERS_RYUK_DISABLED = 'true'
+  ```
+  No fixture changes are needed — the conftest guard rails (random port, refuse 5432) are runtime-agnostic.
 - **Python 3.11** — matches the app's base image.
 - **Node LTS** — frontend tests only.
 

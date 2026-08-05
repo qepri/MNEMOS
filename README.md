@@ -250,10 +250,32 @@ Resúmenes estructurados con patrón Map-Reduce:
 
 ## Instalación
 
+### Un solo comando (recomendado)
+
+Pega esto en PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/qepri/MNEMOS/main/install.ps1 | iex
+```
+
+Comprueba WSL2, instala Podman **solo si no tienes ningún runtime de
+contenedores**, descarga MNEMOS (no necesitas git) y lo arranca. La primera vez
+tarda varios minutos porque construye las imágenes.
+
+No necesitas Docker Desktop. No necesitas GPU. No necesitas modelo de lenguaje
+para subir y buscar documentos.
+
 ### Requisitos
-- **Windows 10/11**
-- **Docker Desktop** instalado y funcionando
+- **Windows 10/11** con WSL2 (el instalador lo comprueba y lo activa si falta)
+- **Un runtime de contenedores**: Podman (`winget install RedHat.Podman`) o
+  Docker Desktop. Cualquiera de los dos; MNEMOS se comporta igual.
 - Hardware según la tabla de recomendaciones arriba
+
+> Si ya tienes Docker Desktop, MNEMOS lo usará. Los volúmenes de Docker y Podman
+> son independientes: si cambias de runtime, tu biblioteca indexada no se pierde,
+> pero deja de verse hasta que migres la base de datos (ver más abajo).
+
+### Instalación manual
 
 ### Pasos
 
@@ -485,8 +507,34 @@ Editar `claude_desktop_config.json`:
 | Sin respuesta del LLM | LLM no configurado | Verificar `LLM_PROVIDER` y credenciales en `.env` |
 | Whisper sin memoria | Modelo muy grande | Usar `WHISPER_MODEL=base` o `tiny` |
 | LM Studio no conecta | CORS o URL incorrecta | Verificar `http://host.docker.internal:1234/v1` y CORS habilitado |
+| Chat "dormido" con el servidor LLM encendido | Puede ser red del contenedor, no falta de modelo | `docker-compose exec app python -c "import requests;print(requests.get('http://host.docker.internal:11434',timeout=3).status_code)"` — si falla, es red |
+| La biblioteca aparece vacía tras cambiar de runtime | Los volúmenes son por runtime | Tus datos siguen en el otro runtime — ver "Cambiar de Docker a Podman" |
+| Dice que no hay runtime pero existe `podman-machine-default` en WSL | Instalación antigua sin CLI | `winget install RedHat.Podman`, o `wsl --unregister podman-machine-default` |
 
 ---
+
+## Cambiar de Docker a Podman (o al revés)
+
+Los archivos subidos (`./data/uploads`) se conservan solos — son carpetas del
+host. Lo único que hay que mover es la base de datos, porque los volúmenes con
+nombre pertenecen a cada runtime:
+
+```bat
+:: 1. Con Docker todavía activo - vuelca la base de datos
+docker-compose exec -T db pg_dump -U mnemos_user mnemos_db > backups\migrate.sql
+
+:: 2. Para el stack y arranca con Podman
+docker-compose down
+set MNEMOS_RUNTIME=podman
+start-lite.bat
+
+:: 3. Restaura dentro de la base de datos de Podman
+type backups\migrate.sql | docker-compose exec -T db psql -U mnemos_user mnemos_db
+```
+
+Los embeddings viajan dentro del volcado: **no hay que reindexar ni volver a
+subir nada**. Deja `MNEMOS_RUNTIME=podman` puesto (o desinstala Docker Desktop)
+para que los siguientes arranques no vuelvan al runtime anterior.
 
 ## Mantenimiento
 
@@ -826,10 +874,32 @@ Map-Reduce structured summaries:
 
 ## Installation
 
+### One command (recommended)
+
+Paste this into PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/qepri/MNEMOS/main/install.ps1 | iex
+```
+
+It checks WSL2, installs Podman **only if you have no container runtime**,
+downloads MNEMOS (no git required), and starts it. The first run takes several
+minutes because it builds the container images.
+
+No Docker Desktop required. No GPU required. No language model required to
+upload and search documents.
+
 ### Requirements
-- **Windows 10/11**
-- **Docker Desktop** installed and running
+- **Windows 10/11** with WSL2 (the installer checks, and enables it if missing)
+- **A container runtime**: Podman (`winget install RedHat.Podman`) or Docker
+  Desktop. Either works; MNEMOS behaves identically on both.
 - Hardware per the recommendations table above
+
+> If you already have Docker Desktop, MNEMOS uses it. Docker and Podman keep
+> separate volume stores: switching runtimes doesn't lose your indexed library,
+> but it stops being visible until you migrate the database (see below).
+
+### Manual installation
 
 ### Steps
 
@@ -1061,8 +1131,40 @@ Edit `claude_desktop_config.json`:
 | No LLM response | LLM not configured | Check `LLM_PROVIDER` and credentials in `.env` |
 | Whisper out of memory | Model too large | Use `WHISPER_MODEL=base` or `tiny` |
 | LM Studio won't connect | CORS or wrong URL | Check `http://host.docker.internal:1234/v1` and CORS enabled |
+| Chat dormant although the LLM server is running | May be container networking, not a missing model | `docker-compose exec app python -c "import requests;print(requests.get('http://host.docker.internal:11434',timeout=3).status_code)"` — a failure here means networking |
+| Library looks empty after switching runtime | Volumes are per-runtime | Your data is still in the other runtime — see "Switching between Docker and Podman" |
+| Says no runtime found but `podman-machine-default` exists in WSL | Old install, CLI removed | `winget install RedHat.Podman`, or `wsl --unregister podman-machine-default` |
 
 ---
+
+## Switching between Docker and Podman
+
+Your uploaded files (`./data/uploads`) carry over automatically — they're plain
+host folders. Only the database needs moving, because named volumes belong to
+whichever runtime created them:
+
+```bat
+:: 1. With Docker still running - dump the database
+docker-compose exec -T db pg_dump -U mnemos_user mnemos_db > backups\migrate.sql
+
+:: 2. Stop the stack and start under Podman
+docker-compose down
+set MNEMOS_RUNTIME=podman
+start-lite.bat
+
+:: 3. Restore into Podman's database
+type backups\migrate.sql | docker-compose exec -T db psql -U mnemos_user mnemos_db
+```
+
+Embeddings travel inside the dump — **nothing is re-embedded or re-uploaded**.
+Keep `MNEMOS_RUNTIME=podman` set (or uninstall Docker Desktop) so later launches
+don't flip back.
+
+### GPU note under Podman
+
+The bundled llama.cpp (`--profile local-llm`) needs NVIDIA CDI setup under
+Podman/WSL2, which is manual. Slim mode — Ollama or LM Studio on the host — is
+the recommended path under Podman and needs none of it.
 
 ## Maintenance
 
