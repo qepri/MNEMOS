@@ -27,8 +27,14 @@ cd mnemos
 powershell -ExecutionPolicy Bypass -File presets/apply.ps1 -Preset slim
 
 # Start everything except the bundled LLM server
-docker compose up -d
+docker compose -f docker-compose.yml -f docker-compose.slim.yml up -d
 ```
+
+The slim override is **required on a machine without an NVIDIA GPU**, not
+optional: the base compose file requests an `nvidia` device driver on `app` and
+`worker`, which fails container creation when the toolkit is absent. The override
+clears those reservations and sets `EMBEDDING_DEVICE=cpu` at the right precedence
+level. `start-lite.bat` composes both files for you.
 
 Open <http://localhost:5200>.
 

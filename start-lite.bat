@@ -59,11 +59,13 @@ if %errorlevel% neq 0 (
     echo =================================================================
     echo   [!] No LLM server found on port 11434 ^(Ollama^) or 1234 ^(LM Studio^).
     echo.
-    echo   MNEMOS Lite does not include one - it uses yours. Start Ollama or
-    echo   LM Studio, or set LOCAL_LLM_BASE_URL in .env to your endpoint.
+    echo   That's fine - MNEMOS runs without one.
     echo.
-    echo   Uploads and search will still work. Chat answers will fail until
-    echo   a server is reachable.
+    echo   Working now:     upload, indexing, semantic + keyword search.
+    echo   Needs a model:   chat, summaries, the concept graph and wiki.
+    echo.
+    echo   Those features will explain themselves in the UI and link to
+    echo   Settings. Connect Ollama or LM Studio whenever you want them.
     echo =================================================================
     echo.
 )
@@ -71,7 +73,10 @@ if %errorlevel% neq 0 (
 
 echo Starting MNEMOS Lite ^(no bundled llama.cpp^)...
 echo.
-docker-compose -f docker-compose.yml up -d --wait
+:: The slim override is required, not optional: the base file requests an nvidia
+:: device driver on app/worker, which fails container creation on a machine
+:: without the NVIDIA toolkit — exactly the machines slim mode targets.
+docker-compose -f docker-compose.yml -f docker-compose.slim.yml up -d --wait
 if %errorlevel% neq 0 (
     echo.
     echo [ERROR] Services failed to start. Inspect logs with:

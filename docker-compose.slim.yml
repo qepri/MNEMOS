@@ -1,0 +1,38 @@
+# Slim override — no GPU, no bundled llama.cpp.
+#
+# Usage (this is what start-lite.bat runs):
+#   docker-compose -f docker-compose.yml -f docker-compose.slim.yml up -d --wait
+#
+# Two things the base file does that slim mode must undo:
+#
+# 1. `deploy.resources.reservations.devices` requests `driver: nvidia` on app and
+#    worker. Without the NVIDIA container toolkit installed, container creation
+#    fails outright ("could not select device driver"). `devices: []` clears it —
+#    Compose replaces this sequence on merge rather than concatenating, which is
+#    the same mechanism docker-compose.cpu.yml has always relied on.
+#
+# 2. `EMBEDDING_DEVICE=cuda` is set in the base file's `environment:` block.
+#    Environment variables outrank .env file values in pydantic-settings, so
+#    setting EMBEDDING_DEVICE in a preset .env has no effect — it has to be
+#    overridden here, at the same precedence level.
+#
+# ponytail: an override file rather than a third full compose file. Same reason
+# docker-compose.cpu.yml is an override: a fork drifts (see
+# installer/docker-compose.podman.yml, which still lacks the local-llm profile).
+
+services:
+  app:
+    environment:
+      - EMBEDDING_DEVICE=cpu
+    deploy:
+      resources:
+        reservations:
+          devices: []
+
+  worker:
+    environment:
+      - EMBEDDING_DEVICE=cpu
+    deploy:
+      resources:
+        reservations:
+          devices: []
