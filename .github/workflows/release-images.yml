@@ -28,17 +28,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The Dockerfile pins torch for the CPU install-first step; the pin must
-      # track the lock file or the two could diverge silently (research R-002).
-      - name: Torch pin drift check
-        run: |
-          # Skip comment lines and require a digit after '==': the Dockerfile
-          # comment explaining this mechanism literally contains "torch==X",
-          # which the first version of this check happily matched.
-          lock=$(grep -oP '^torch==[\d.]+' requirements.lock.txt)
-          dockerfile=$(grep -v '^\s*#' Dockerfile | grep -oP 'torch==[\d.]+' | head -1)
-          echo "lock=$lock dockerfile=$dockerfile"
-          test "$lock" = "$dockerfile"
+      # No torch drift check any more: the Dockerfile no longer restates the
+      # version. It installs straight from requirements.lock.txt with the CPU
+      # index in front, so the lock is the single source of truth and the two
+      # cannot diverge. The smoke check below is what actually guarantees the
+      # published image is CPU - and it is the step that caught the first
+      # release shipping +cu130.
 
       - name: Log in to GHCR
         uses: docker/login-action@v3

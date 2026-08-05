@@ -35,7 +35,30 @@ owner — publishing is identity-bound and stays a human act).
 **Alternatives**: Docker Hub — second account, rate limits on anonymous pulls
 (the exact failure FR-006 guards against, self-inflicted); self-hosted — no.
 
-## R-002: Getting CPU-only torch into the image
+## R-002 CORRECTION (post-first-release)
+
+**The decision below was wrong and the first real release proved it** — the
+published image reported `torch 2.13.0+cu130` and the workflow's smoke check
+blocked it. Two reasons install-first cannot work:
+
+1. `pip install --prefix=/install` does not put the target on a later pip run's
+   `sys.path`, so the subsequent lock install did not see torch as satisfied
+   and reinstalled the CUDA wheel over it. It must be **one** pip invocation.
+2. `requirements.lock.txt` pins **16 `nvidia-*`/`triton` packages** (it was
+   compiled in a CUDA environment). Even a correct CPU torch would still drag
+   the entire CUDA runtime in behind it.
+
+**Actual implementation**: one conditional pip invocation — filter the
+`nvidia-`/`triton` lines out of the lock, install with `--index-url` = the CPU
+index and `--extra-index-url` = PyPI, so torch resolves to `2.13.0+cpu`
+(PEP 440: a local version satisfies `==2.13.0`) and everything else still comes
+from PyPI. The `else` branch is byte-identical to today's behaviour.
+
+Consequence: the torch pin is no longer duplicated, so the drift check this
+research invented has been **deleted** — the lock is the single source of truth
+and the smoke check is the guarantee.
+
+## R-002 (superseded — kept for the record): Getting CPU-only torch into the image
 
 **Working decision**: install torch explicitly from the PyTorch CPU index
 *before* the lock file, controlled by a build arg that defaults to today's

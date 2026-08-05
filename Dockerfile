@@ -19,20 +19,35 @@ RUN apt-get update && apt-get install -y \
 # Edit requirements.in, then regenerate - never hand-edit the lock file.
 COPY requirements.lock.txt .
 
-# TORCH_INDEX selects the torch wheel index. Empty (default) = today's
+# TORCH_INDEX selects the torch wheel index. Empty (default) = today's exact
 # behaviour: the lock resolves torch from PyPI, which ships the CUDA build.
 # CI release builds pass https://download.pytorch.org/whl/cpu to publish a
 # CPU-only image several GB smaller (specs/008-prebuilt-images).
 #
-# Installed FIRST, on purpose: with two indexes visible, `torch==X` matches
-# both the CUDA wheel and X+cpu and pip's pick is not guaranteed. Installing
-# torch beforehand makes the lock's torch line a no-op. The pin below MUST
-# match requirements.lock.txt - the release workflow has a drift check.
+# Two things this has to get right, both learned the hard way when the first
+# release built a CUDA image anyway:
+#
+#  1. Installing torch in a separate earlier step does NOT work. --prefix
+#     installs are not on the later pip run's sys.path, so the lock install
+#     does not see torch as satisfied and reinstalls the CUDA wheel over it.
+#     One pip invocation, or nothing.
+#  2. requirements.lock.txt pins 16 nvidia-* / triton packages, because it was
+#     compiled in a CUDA environment. A CPU torch alone would still drag the
+#     whole CUDA runtime in behind it, so those lines must be filtered out.
+#
+# The CPU index is primary and PyPI is the fallback: torch resolves to
+# 2.13.0+cpu (PEP 440 - a local version satisfies ==2.13.0) while every other
+# package still comes from PyPI.
 ARG TORCH_INDEX=""
 RUN if [ -n "$TORCH_INDEX" ]; then \
-      pip install --no-cache-dir --prefix=/install --index-url "$TORCH_INDEX" torch==2.13.0; \
+      grep -viE '^(nvidia-|triton)' requirements.lock.txt > /tmp/requirements.cpu.txt && \
+      pip install --no-cache-dir --prefix=/install \
+        --index-url "$TORCH_INDEX" \
+        --extra-index-url https://pypi.org/simple \
+        -r /tmp/requirements.cpu.txt ; \
+    else \
+      pip install --no-cache-dir --prefix=/install -r requirements.lock.txt ; \
     fi
-RUN pip install --no-cache-dir --prefix=/install -r requirements.lock.txt
 
 # Pre-download Whisper base model (will be copied to runtime stage).
 # Baking it into the image is what lets containers start without network.
