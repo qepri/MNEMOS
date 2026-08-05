@@ -34,10 +34,16 @@
         <div class="w-full max-w-4xl mx-auto px-4 sm:px-6 pt-6 flex-1 flex flex-col"
             [class.pb-20]="chatService.messages().length > 0">
 
-            <!-- Empty State -->
+            <!-- Empty State. With no model reachable, explain that rather than
+                 offering a prompt box that can only fail on submit. -->
             @if (chatService.messages().length === 0) {
-            <app-chat-empty-state class="flex-1 flex flex-col"
-                (openLlmModal)="isLlmModalOpen.set(true)"></app-chat-empty-state>
+                @if (llmAvailability.isAvailable()) {
+                <app-chat-empty-state class="flex-1 flex flex-col"
+                    (openLlmModal)="isLlmModalOpen.set(true)"></app-chat-empty-state>
+                } @else {
+                <app-llm-dormant class="flex-1 flex flex-col" heading="Chat needs a language model">
+                </app-llm-dormant>
+                }
             }
 
             <!-- Message List -->
@@ -64,8 +70,14 @@
     <!-- Input Area -->
     <div class="flex-shrink-0 z-40 pb-6 pt-2 bg-base relative">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 w-full">
+            @if (llmAvailability.isAvailable()) {
             <app-chat-input (sendMessageEvent)="handleSendMessage($event)"
                 (openLlmModal)="isLlmModalOpen.set(true)"></app-chat-input>
+            } @else {
+            <p class="text-center text-xs text-secondary py-3">
+                Chat is unavailable until a language model is connected. Search still works.
+            </p>
+            }
         </div>
     </div>
 

@@ -13,6 +13,8 @@ import { ToastrService } from 'ngx-toastr';
 import { ChatEmptyStateComponent } from '../../components/chat-empty-state/chat-empty-state.component';
 import { ChatInputComponent } from '../../components/chat-input/chat-input.component';
 import { ThemeService } from '@services/theme.service';
+import { LlmAvailabilityService } from '@services/llm-availability.service';
+import { LlmDormantComponent } from '@shared/components/llm-dormant/llm-dormant.component';
 
 @Component({
   selector: 'app-chat-page',
@@ -24,7 +26,8 @@ import { ThemeService } from '@services/theme.service';
     ImageModalComponent,
     VoiceVisualizerComponent,
     ChatEmptyStateComponent,
-    ChatInputComponent
+    ChatInputComponent,
+    LlmDormantComponent
   ],
   templateUrl: './chat-page.component.html',
   styleUrl: './chat-page.component.css'
@@ -40,6 +43,7 @@ export class ChatPage {
   voiceService = inject(VoiceService); // Inject VoiceService
 
   themeService = inject(ThemeService);
+  llmAvailability = inject(LlmAvailabilityService);
   isLlmModalOpen = signal<boolean>(false);
 
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef;

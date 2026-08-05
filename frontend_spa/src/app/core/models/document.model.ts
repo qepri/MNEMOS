@@ -3,7 +3,11 @@ export interface Document {
   filename: string;
   original_filename: string;
   file_type: 'pdf' | 'audio' | 'video' | 'youtube';
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  // Must match the backend's status_enum exactly (app/models/document.py).
+  // This was 'failed' for a long time while the backend emitted 'error', so the
+  // error badge never rendered - TypeScript can't catch it, the union is an
+  // unchecked assertion over JSON. document.model.spec.ts pins the two together.
+  status: 'pending' | 'processing' | 'completed' | 'error';
   youtube_url?: string;
   file_path?: string;
   error_message?: string;

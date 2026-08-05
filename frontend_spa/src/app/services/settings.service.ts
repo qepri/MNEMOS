@@ -2,6 +2,7 @@ import { Injectable, signal, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { ApiEndpoints } from '@core/constants/api-endpoints';
+import { LlmAvailabilityService } from './llm-availability.service';
 import {
   ModelsResponse,
   CurrentModelResponse,
@@ -21,6 +22,7 @@ import {
 })
 export class SettingsService {
   private http = inject(HttpClient);
+  private llmAvailability = inject(LlmAvailabilityService);
 
   // State
   models = signal<ModelsResponse | null>(null);
@@ -163,6 +165,10 @@ export class SettingsService {
         this.http.post(ApiEndpoints.SETTINGS_CHAT, prefs)
       );
       await this.loadChatPreferences();
+      // The provider or endpoint may have just changed. force=true skips the
+      // server-side cache so dormant features light up immediately rather than
+      // up to 30s later.
+      await this.llmAvailability.refresh(true);
     } catch (error) {
       console.error('Failed to save chat preferences', error);
       throw error;

@@ -289,12 +289,36 @@ def stage_embed_and_save(doc, text_chunks: list, language: str, embedder=None) -
 
 
 def stage_summarize(doc, summary_fn) -> None:
+    """Generate the document summary. Non-blocking, like stage_hypergraph.
+
+    A document whose chunks and embeddings are already committed (see the
+    commit at the end of stage_embed_and_save) is fully searchable without a
+    summary, so an unreachable LLM records a failed stage rather than failing
+    the document.
+
+    The recorded outcome is what the UI reads to tell "no summary because no
+    LLM" from "summary generated" - so it must reflect what actually happened.
+    """
     if doc.summary:
         logger.info("Summary already exists, skipping.")
         record_stage(doc, 'summarize', 'skipped', reason='already present')
         return
-    summary_fn(doc.id)
-    record_stage(doc, 'summarize', 'completed')
+    try:
+        summary_fn(doc.id)
+    except Exception as e:
+        logger.error(f"Summary generation failed (non-blocking): {e}")
+        record_stage(doc, 'summarize', 'failed', error=str(e))
+        return
+
+    # SummaryService swallows per-batch LLM errors internally (a failed map
+    # batch is dropped and logged, and the reduce step tolerates an empty set),
+    # so returning without raising does not mean a summary was produced. The
+    # honest signal is whether one actually landed on the document.
+    if doc.summary:
+        record_stage(doc, 'summarize', 'completed')
+    else:
+        record_stage(doc, 'summarize', 'failed',
+                     error='no summary produced (LLM unreachable?)')
 
 
 def stage_hypergraph(doc) -> None:
@@ -303,7 +327,17 @@ def stage_hypergraph(doc) -> None:
     try:
         from app.services.hypergraph_extractor import HypergraphExtractor
         HypergraphExtractor.process_document(doc.id)
-        record_stage(doc, 'hypergraph', 'completed')
     except Exception as e:
         logger.error(f"Hypergraph extraction failed (non-blocking): {e}")
         record_stage(doc, 'hypergraph', 'failed', error=str(e))
+        return
+
+    # Same caveat as stage_summarize: the extractor drops failed batches and
+    # returns normally when none produced usable output, so "did not raise" is
+    # not "worked". Count the edges it was supposed to create instead.
+    from app.models.knowledge_graph import HyperEdge
+    if db.session.query(HyperEdge).filter_by(source_document_id=doc.id).count():
+        record_stage(doc, 'hypergraph', 'completed')
+    else:
+        record_stage(doc, 'hypergraph', 'failed',
+                     error='no concepts extracted (LLM unreachable?)')

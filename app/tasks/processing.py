@@ -94,15 +94,16 @@ def process_document_task(self, document_id: str):
 
 
 def _generate_summary_logic(document_id):
-    """
-    Helper function to generate summary for a document.
-    Can be called from main processing task or independent summary task.
+    """Generate a summary for a document. Raises on failure.
+
+    This used to catch-and-log, which meant stage_summarize could never see a
+    failure and recorded 'completed' unconditionally - a failed summary was
+    indistinguishable from a real one. Both callers now handle the exception
+    themselves, each in the way that suits it: stage_summarize records a failed
+    stage and carries on, generate_summary_task reports it to Celery.
     """
     from app.services.summary_service import SummaryService
-    try:
-        SummaryService.generate_summary(document_id)
-    except Exception as e:
-        logger.error(f"Failed to generate summary (wrapper): {e}")
+    SummaryService.generate_summary(document_id)
 
 @celery_app.task(bind=True, max_retries=2, soft_time_limit=1800, time_limit=2000)
 def generate_summary_task(self, document_id: str):
@@ -121,25 +122,35 @@ def generate_summary_task(self, document_id: str):
                  db.session.commit()
                  
              _generate_summary_logic(document_id)
-             
+
              # Mark done
              if doc:
                  doc.status = 'completed'
                  doc.processing_progress = 100
                  db.session.commit()
-                 
+                 from app.tasks import pipeline
+                 pipeline.record_stage(doc, 'summarize', 'completed')
+
              return "Summary generated"
         except Exception as e:
             logger.error(f"Error in generate_summary_task: {e}")
-            # Ensure we don't leave it stuck if we can help it
+            # A failed summary must NOT fail the document. Its chunks and
+            # embeddings are intact and searchable, which is the whole premise
+            # of LLM-optional mode - marking it 'error' here would strand a
+            # perfectly good document every time backfill hit an unreachable
+            # LLM. Restore the terminal status, record the stage, and re-raise
+            # so Celery still sees the failure.
+            db.session.rollback()
             try:
                 doc = db.session.get(Document, UUID(document_id))
                 if doc:
-                    doc.status = 'error'
-                    doc.error_message = str(e)
+                    doc.status = 'completed'
+                    doc.processing_progress = 100
                     db.session.commit()
-            except:
-                pass
+                    from app.tasks import pipeline
+                    pipeline.record_stage(doc, 'summarize', 'failed', error=str(e))
+            except Exception as inner:
+                logger.error(f"Failed to record summary failure: {inner}")
             raise e
 
 @celery_app.task(bind=True, max_retries=2, soft_time_limit=1800, time_limit=2000)

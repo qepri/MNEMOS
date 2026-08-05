@@ -114,6 +114,12 @@
                 <!-- Tab: Chat Settings -->
                 @if (activeTab() === 'chat') {
                 <app-settings-chat-tab></app-settings-chat-tab>
+                <!-- Only renders when a model is reachable AND there is work to
+                     do, so it stays invisible for users who never ran without
+                     one. -->
+                <div class="mt-4">
+                    <app-llm-backfill-card></app-llm-backfill-card>
+                </div>
                 }
 
             </div>

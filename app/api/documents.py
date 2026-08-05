@@ -207,10 +207,15 @@ def get_document_status(doc_id):
     if not doc:
         return "", 404
 
+    # `pipeline` is additive - existing consumers keep reading status/progress/
+    # error unchanged. It lets the UI tell "no summary because no LLM" from
+    # "summary generated" without a second request. Absent for documents
+    # processed before per-stage records existed, so treat it as optional.
     return jsonify({
-        "status": doc.status, 
-        "progress": doc.processing_progress, 
-        "error": doc.error_message
+        "status": doc.status,
+        "progress": doc.processing_progress,
+        "error": doc.error_message,
+        "pipeline": (doc.metadata_ or {}).get("pipeline"),
     })
 
 @bp.route('/<string:doc_id>/content', methods=['GET'])
@@ -367,6 +372,70 @@ def generate_summary(doc_id):
     logger.info(f"Manual summary generation triggered for {doc_id}")
     
     return jsonify({'status': 'queued'}), 202
+
+def _llm_backfill_candidates():
+    """Documents that finished indexing but never got their LLM-dependent parts.
+
+    Eligibility is a query, not a stored flag - a `needs_backfill` column would
+    be a denormalization that goes stale against the data it describes.
+    """
+    from app.models.knowledge_graph import HyperEdge
+
+    completed = db.session.query(Document).filter(Document.status == 'completed').all()
+    with_edges = {
+        row[0] for row in db.session.query(HyperEdge.source_document_id)
+        .filter(HyperEdge.source_document_id.isnot(None)).distinct().all()
+    }
+
+    needs_summary = [d for d in completed if not d.summary]
+    needs_concepts = [d for d in completed if d.id not in with_edges]
+    return needs_summary, needs_concepts
+
+
+@bp.route('/llm-backfill', methods=['GET'])
+def llm_backfill_status():
+    """How much work a backfill would be, so the UI can say '20 documents'
+    before the user commits to it.
+    """
+    needs_summary, needs_concepts = _llm_backfill_candidates()
+    return jsonify({
+        'needs_summary': len(needs_summary),
+        'needs_concepts': len(needs_concepts),
+        'total': len({d.id for d in needs_summary} | {d.id for d in needs_concepts}),
+    })
+
+
+@bp.route('/llm-backfill', methods=['POST'])
+def llm_backfill():
+    """Generate summaries and concepts for already-indexed documents.
+
+    Enqueues the existing per-document tasks rather than adding new ones -
+    neither re-runs extraction or embedding, so a backfill never re-does the
+    expensive part.
+
+    Never triggered automatically. SummaryService fans out to five threads per
+    document, so auto-backfilling a library the moment a provider is connected
+    would saturate a local GPU for a long time without the user asking.
+    """
+    from app.tasks.processing import generate_summary_task, reprocess_hypergraph_task
+
+    needs_summary, needs_concepts = _llm_backfill_candidates()
+
+    for doc in needs_summary:
+        generate_summary_task.delay(str(doc.id))
+    for doc in needs_concepts:
+        reprocess_hypergraph_task.delay(str(doc.id))
+
+    queued = len({d.id for d in needs_summary} | {d.id for d in needs_concepts})
+    logger.info(f"LLM backfill queued for {queued} document(s)")
+
+    return jsonify({
+        'status': 'queued',
+        'summaries_queued': len(needs_summary),
+        'concepts_queued': len(needs_concepts),
+        'documents': queued,
+    }), 202
+
 
 @bp.route('/backfill-concepts', methods=['POST'])
 def backfill_concepts():

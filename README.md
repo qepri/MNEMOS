@@ -279,11 +279,26 @@ Resúmenes estructurados con patrón Map-Reduce:
 - **Modelos GGUF**: coloca tus modelos `.gguf` en la carpeta `models/`. Si hay al menos uno, `start.bat` activa el servidor llama.cpp automáticamente.
 - **Sin GPU**: no hace falta hacer nada — `docker compose up -d` ya no arranca `llamacpp`. Ver la sección siguiente.
 
+### Funciona sin ningún LLM
+
+No necesitas modelo de lenguaje para empezar. Ejecuta `start-lite.bat`, sube un PDF y búscalo — sin Ollama, sin GPU, sin clave de API.
+
+| Funciona sin LLM | Necesita un LLM |
+|---|---|
+| Subida e indexado (PDF, EPUB, audio, vídeo, YouTube) | Chat con citas |
+| Búsqueda semántica (pgvector) | Resúmenes de documentos |
+| Búsqueda por palabras clave (FTS) | Grafo de conceptos y wiki |
+| Fusión RRF, reordenado MMR | |
+
+Los documentos indexados sin LLM quedan como `completed`, nunca como error: sus fragmentos y embeddings están intactos y son buscables. Las funciones que sí lo necesitan muestran una explicación con un enlace a Ajustes en lugar de una pantalla vacía.
+
+Cuando conectes un proveedor, Ajustes → Chat ofrece generar los resúmenes y conceptos que falten para los documentos ya indexados. No vuelve a extraer ni a recalcular embeddings, y nunca arranca solo.
+
 ### Usa tu propio servidor LLM (modo slim)
 
 MNEMOS incluye un contenedor llama.cpp, pero probablemente ya tengas Ollama o LM Studio corriendo. El modo slim omite el servidor incluido: sin segunda descarga de modelo y sin GPU.
 
-**Requisitos**: Docker, y un servidor compatible con OpenAI ya corriendo:
+**Requisitos**: Docker. Un servidor compatible con OpenAI es opcional — sin él tendrás indexado y búsqueda:
 - **Ollama** → `http://localhost:11434/v1`
 - **LM Studio** → `http://localhost:1234/v1` (arranca el servidor desde la pestaña Developer)
 
@@ -840,11 +855,26 @@ Map-Reduce structured summaries:
 - **GGUF models**: put your `.gguf` models in `models/`. If at least one is present, `start.bat` auto-enables the llama.cpp server.
 - **No GPU**: nothing to do — `docker compose up -d` no longer starts `llamacpp`. See the next section.
 
+### Works with no LLM at all
+
+You don't need a language model to get started. Run `start-lite.bat`, upload a PDF, and search it — no Ollama, no GPU, no API key.
+
+| Works without an LLM | Needs an LLM |
+|---|---|
+| Upload and indexing (PDF, EPUB, audio, video, YouTube) | Chat with citations |
+| Semantic search (pgvector) | Document summaries |
+| Keyword search (Postgres FTS) | Concept graph and wiki |
+| RRF fusion, MMR re-ranking | |
+
+Documents indexed without an LLM finish as `completed`, never as errors — their chunks and embeddings are intact and searchable. The features that do need one show an explanation and a link to Settings instead of an empty screen.
+
+Once you connect a provider, Settings → Chat offers to generate the missing summaries and concepts for documents you already indexed. It reuses the existing index — nothing is re-uploaded or re-embedded — and it never starts on its own.
+
 ### Bring your own LLM server (slim mode)
 
 MNEMOS ships with a bundled llama.cpp container, but you probably already run Ollama or LM Studio. Slim mode skips the bundled server entirely — no second model download, no GPU required.
 
-**Requirements**: Docker, and an OpenAI-compatible server already running:
+**Requirements**: Docker. An OpenAI-compatible server is optional — without one you get indexing and search:
 - **Ollama** → `http://localhost:11434/v1`
 - **LM Studio** → `http://localhost:1234/v1` (start the server from the Developer tab)
 

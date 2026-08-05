@@ -184,6 +184,21 @@ def save_chat_settings():
 
 
 
+# ============= LLM Availability =============
+
+@bp.route('/llm-availability', methods=['GET'])
+def get_llm_availability():
+    """Report whether LLM-dependent features can be used right now.
+
+    Always 200, never 503: a 503 would say "MNEMOS is down" when MNEMOS is up
+    and perfectly usable for upload and search - having no language model is a
+    supported state, not an outage.
+    """
+    from app.services.llm_availability import get_availability
+
+    return jsonify(get_availability(force=request.args.get('force') == 'true'))
+
+
 # ============= System Prompts Endpoints =============
 
 @bp.route('/prompts', methods=['GET'])

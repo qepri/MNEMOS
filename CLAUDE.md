@@ -144,6 +144,8 @@ When `VISION_ENABLED=True`, PDF processing also runs `PDFProcessor.extract_image
 ## Health, Uploads, Workers
 
 - `GET /api/health` — liveness only (db + redis reachable). Unchanged by this feature; the launcher polls it.
+- `GET /api/settings/llm-availability` — three-state (`unconfigured` / `unreachable` / `available`), cached ~30s, invalidated through `reset_client()`. Always `200`: no LLM is a supported state, not an outage. **MNEMOS indexes and searches without an LLM** — extraction, chunking, embedding and the whole retrieval stack are LLM-free. Summaries, chat, and the concept graph/wiki are opt-in and render a dormant state (`app-llm-dormant`) until a provider is connected. `stage_summarize` and `stage_hypergraph` are both non-blocking and record `failed` on `Document.metadata_['pipeline']`; neither may ever set `status='error'`, because a document with chunks is still fully searchable.
+- Both `SummaryService` and `HypergraphExtractor` swallow LLM errors internally, so "did not raise" does not mean "worked" — the stages check the actual outcome (`doc.summary`, and a `HyperEdge` count) instead. If you add another LLM-dependent stage, check its output, not its exceptions.
 - `GET /api/ready` — readiness: liveness plus `flask db current == flask db heads` and a short-timeout probe of llama.cpp's `/health`. Can be `503` while `/api/health` is `200` — e.g. llama.cpp cold-starting is normal and does not mean the app is down.
 - Uploads are validated at the boundary in `app/api/documents.py` (`detect_file_type`, `MAX_UPLOAD_BY_TYPE`): unsupported extensions get `400`, oversize gets `413`. Limits are per type in `config/settings.py` (`MAX_UPLOAD_DOCUMENT` 512MB, `MAX_UPLOAD_AUDIO` 2GB, `MAX_UPLOAD_VIDEO` 8GB) — there is no more single 50GB cap.
 - Celery worker pool is env-configurable: `CELERY_POOL` (default `solo`) and optional `CELERY_CONCURRENCY`. Solo is the default on purpose — the worker loads embedding models onto the same GPU llama.cpp occupies, so concurrent tasks would contend for VRAM.
@@ -182,5 +184,5 @@ The config connects via `docker exec` so the MCP server runs inside the existing
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/005-slim-deployment-mode/plan.md`
+`specs/006-llm-optional-mode/plan.md`
 <!-- SPECKIT END -->

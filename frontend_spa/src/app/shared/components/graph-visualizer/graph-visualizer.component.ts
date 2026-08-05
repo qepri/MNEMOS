@@ -1,11 +1,13 @@
-import { Component, ElementRef, ViewChild, input, effect, AfterViewInit, OnDestroy, signal, output } from '@angular/core';
+import { Component, ElementRef, ViewChild, input, effect, AfterViewInit, OnDestroy, signal, output, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import cytoscape from 'cytoscape';
+import { LlmAvailabilityService } from '@services/llm-availability.service';
+import { LlmDormantComponent } from '@shared/components/llm-dormant/llm-dormant.component';
 
 @Component({
     selector: 'app-graph-visualizer',
     standalone: true,
-    imports: [CommonModule],
+    imports: [CommonModule, LlmDormantComponent],
     template: `
     <div #graphContainer class="graph-container rounded-xl border border-divider overflow-hidden relative" [style.height.px]="height()">
         <!-- Header -->
@@ -19,8 +21,16 @@ import cytoscape from 'cytoscape';
             <svg *ngIf="isFullscreen()" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
         </button>
         
-        <!-- Cytoscape Container -->
+        <!-- Cytoscape Container. Kept mounted so cytoscape's lifecycle is
+             untouched; the dormant notice sits over it rather than replacing
+             it, because an empty canvas reads as a bug, not as a choice. -->
         <div #cy id="cy" class="w-full h-full bg-base"></div>
+
+        @if (!llmAvailability.isAvailable() && isEmpty()) {
+            <div class="absolute inset-0 z-30 bg-base/95 backdrop-blur-sm flex items-center justify-center">
+                <app-llm-dormant heading="The graph needs a language model"></app-llm-dormant>
+            </div>
+        }
 
         <!-- Details Overlay -->
         @if (selectedNode()) {
@@ -69,6 +79,16 @@ export class GraphVisualizerComponent implements AfterViewInit, OnDestroy {
     // State
     selectedNode = signal<any>(null);
     isFullscreen = signal(false);
+
+    llmAvailability = inject(LlmAvailabilityService);
+
+    /** No nodes to draw. Only meaningful alongside LLM availability: an empty
+     *  graph with a model connected means "nothing extracted yet"; without one
+     *  it means "this feature is off". */
+    isEmpty = computed(() => {
+        const d = this.data();
+        return !d || !d.nodes || d.nodes.length === 0;
+    });
 
     @ViewChild('cy') cyElement!: ElementRef;
     @ViewChild('graphContainer') graphContainer!: ElementRef; // We need to reference the container div

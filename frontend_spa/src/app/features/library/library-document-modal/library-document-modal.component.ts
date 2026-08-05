@@ -8,11 +8,13 @@ import { DocumentPropertiesFormComponent } from './document-properties-form/docu
 import { MarkdownDisplayComponent } from '../../../components/markdown/markdown-display.component';
 import { ModalService } from '../../../services/modal.service';
 import { ApiEndpoints } from '../../../core/constants/api-endpoints';
+import { LlmAvailabilityService } from '@services/llm-availability.service';
+import { LlmDormantComponent } from '@shared/components/llm-dormant/llm-dormant.component';
 
 @Component({
   selector: 'app-library-document-modal',
   standalone: true,
-  imports: [CommonModule, DocumentPropertiesFormComponent, MarkdownDisplayComponent],
+  imports: [CommonModule, DocumentPropertiesFormComponent, MarkdownDisplayComponent, LlmDormantComponent],
   template: `
     <!-- Main Modal Overlay -->
     <div *ngIf="isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true">
@@ -105,6 +107,10 @@ import { ApiEndpoints } from '../../../core/constants/api-endpoints';
                                 <div class="text-base leading-relaxed text-gray-200">
                                     @if (document?.summary) {
                                         <app-markdown-display [content]="document!.summary!"></app-markdown-display>
+                                    } @else if (!llmAvailability.isAvailable()) {
+                                        <!-- Without a model, "Generate Manual Summary" is a
+                                             button that can only fail. Explain instead. -->
+                                        <app-llm-dormant heading="Summaries need a language model"></app-llm-dormant>
                                     } @else {
                                         <div class="flex flex-col items-center justify-center py-12 text-gray-600 gap-3">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
@@ -404,6 +410,8 @@ export class LibraryDocumentModalComponent implements OnChanges {
   transcriptionText: string = '';
   loadingTranscription = false;
   copied = false;
+
+  llmAvailability = inject(LlmAvailabilityService);
 
   // UI toggle
   showTechnical = false;

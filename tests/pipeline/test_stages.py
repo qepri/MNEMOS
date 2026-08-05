@@ -82,10 +82,50 @@ def test_stage_summarize_calls_summary_fn_and_records_completion(db_session):
     db_session.commit()
     calls = []
 
-    pipeline.stage_summarize(doc, lambda doc_id: calls.append(doc_id))
+    def fake_summary(doc_id):
+        # A real summary_fn writes the summary onto the document; the stage
+        # checks for that rather than trusting the absence of an exception,
+        # because SummaryService swallows per-batch LLM failures internally.
+        calls.append(doc_id)
+        doc.summary = "A generated summary."
+
+    pipeline.stage_summarize(doc, fake_summary)
 
     assert calls == [doc.id]
     assert doc.metadata_["pipeline"]["summarize"]["status"] == "completed"
+
+
+def test_stage_summarize_records_failure_when_no_summary_produced(db_session):
+    """SummaryService can return normally having produced nothing - every LLM
+    call inside it may have failed and been logged. That must not be recorded
+    as a success, or the UI cannot tell it from a real summary.
+    """
+    from app.tasks import pipeline
+
+    doc = make_document(db_session, metadata_={})
+    db_session.commit()
+
+    pipeline.stage_summarize(doc, lambda doc_id: None)
+
+    summarize = doc.metadata_["pipeline"]["summarize"]
+    assert summarize["status"] == "failed"
+    assert "no summary produced" in summarize["error"]
+
+
+def test_stage_summarize_records_failure_when_summary_fn_raises(db_session):
+    from app.tasks import pipeline
+
+    doc = make_document(db_session, metadata_={})
+    db_session.commit()
+
+    def boom(doc_id):
+        raise RuntimeError("Connection refused")
+
+    pipeline.stage_summarize(doc, boom)
+
+    summarize = doc.metadata_["pipeline"]["summarize"]
+    assert summarize["status"] == "failed"
+    assert "Connection refused" in summarize["error"]
 
 
 def test_stage_summarize_skips_when_summary_already_present(db_session):

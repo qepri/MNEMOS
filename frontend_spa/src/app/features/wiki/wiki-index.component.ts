@@ -6,10 +6,13 @@ import { DocumentsService } from '../../services/documents.service';
 import { WikiConceptStub, Document } from '@core/models';
 import { Collection } from '@core/models/collection.model';
 import { renderKatexInElement } from '../../shared/katex.util';
+import { LlmAvailabilityService } from '@services/llm-availability.service';
+import { LlmDormantComponent } from '@shared/components/llm-dormant/llm-dormant.component';
 
 @Component({
   selector: 'app-wiki-index',
   standalone: true,
+  imports: [LlmDormantComponent],
   template: `
 <div class="wiki-index-layout">
 
@@ -82,6 +85,11 @@ import { renderKatexInElement } from '../../shared/katex.util';
       <div class="wiki-loading">
         <span class="loading-dots"><span></span><span></span><span></span></span>
       </div>
+    } @else if (displayedConcepts().length === 0 && !llmAvailability.isAvailable()) {
+      <!-- Concepts are LLM-extracted, so with no model the wiki is empty by
+           design, not because the user hasn't uploaded anything. Saying
+           "upload documents" here would send them down the wrong path. -->
+      <app-llm-dormant heading="The wiki needs a language model"></app-llm-dormant>
     } @else if (displayedConcepts().length === 0) {
       <p class="wiki-empty">No concepts found. Upload documents to populate the knowledge base.</p>
     } @else {
@@ -111,6 +119,7 @@ import { renderKatexInElement } from '../../shared/katex.util';
 })
 export class WikiIndexComponent implements OnInit, AfterViewChecked {
   private router = inject(Router);
+  llmAvailability = inject(LlmAvailabilityService);
   private wikiService = inject(WikiService);
   private collectionService = inject(CollectionService);
   private documentsService = inject(DocumentsService);

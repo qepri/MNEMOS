@@ -29,7 +29,7 @@ export class DocumentItemComponent {
       case 'processing':
       case 'pending':
         return 'badge-warning';
-      case 'failed':
+      case 'error':
         return 'badge-error';
       default:
         return 'badge-ghost';
@@ -45,7 +45,7 @@ export class DocumentItemComponent {
         return 'Processing...';
       case 'pending':
         return 'Pending...';
-      case 'failed':
+      case 'error':
         return 'Failed';
       default:
         return status;

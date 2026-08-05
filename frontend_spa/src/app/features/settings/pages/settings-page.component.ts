@@ -13,6 +13,7 @@ import { SettingsDiscoverTabComponent } from '../components/settings-discover-ta
 import { SettingsManageTabComponent } from '../components/settings-manage-tab/settings-manage-tab.component';
 import { SettingsVoiceTabComponent } from '../components/settings-voice-tab/settings-voice-tab.component';
 import { SettingsChatTabComponent } from '../components/settings-chat-tab/settings-chat-tab.component';
+import { LlmBackfillCardComponent } from '../components/llm-backfill-card.component';
 
 @Component({
     selector: 'app-settings-page',
@@ -27,7 +28,8 @@ import { SettingsChatTabComponent } from '../components/settings-chat-tab/settin
         SettingsDiscoverTabComponent,
         SettingsManageTabComponent,
         SettingsVoiceTabComponent,
-        SettingsChatTabComponent
+        SettingsChatTabComponent,
+        LlmBackfillCardComponent
     ],
     host: { class: 'flex flex-col h-full w-full' },
     templateUrl: './settings-page.component.html',

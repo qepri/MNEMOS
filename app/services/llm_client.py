@@ -379,3 +379,7 @@ def reset_client():
     """Invalidate the LLM client for the current thread (call after config changes)."""
     if hasattr(_thread_local, 'client'):
         del _thread_local.client
+    # Availability is derived from the same configuration, so it invalidates
+    # here too - one seam rather than two that can drift apart.
+    from app.services.llm_availability import invalidate
+    invalidate()
