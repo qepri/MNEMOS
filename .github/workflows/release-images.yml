@@ -32,8 +32,11 @@ jobs:
       # track the lock file or the two could diverge silently (research R-002).
       - name: Torch pin drift check
         run: |
-          lock=$(grep -oP '^torch==\S+' requirements.lock.txt)
-          dockerfile=$(grep -oP 'torch==\S+' Dockerfile | head -1)
+          # Skip comment lines and require a digit after '==': the Dockerfile
+          # comment explaining this mechanism literally contains "torch==X",
+          # which the first version of this check happily matched.
+          lock=$(grep -oP '^torch==[\d.]+' requirements.lock.txt)
+          dockerfile=$(grep -v '^\s*#' Dockerfile | grep -oP 'torch==[\d.]+' | head -1)
           echo "lock=$lock dockerfile=$dockerfile"
           test "$lock" = "$dockerfile"
 
