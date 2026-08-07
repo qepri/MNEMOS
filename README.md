@@ -275,6 +275,21 @@ compila nada. Unos minutos en una conexión normal.
 No necesitas Docker Desktop. No necesitas GPU. No necesitas modelo de lenguaje
 para subir y buscar documentos.
 
+Al terminar, el instalador deja el comando `mnemos` disponible en tu PATH:
+
+```powershell
+mnemos           # arrancar (abre http://localhost:5200)
+mnemos stop      # parar
+mnemos logs      # ver el log de la app
+mnemos backup    # copia de seguridad de la base de datos
+mnemos update    # actualizar a la última versión publicada
+```
+
+Funciona desde cualquier carpeta y en la misma ventana que ya tienes abierta —
+no hace falta reiniciar la terminal. Es un único archivo
+(`%LOCALAPPDATA%\Microsoft\WindowsApps\mnemos.cmd`); borrarlo quita el comando y
+nada más.
+
 ### Requisitos
 - **Windows 10/11** con WSL2 (el instalador lo comprueba y lo activa si falta)
 - **Un runtime de contenedores**: Podman (`winget install RedHat.Podman`) o
@@ -545,6 +560,67 @@ type backups\migrate.sql | docker-compose exec -T db psql -U mnemos_user mnemos_
 Los embeddings viajan dentro del volcado: **no hay que reindexar ni volver a
 subir nada**. Deja `MNEMOS_RUNTIME=podman` puesto (o desinstala Docker Desktop)
 para que los siguientes arranques no vuelvan al runtime anterior.
+
+## Actualizaciones
+
+**Las actualizaciones son manuales.** MNEMOS no comprueba si hay versiones
+nuevas al arrancar, no actualiza en segundo plano y no te avisa. Se queda en la
+versión que tengas hasta que pidas cambiarla:
+
+```powershell
+mnemos update
+```
+
+Qué hace, en este orden:
+
+1. Lee `MNEMOS_VERSION` de tu `.env` y pregunta a GitHub cuál es la última
+   release. Si coinciden, no hace nada y termina.
+2. Te pide confirmación mostrando de qué versión a cuál.
+3. **Hace copia de seguridad de la base de datos** en
+   `backups/mnemos_db_<version>_<fecha>.sql` y te dice la ruta. Si la copia
+   falla o sale vacía, se detiene sin haber tocado nada.
+4. Descarga los archivos de la nueva versión y los **superpone** a los que ya
+   tienes. No borra directorios: tu `.env` (con tus API keys y ajustes),
+   `uploads/`, `backups/` y `models/` no están en el paquete y quedan intactos.
+5. Reescribe únicamente la línea `MNEMOS_VERSION=` de tu `.env`.
+6. Descarga las imágenes nuevas y reinicia.
+
+La copia de seguridad va **primero** porque las migraciones de esquema se
+aplican solas cuando arranca el contenedor: para cuando la app responde, la
+base de datos ya ha cambiado.
+
+**No hay rollback automático**, a propósito: sería el camino menos probado del
+programa y solo se ejecutaría cuando algo ya ha ido mal. Si la actualización
+falla, el script imprime la ruta del backup y el comando para restaurarlo:
+
+```powershell
+cd $env:USERPROFILE\mnemos
+docker-compose up -d --wait db
+cmd /c 'docker-compose exec -T db psql -U mnemos_user mnemos_db < "backups\<tu-backup>.sql"'
+```
+
+Comillas simples fuera, dobles dentro: PowerShell pasa la línea entera a cmd,
+que es quien hace la redirección `<`. Si las inviertes, no funciona.
+
+Para hacer una copia cuando quieras, sin actualizar nada:
+
+```powershell
+mnemos backup
+```
+
+Guarda el volcado en `backups/mnemos_db_<fecha>.sql`, comprueba que no ha
+salido vacío y te imprime el comando de restauración. Cubre la base de datos —
+documentos, fragmentos, grafo, conversaciones y ajustes. Los archivos subidos
+viven en `uploads/` y se copian aparte, con copiar la carpeta.
+
+> Si instalaste clonando el repositorio, tu `.env` no tiene `MNEMOS_VERSION` y
+> `mnemos update` te lo dirá en vez de actuar. Ahí la actualización es
+> `git pull` y `start.bat`.
+
+Las reglas que siguen estos scripts están escritas en
+[`INSTALLER-CONSTITUTION.md`](INSTALLER-CONSTITUTION.md).
+
+---
 
 ## Mantenimiento
 
@@ -909,6 +985,21 @@ on a normal connection.
 No Docker Desktop required. No GPU required. No language model required to
 upload and search documents.
 
+When it finishes, the installer leaves a `mnemos` command on your PATH:
+
+```powershell
+mnemos           # start (opens http://localhost:5200)
+mnemos stop      # stop
+mnemos logs      # tail the app log
+mnemos backup    # back up the database
+mnemos update    # move to the latest published release
+```
+
+It works from any folder and in the window you already have open — no terminal
+restart needed. It is a single file
+(`%LOCALAPPDATA%\Microsoft\WindowsApps\mnemos.cmd`); deleting it removes the
+command and nothing else.
+
 ### Requirements
 - **Windows 10/11** with WSL2 (the installer checks, and enables it if missing)
 - **A container runtime**: Podman (`winget install RedHat.Podman`) or Docker
@@ -1185,6 +1276,69 @@ don't flip back.
 The bundled llama.cpp (`--profile local-llm`) needs NVIDIA CDI setup under
 Podman/WSL2, which is manual. Slim mode — Ollama or LM Studio on the host — is
 the recommended path under Podman and needs none of it.
+
+## Updates
+
+**Updates are manual.** MNEMOS does not check for new versions at startup, does
+not update in the background, and does not notify you. It stays on the version
+you have until you ask it to move:
+
+```powershell
+mnemos update
+```
+
+What it does, in this order:
+
+1. Reads `MNEMOS_VERSION` from your `.env` and asks GitHub for the latest
+   release. If they match, it does nothing and exits.
+2. Asks you to confirm, showing which version to which.
+3. **Backs up the database** to `backups/mnemos_db_<version>_<timestamp>.sql`
+   and prints the path. If the backup fails or comes out empty, it stops
+   without having changed anything.
+4. Downloads the new version's files and **overlays** them onto what you have.
+   It deletes no directories: your `.env` (with your API keys and settings),
+   `uploads/`, `backups/` and `models/` are not in the archive and survive
+   untouched.
+5. Rewrites exactly the `MNEMOS_VERSION=` line of your `.env`.
+6. Pulls the new images and restarts.
+
+The backup goes **first** because schema migrations apply themselves when the
+container starts — by the time the app answers, the database has already
+changed.
+
+**There is no automatic rollback**, deliberately: it would be the
+least-tested path in the program and would only ever run when something had
+already gone wrong. If the update fails, the script prints the backup path and
+the command to restore it:
+
+```powershell
+cd $env:USERPROFILE\mnemos
+docker-compose up -d --wait db
+cmd /c 'docker-compose exec -T db psql -U mnemos_user mnemos_db < "backups\<your-backup>.sql"'
+```
+
+Single quotes outside, double inside: PowerShell hands the whole line to cmd,
+which is what performs the `<` redirect. Swapping them does not work.
+
+To take a backup any time, without updating anything:
+
+```powershell
+mnemos backup
+```
+
+It writes the dump to `backups/mnemos_db_<timestamp>.sql`, checks it did not
+come out empty, and prints the restore command. It covers the database —
+documents, chunks, graph, conversations and settings. Uploaded files live in
+`uploads/` and are backed up separately, by copying the folder.
+
+> If you installed by cloning the repo, your `.env` has no `MNEMOS_VERSION` and
+> `mnemos update` will tell you so instead of acting. There, updating is
+> `git pull` and `start.bat`.
+
+The rules these scripts follow are written down in
+[`INSTALLER-CONSTITUTION.md`](INSTALLER-CONSTITUTION.md).
+
+---
 
 ## Maintenance
 

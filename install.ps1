@@ -203,11 +203,13 @@ set "MNEMOS_HOME=$InstallDir"
 if not exist "%MNEMOS_HOME%\start-lite.bat" goto :missing
 cd /d "%MNEMOS_HOME%"
 
-if /i "%~1"==""      goto :start
-if /i "%~1"=="start" goto :start
-if /i "%~1"=="stop"  goto :stop
-if /i "%~1"=="logs"  goto :logs
-echo Usage: mnemos [start^|stop^|logs]
+if /i "%~1"==""       goto :start
+if /i "%~1"=="start"  goto :start
+if /i "%~1"=="stop"   goto :stop
+if /i "%~1"=="logs"   goto :logs
+if /i "%~1"=="update" goto :update
+if /i "%~1"=="backup" goto :backup
+echo Usage: mnemos [start^|stop^|logs^|backup^|update]
 exit /b 1
 
 :start
@@ -224,6 +226,16 @@ exit /b %errorlevel%
 :logs
 call "%MNEMOS_HOME%\runtime-detect.bat" || exit /b 1
 docker-compose logs -f app
+exit /b %errorlevel%
+
+:backup
+powershell -NoProfile -ExecutionPolicy Bypass -File "%MNEMOS_HOME%\backup.ps1" %2 %3
+exit /b %errorlevel%
+
+:: update.ps1 does its own runtime detection where it needs one, and hands the
+:: restart back to start-lite.bat rather than assembling its own compose call.
+:update
+powershell -NoProfile -ExecutionPolicy Bypass -File "%MNEMOS_HOME%\update.ps1"
 exit /b %errorlevel%
 
 :missing
