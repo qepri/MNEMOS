@@ -186,6 +186,58 @@ if ($ReleaseTag) {
     }
 }
 
+# ------------------------------------------------- 3c. The `mnemos` command ---
+# A .cmd shim in WindowsApps, which is already on the user PATH on every
+# Windows 10/11 box - so `mnemos` works in the shell that is open right now,
+# with no PATH edit and no restart. The install path is baked in at write
+# time (the shim lives outside InstallDir, so %~dp0 would point at the wrong
+# place). Uninstalling the command is deleting one file.
+Step 'Installing the `mnemos` command...'
+$binDir = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps'
+$shim   = Join-Path $binDir 'mnemos.cmd'
+@"
+@echo off
+:: MNEMOS command shim - written by install.ps1. Holds no state; delete to remove.
+setlocal
+set "MNEMOS_HOME=$InstallDir"
+if not exist "%MNEMOS_HOME%\start-lite.bat" goto :missing
+cd /d "%MNEMOS_HOME%"
+
+if /i "%~1"==""      goto :start
+if /i "%~1"=="start" goto :start
+if /i "%~1"=="stop"  goto :stop
+if /i "%~1"=="logs"  goto :logs
+echo Usage: mnemos [start^|stop^|logs]
+exit /b 1
+
+:start
+call "%MNEMOS_HOME%\start-lite.bat"
+exit /b %errorlevel%
+
+:: stop/logs talk to compose directly, so they need the runtime picked first -
+:: start-lite.bat does that itself, these do not.
+:stop
+call "%MNEMOS_HOME%\runtime-detect.bat" || exit /b 1
+docker-compose down
+exit /b %errorlevel%
+
+:logs
+call "%MNEMOS_HOME%\runtime-detect.bat" || exit /b 1
+docker-compose logs -f app
+exit /b %errorlevel%
+
+:missing
+echo MNEMOS is not installed at %MNEMOS_HOME%.
+echo Reinstall:  irm https://raw.githubusercontent.com/$Repo/main/install.ps1 ^| iex
+exit /b 1
+"@ | Set-Content -Path $shim -Encoding ASCII
+
+if (($env:PATH -split ';') -contains $binDir) {
+    Ok 'Type `mnemos` from anywhere to start it (also: mnemos stop, mnemos logs).'
+} else {
+    Warn "Wrote $shim, but that folder is not on your PATH - use start-lite.bat instead."
+}
+
 # --------------------------------------------------------------- 4. Start ---
 Step 'Starting MNEMOS...'
 Write-Host @"
@@ -207,6 +259,6 @@ Write-Host @"
   Upload a PDF and search it - no AI model needed for that.
   For chat, summaries and the concept graph, connect a model in Settings.
 
-  Start it again later:  cd $InstallDir  then  start-lite.bat
+  Start it again later:  mnemos          (stop it: mnemos stop)
 
 "@ -ForegroundColor Green
