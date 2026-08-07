@@ -113,7 +113,7 @@
 
                 <!-- Tab: Chat Settings -->
                 @if (activeTab() === 'chat') {
-                <app-settings-chat-tab></app-settings-chat-tab>
+                <app-settings-chat-tab [autoCreateConnection]="openCreateConnection()"></app-settings-chat-tab>
                 <!-- Only renders when a model is reachable AND there is work to
                      do, so it stays invisible for users who never ran without
                      one. -->

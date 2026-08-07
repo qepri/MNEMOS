@@ -187,6 +187,51 @@ state with a route to settings and no raw error.
       messages (FR-006) — the corrective action differs.
 - [X] **T033** [US2] Confirm nav entries stay visible (R-004 / FR-011); no
       conditional hiding.
+- [X] **T034** [US2] Fix "Connect a model" (`shared/components/llm-dormant/llm-dormant.component.ts`)
+      landing on Settings' default tab (Installed Models) instead of Chat
+      Settings, where the AI Provider form actually is (FR-010). Settings tab
+      state moved to a `?tab=` query param (`settings-page.component.ts`):
+      read on init, written on every `switchTab`, `replaceUrl: true` so tab
+      switches don't pollute browser history.
+
+      Taken further per follow-up request: `?create=custom-connection` opens
+      the tab straight onto a blank "Create New Connection" form instead of
+      just the tab, since that's the field the dormant CTA actually wants
+      the user at. `settings-page` reads it into `openCreateConnection`
+      and passes it as an `@Input` to `SettingsChatTabComponent`, which
+      forces its `LlmSelectorComponent` (`#chatSelector`) into
+      `updateProvider('custom')` + `selectedConnectionId.set('new')` (so it
+      lands on the *create* form even if the user already has connections)
+      and scrolls the "AI Provider" panel into view. Guarded by
+      `didAutoCreate` so it fires once, not on every signal change. The CTA
+      link now passes `[queryParams]="{ tab: 'chat', create: 'custom-connection' }"`.
+
+      Verified: `tsc --noEmit` clean (does not catch template-binding
+      errors — see below); a *cold* `ng serve` build (killed the stale
+      process actually holding the port, cleared `.angular/` cache) compiles
+      clean and serves `/settings?tab=chat` at HTTP 200; the shipped
+      `settings-page` chunk contains `autoCreateConnection`,
+      `openCreateConnection`, `custom-connection`, `didAutoCreate` and
+      `scrollIntoView` together, confirming the wiring reached the bundle,
+      not just the source.
+
+      One real finding along the way: a warm `ng serve` incremental rebuild
+      threw `NG8002: Can't bind to 'autoCreateConnection'` — a template-type
+      error `tsc --noEmit` cannot see, since it doesn't check Angular
+      bindings — even with the correct `input()` present in source. It
+      persisted across further saves and did not self-heal; only killing the
+      dev-server process actually holding the port and clearing `.angular/`
+      fixed it. Stale Angular incremental-build cache, not a source bug —
+      but it means a green `tsc --noEmit` is not sufficient signal for a
+      change touching a child component's inputs; recompiling cold and
+      grepping the shipped chunk is what actually confirmed this.
+
+      **Still not click-tested in an actual browser** — no browser-automation
+      tool was available in this session (Chrome extension declined, no
+      Playwright MCP configured). Someone should open
+      `/settings?tab=chat&create=custom-connection` once by hand — confirm
+      the connection form is visibly open and scrolled into view, not just
+      present in the DOM — before calling this closed.
 
 **Checkpoint**: US1 + US2 both work. This is the realistic ship point.
 

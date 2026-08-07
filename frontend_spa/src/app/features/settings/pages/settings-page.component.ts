@@ -1,6 +1,6 @@
 import { Component, signal, inject, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SettingsService } from '@services/settings.service';
 import { ToastrService } from 'ngx-toastr';
@@ -38,9 +38,12 @@ import { LlmBackfillCardComponent } from '../components/llm-backfill-card.compon
 export class SettingsPage implements OnInit {
     settingsService = inject(SettingsService);
     toastr = inject(ToastrService);
+    private route = inject(ActivatedRoute);
+    private router = inject(Router);
     protected readonly AppRoutes = AppRoutes;
 
-    activeTab = signal<'models' | 'discover' | 'manage' | 'chat' | 'voice' | 'plugins'>('models');
+    private static readonly TABS = ['models', 'discover', 'manage', 'chat', 'voice', 'plugins'] as const;
+    activeTab = signal<typeof SettingsPage.TABS[number]>('models');
 
     ggufModels = signal<any[]>([]);
     currentGgufModel = signal<string>('');
@@ -63,7 +66,21 @@ export class SettingsPage implements OnInit {
     selectedRepoId = signal<string | null>(null);
     hardwareInfo = signal<{ ram_available: number, vram_available: number, gpu_name: string | null } | null>(null);
 
+    // ?create=custom-connection additionally opens the chat tab's provider
+    // selector straight onto a blank "Create New Connection" form, so a link
+    // can point at the exact field the user needs rather than just the tab.
+    openCreateConnection = signal(false);
+
     ngOnInit() {
+        // ?tab=chat lets links (e.g. "Connect a model") open Settings on the
+        // right tab directly, instead of always landing on Installed Models.
+        const params = this.route.snapshot.queryParamMap;
+        const requestedTab = params.get('tab');
+        if ((SettingsPage.TABS as readonly string[]).includes(requestedTab ?? '')) {
+            this.switchTab(requestedTab as typeof SettingsPage.TABS[number]);
+        }
+        this.openCreateConnection.set(params.get('create') === 'custom-connection');
+
         this.loadAllData();
         this.startDownloadPolling();
     }
@@ -185,8 +202,15 @@ export class SettingsPage implements OnInit {
         }
     }
 
-    switchTab(tab: 'models' | 'discover' | 'manage' | 'chat' | 'voice' | 'plugins') {
+    switchTab(tab: typeof SettingsPage.TABS[number]) {
         this.activeTab.set(tab);
+        // replaceUrl: switching tabs isn't a navigation a user expects "Back" to undo.
+        this.router.navigate([], {
+            relativeTo: this.route,
+            queryParams: { tab },
+            queryParamsHandling: 'merge',
+            replaceUrl: true
+        });
         if (tab === 'manage') {
             this.scanImports();
         } else if (tab === 'discover') {

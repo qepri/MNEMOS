@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, computed, inject, signal, viewChild, input, effect, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -91,6 +91,24 @@ export class SettingsChatTabComponent {
     chatSelector = viewChild<LlmSelectorComponent>('chatSelector');
     memorySelector = viewChild<LlmSelectorComponent>('memorySelector');
     hypergraphSelector = viewChild<LlmSelectorComponent>('hypergraphSelector');
+    aiProviderSection = viewChild<ElementRef<HTMLElement>>('aiProviderSection');
+
+    // Set by a `?create=custom-connection` link (e.g. the dormant-state CTA):
+    // opens straight onto a blank connection form instead of just the tab.
+    autoCreateConnection = input(false);
+    private didAutoCreate = false;
+
+    constructor() {
+        effect(() => {
+            const selector = this.chatSelector();
+            if (!this.autoCreateConnection() || !selector || this.didAutoCreate) return;
+            this.didAutoCreate = true;
+
+            selector.updateProvider('custom');
+            selector.selectedConnectionId.set('new');
+            this.aiProviderSection()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, { allowSignalWrites: true });
+    }
 
     memoryLlmPreferences = computed(() => {
         const prefs = this.settingsService.chatPreferences();

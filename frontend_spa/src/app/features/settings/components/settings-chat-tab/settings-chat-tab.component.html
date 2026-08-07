@@ -2,7 +2,7 @@
 <div class="space-y-6 anime-fade-in">
 
     <!-- AI Provider Configuration -->
-    <div class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
+    <div #aiProviderSection class="bg-panel border border-divider rounded-xl p-4 sm:p-6">
         <h2 class="text-lg font-semibold mb-4">AI Provider</h2>
         <app-llm-selector #chatSelector [preferences]="settingsService.chatPreferences()" #llmSelector>
         </app-llm-selector>

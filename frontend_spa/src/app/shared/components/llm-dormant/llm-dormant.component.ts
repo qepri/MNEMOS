@@ -37,7 +37,7 @@ import { LlmAvailabilityService } from '@services/llm-availability.service';
       }
 
       <div class="flex gap-2 mt-2">
-        <a routerLink="/settings" class="btn btn-sm btn-primary">Connect a model</a>
+        <a routerLink="/settings" [queryParams]="{ tab: 'chat', create: 'custom-connection' }" class="btn btn-sm btn-primary">Connect a model</a>
         <button class="btn btn-sm btn-ghost" (click)="recheck()" [disabled]="checking">
           {{ checking ? 'Checking…' : 'Check again' }}
         </button>
