@@ -337,7 +337,9 @@ No necesitas modelo de lenguaje para empezar. Ejecuta `start-lite.bat`, sube un 
 | Búsqueda por palabras clave (FTS) | Grafo de conceptos y wiki |
 | Fusión RRF, reordenado MMR | |
 
-Los documentos indexados sin LLM quedan como `completed`, nunca como error: sus fragmentos y embeddings están intactos y son buscables. Las funciones que sí lo necesitan muestran una explicación con un enlace a Ajustes en lugar de una pantalla vacía.
+Los documentos indexados sin LLM quedan como `completed`, nunca como error: sus fragmentos y embeddings están intactos y son buscables. Las funciones que sí lo necesitan muestran una explicación con un botón **"Connect a model"** en lugar de una pantalla vacía; el botón lleva directo a Ajustes → Chat Settings con el formulario de conexión ya abierto, no solo a la página de Ajustes en general.
+
+Si eliges llama.cpp local y todavía no tienes ningún modelo instalado, el mismo panel ofrece un botón **"Install a local model"** que te lleva a Discover Models — donde puedes buscar en Hugging Face y descargar un GGUF — en vez de dejarte solo con un "No models found".
 
 Cuando conectes un proveedor, Ajustes → Chat ofrece generar los resúmenes y conceptos que falten para los documentos ya indexados. No vuelve a extraer ni a recalcular embeddings, y nunca arranca solo.
 
@@ -1047,7 +1049,9 @@ You don't need a language model to get started. Run `start-lite.bat`, upload a P
 | Keyword search (Postgres FTS) | Concept graph and wiki |
 | RRF fusion, MMR re-ranking | |
 
-Documents indexed without an LLM finish as `completed`, never as errors — their chunks and embeddings are intact and searchable. The features that do need one show an explanation and a link to Settings instead of an empty screen.
+Documents indexed without an LLM finish as `completed`, never as errors — their chunks and embeddings are intact and searchable. The features that do need one show an explanation and a **"Connect a model"** button instead of an empty screen; the button opens Settings directly on Chat Settings with the connection form already expanded, not just the Settings page in general.
+
+If you pick local llama.cpp and don't have a model installed yet, the same panel offers an **"Install a local model"** button that takes you to Discover Models — where you can search Hugging Face and pull a GGUF — instead of leaving you at a bare "No models found."
 
 Once you connect a provider, Settings → Chat offers to generate the missing summaries and concepts for documents you already indexed. It reuses the existing index — nothing is re-uploaded or re-embedded — and it never starts on its own.
 
