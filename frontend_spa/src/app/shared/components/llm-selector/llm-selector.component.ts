@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal, effect, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { SettingsService } from '@services/settings.service';
 import { ChatPreferences, LLMConnection } from '@core/models';
 import { ToastrService } from 'ngx-toastr';
@@ -23,6 +24,7 @@ import { ToastrService } from 'ngx-toastr';
 export class LlmSelectorComponent {
   settingsService = inject(SettingsService);
   toastr = inject(ToastrService);
+  private router = inject(Router);
 
   // Inputs: Allow initializing with preferences
   preferences = input<ChatPreferences | null>(null);
@@ -207,6 +209,20 @@ export class LlmSelectorComponent {
     } catch (e) {
       console.error('Failed to load llamacpp models:', e);
     }
+  }
+
+  // Confirms before leaving the form, same window.confirm pattern already
+  // used for pulling a GGUF file and for re-embedding the library elsewhere
+  // in Settings - no new modal component for a one-line yes/no.
+  installLocalModel() {
+    const proceed = window.confirm(
+      'Install a local model for llama.cpp?\n\n' +
+      'This opens Discover Models, where you can search Hugging Face and ' +
+      'download a GGUF model to run fully offline. Downloads can be several ' +
+      'GB depending on the model.'
+    );
+    if (!proceed) return;
+    this.router.navigate(['/settings'], { queryParams: { tab: 'discover' } });
   }
 
   // Custom Connection Logic

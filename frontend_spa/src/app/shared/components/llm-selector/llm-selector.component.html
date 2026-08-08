@@ -149,8 +149,13 @@
       }
     </select>
     @if (currentModels().length === 0) {
-    <div class="label">
+    <div class="label flex items-center justify-between gap-2">
       <span class="label-text-alt text-error">No models found. Check connection/key.</span>
+      @if (selectedProvider() === 'llamacpp') {
+      <button type="button" (click)="installLocalModel()" class="btn btn-xs btn-primary shrink-0">
+        Install a local model
+      </button>
+      }
     </div>
     }
   </div>

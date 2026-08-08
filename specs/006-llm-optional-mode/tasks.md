@@ -232,6 +232,40 @@ state with a route to settings and no raw error.
       `/settings?tab=chat&create=custom-connection` once by hand — confirm
       the connection form is visibly open and scrolled into view, not just
       present in the DOM — before calling this closed.
+- [X] **T035** [US2] FR-015: "Install a local model" button in
+      `shared/components/llm-selector/llm-selector.component.html`, shown
+      next to "No models found. Check connection/key." only when
+      `selectedProvider() === 'llamacpp'`. `installLocalModel()`
+      (`llm-selector.component.ts`) gates on `window.confirm(...)` — same
+      pattern already used for `handlePullGguf` and
+      `handleReembedLibrary` elsewhere in Settings, no new modal component —
+      then `router.navigate(['/settings'], { queryParams: { tab: 'discover' } })`
+      to Discover Models, where the actual Hugging Face search + pull lives.
+
+      This exposed a real bug in T034's tab-switching: `SettingsPage` read
+      `?tab=` from `route.snapshot.queryParamMap` **once** in `ngOnInit`.
+      That's correct for navigation *into* `/settings` from elsewhere (the
+      dormant-state CTAs) but silently does nothing for navigation *within*
+      `/settings` — Angular reuses the component instance for same-route
+      navigations, so `ngOnInit` doesn't re-run, and this button (chat tab →
+      discover tab, both under `/settings`) would have landed nowhere.
+      Fixed by subscribing to `route.queryParamMap` for the component's
+      lifetime (`takeUntilDestroyed`) instead of a one-time snapshot read.
+
+      Verified: `tsc --noEmit` clean (doesn't catch template-binding errors,
+      per T034's note). The dev server (`ng serve`) repeatedly failed to
+      pick up the `llm-selector` edit into the `settings-page-component`
+      chunk across three rebuilds, including two full cache-clears
+      (`.angular/` and `node_modules/.vite`) — looked like a real bug at
+      first. Ruled out with an independent, non-dev-server build:
+      `ng build --configuration production` from a freshly cleared cache
+      contains `installLocalModel` and the button text in its output
+      (`chunk-WJ2V4UEJ.js`), confirming the source is correct and the dev
+      server's incremental lazy-chunk splitting was the flaky part, not the
+      change. **Not click-tested in a real browser**, same limitation as
+      T034 — verify by hand: select llama.cpp with no models, click
+      "Install a local model", confirm the dialog, confirm it lands on
+      Discover Models.
 
 **Checkpoint**: US1 + US2 both work. This is the realistic ship point.
 

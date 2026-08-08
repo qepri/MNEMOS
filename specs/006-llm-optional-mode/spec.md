@@ -93,6 +93,7 @@ The user has already indexed twenty documents without an LLM. They install Ollam
 - **FR-012**: Documents indexed without an LLM MUST NOT display as errors in any list, filter, or badge.
 - **FR-013**: Ingestion MUST NOT stall on connection attempts to an absent LLM endpoint; per-attempt timeouts MUST be bounded such that a queue of documents cannot be blocked by an unreachable server.
 - **FR-014**: Disconnecting or changing a provider MUST preserve previously generated summaries and concepts.
+- **FR-015**: The AI Provider form MUST NOT dead-end when llama.cpp (local) is selected and no model is installed. "No models found" alone gives the user nowhere to go; the form MUST offer a path to install one, gated by a confirmation before leaving the form (downloads can be several GB).
 - **FR-015**: First-run guidance MUST tell the user what works now and what connecting a provider would add.
 - **FR-016**: Embedding generation is NOT an LLM feature and MUST remain unconditional — it runs locally on CPU and is required for retrieval. No part of this feature may make it optional.
 

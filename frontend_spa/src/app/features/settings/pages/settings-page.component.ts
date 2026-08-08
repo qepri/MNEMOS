@@ -1,4 +1,5 @@
-import { Component, signal, inject, OnInit, computed } from '@angular/core';
+import { Component, signal, inject, OnInit, computed, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -40,6 +41,7 @@ export class SettingsPage implements OnInit {
     toastr = inject(ToastrService);
     private route = inject(ActivatedRoute);
     private router = inject(Router);
+    private destroyRef = inject(DestroyRef);
     protected readonly AppRoutes = AppRoutes;
 
     private static readonly TABS = ['models', 'discover', 'manage', 'chat', 'voice', 'plugins'] as const;
@@ -74,12 +76,18 @@ export class SettingsPage implements OnInit {
     ngOnInit() {
         // ?tab=chat lets links (e.g. "Connect a model") open Settings on the
         // right tab directly, instead of always landing on Installed Models.
-        const params = this.route.snapshot.queryParamMap;
-        const requestedTab = params.get('tab');
-        if ((SettingsPage.TABS as readonly string[]).includes(requestedTab ?? '')) {
-            this.switchTab(requestedTab as typeof SettingsPage.TABS[number]);
-        }
-        this.openCreateConnection.set(params.get('create') === 'custom-connection');
+        // A *subscription*, not a one-time snapshot read: Angular reuses this
+        // component instance for same-route navigations (e.g. a button inside
+        // Settings itself linking chat -> discover), so a snapshot taken once
+        // in ngOnInit would miss those and silently do nothing.
+        this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+            const requestedTab = params.get('tab');
+            if ((SettingsPage.TABS as readonly string[]).includes(requestedTab ?? '')
+                && requestedTab !== this.activeTab()) {
+                this.switchTab(requestedTab as typeof SettingsPage.TABS[number]);
+            }
+            this.openCreateConnection.set(params.get('create') === 'custom-connection');
+        });
 
         this.loadAllData();
         this.startDownloadPolling();
