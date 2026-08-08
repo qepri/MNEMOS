@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import uuid
+from datetime import datetime, timedelta
 
 import requests
 from flask import jsonify, request
@@ -19,6 +20,8 @@ from app.services.model_manager import model_manager
 from config.settings import settings
 
 from app.api.settings import bp
+
+logger = logging.getLogger(__name__)
 
 # Persisted so in-flight downloads survive an app restart.
 ACTIVE_DOWNLOADS_FILE = os.path.join(os.path.dirname(__file__), '..', 'active_downloads.json')
