@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request
+from celery.result import AsyncResult
 import requests
 import logging
 from config.settings import settings
@@ -6,6 +7,7 @@ from app.services.model_manager import model_manager
 from app.extensions import db, celery_app
 from app.models.user_preferences import UserPreferences, SystemPrompt
 from app.models.llm_connection import LLMConnection
+from app.utils.hf_downloader import HFDownloader
 from datetime import datetime
 
 bp = Blueprint('settings', __name__, url_prefix='/api/settings')
@@ -294,6 +296,12 @@ def list_repo_files(repo_id):
 @bp.route('/pull_gguf', methods=['POST'])
 def pull_model_gguf():
     """Trigger a direct GGUF download and import."""
+    # Imported here rather than at module scope: app.tasks.processing pulls in
+    # the whole processing stack (and app.api.settings_downloads imports from
+    # the API layer), so a top-level import risks an import cycle at startup.
+    from app.tasks.processing import download_gguf_task
+    from app.api.settings_downloads import add_active_download
+
     data = request.json
     repo_id = data.get('repo_id')
     filename = data.get('filename')
