@@ -101,12 +101,22 @@ export class SettingsChatTabComponent {
     constructor() {
         effect(() => {
             const selector = this.chatSelector();
-            if (!this.autoCreateConnection() || !selector || this.didAutoCreate) return;
+            // Wait for the real saved preferences to arrive first: LlmSelectorComponent
+            // has its own effect that re-syncs selectedProvider from `preferences()`
+            // whenever it changes, and chatPreferences() starts null then resolves
+            // async. Firing before that lands would set 'custom' only to have it
+            // clobbered back to the saved provider a moment later.
+            const prefsLoaded = !!this.settingsService.chatPreferences();
+            if (!this.autoCreateConnection() || !selector || !prefsLoaded || this.didAutoCreate) return;
             this.didAutoCreate = true;
 
-            selector.updateProvider('custom');
-            selector.selectedConnectionId.set('new');
-            this.aiProviderSection()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Deferred a tick so this runs after the prefs-sync effect above has
+            // already flushed for this change, rather than racing it.
+            setTimeout(() => {
+                selector.updateProvider('custom');
+                selector.selectedConnectionId.set('new');
+                this.aiProviderSection()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
         }, { allowSignalWrites: true });
     }
 
