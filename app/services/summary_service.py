@@ -180,13 +180,47 @@ class SummaryService:
             raise e
 
     @staticmethod
+    def _batch_text(chunk_list: list) -> str:
+        """
+        Continuous text for one MAP batch, with page markers and no repeated seams.
+
+        Chunks overlap by CHUNK_OVERLAP characters. Joining them verbatim feeds
+        the model the same sentence twice at every boundary, and since the prompt
+        truncates at 3500 characters, those repeats push real content out of the
+        window instead of merely costing tokens.
+
+        The page marker is emitted when the page changes rather than once per
+        chunk: it is there so the model can fill page_start/page_end, and one
+        marker per page says the same thing with less noise.
+        """
+        from app.services.chunker import ChunkerService
+
+        parts, merged, last_page = [], "", None
+        for chunk in chunk_list:
+            content = chunk.content or ""
+            if not content:
+                continue
+            content = ChunkerService.strip_overlap(merged, content) if merged else content
+            if not content:
+                continue
+            merged = f"{merged}{content}" if merged else content
+
+            page = chunk.page_number or "?"
+            if page != last_page:
+                parts.append(f"[Page {page}]")
+                last_page = page
+            parts.append(content)
+
+        return "\n".join(parts)
+
+    @staticmethod
     def _map_process_batch(chunk_list: list, batch_index: int, llm_client, model_name=None):
         """
         MAP STEP: Summarize batch and Extract Rich Metadata.
         """
         try:
             # llm = get_llm_client() # No longer needed, passed in
-            text_block = "\n".join([f"[Page {c.page_number or '?'}] {c.content}" for c in chunk_list])
+            text_block = SummaryService._batch_text(chunk_list)
             
             # Smart Prompt: Infer title, extracting concepts with location awareness
             prompt = f"""Analyze this document segment.
