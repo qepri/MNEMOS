@@ -11,7 +11,10 @@ class Document(db.Model):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     filename = Column(String(255), nullable=False)
     original_filename = Column(String(255))
-    file_type = Column(Enum('pdf', 'audio', 'video', 'youtube', 'epub', name='file_type_enum'), nullable=False)
+    # 'text' covers plain-text sources (.txt, .md): content that arrives as
+    # text rather than as a document, so there is nothing to parse out of it.
+    file_type = Column(Enum('pdf', 'audio', 'video', 'youtube', 'epub', 'text',
+                            name='file_type_enum'), nullable=False)
     file_path = Column(String(512))  # Path in storage
     youtube_url = Column(String(512))  # If it is YouTube
     status = Column(Enum('pending', 'processing', 'completed', 'error', name='status_enum'), default='pending')
