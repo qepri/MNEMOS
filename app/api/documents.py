@@ -19,6 +19,8 @@ bp = Blueprint('documents', __name__, url_prefix='/api/documents')
 ALLOWED_EXTENSIONS = {
     'pdf': 'pdf',
     'epub': 'epub',
+    # Plain text needs no parsing step: the file already is the content.
+    'txt': 'text', 'md': 'text', 'markdown': 'text',
     'mp3': 'audio', 'wav': 'audio', 'm4a': 'audio', 'opus': 'audio',
     'flac': 'audio', 'ogg': 'audio', 'aac': 'audio',
     'mp4': 'video', 'webm': 'video', 'mov': 'video',
@@ -28,6 +30,7 @@ ALLOWED_EXTENSIONS = {
 MAX_UPLOAD_BY_TYPE = {
     'pdf': settings.MAX_UPLOAD_DOCUMENT,
     'epub': settings.MAX_UPLOAD_DOCUMENT,
+    'text': settings.MAX_UPLOAD_DOCUMENT,
     'audio': settings.MAX_UPLOAD_AUDIO,
     'video': settings.MAX_UPLOAD_VIDEO,
 }

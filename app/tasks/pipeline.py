@@ -198,12 +198,41 @@ def extract_epub(doc, processor=None, chunker=None) -> list:
     return _pages_to_chunks(pages, chunker)
 
 
+def extract_text_file(doc, chunker=None) -> list:
+    """Read a plain-text file and chunk it.
+
+    No parsing step: the file already IS the text. Encoding is decoded as UTF-8
+    and falls back to latin-1, which never raises — a legal or archival document
+    that arrives in cp1252 should be indexed with a couple of odd characters
+    rather than rejected outright.
+
+    Everything ends up on page 1 because a .txt has no pages. That keeps the
+    page column honest instead of inventing pagination that does not exist.
+    """
+    chunker = chunker or ChunkerService()
+    full_path = os.path.join(settings.UPLOAD_FOLDER, doc.file_path)
+
+    logger.info(f"Reading text file: {full_path}")
+    raw = open(full_path, 'rb').read()
+    try:
+        text = raw.decode('utf-8')
+    except UnicodeDecodeError:
+        logger.info("Not valid UTF-8, falling back to latin-1")
+        text = raw.decode('latin-1')
+
+    if not text.strip():
+        raise ValueError("Text file is empty")
+
+    return _pages_to_chunks([{"text": text.strip(), "page": 1}], chunker)
+
+
 EXTRACTORS = {
     'youtube': extract_youtube,
     'audio': extract_media,
     'video': extract_media,
     'pdf': extract_pdf,
     'epub': extract_epub,
+    'text': extract_text_file,
 }
 
 

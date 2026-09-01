@@ -39,6 +39,44 @@ class ChunkerService:
         return splitter.split_text(text)
 
     @staticmethod
+    def strip_overlap(previous: str, following: str, max_overlap: int = None) -> str:
+        """
+        Return `following` with its leading overlap against `previous` removed.
+
+        chunk_text() deliberately repeats CHUNK_OVERLAP characters between
+        consecutive chunks so a concept split across a boundary is still
+        retrievable. That repetition is right for search and wrong for anything
+        that stitches chunks back into continuous text: the seam appears twice.
+
+        The longest suffix of `previous` that starts `following` wins, tried
+        from long to short so a short accidental match ("of the ") is not
+        mistaken for the real overlap.
+        """
+        if not previous or not following:
+            return following
+        _, overlap = ChunkerService._get_chunk_settings(None, max_overlap)
+        limit = min(overlap * 2 or 200, len(previous), len(following))
+        for n in range(limit, 19, -1):
+            if previous.endswith(following[:n]):
+                return following[n:]
+        return following
+
+    @staticmethod
+    def merge_chunks(texts: List[str], separator: str = "", max_overlap: int = None) -> str:
+        """
+        Stitch chunks back into continuous text, without repeating the overlap.
+        """
+        merged = ""
+        for text in texts:
+            if not text:
+                continue
+            part = ChunkerService.strip_overlap(merged, text, max_overlap) if merged else text
+            if not part:
+                continue
+            merged = f"{merged}{separator}{part}" if merged else part
+        return merged
+
+    @staticmethod
     def chunk_transcript_segments(segments: List[dict], chunk_size: int = None) -> List[dict]:
         """
         Merges small Whisper segments into larger chunks while preserving timestamps.
