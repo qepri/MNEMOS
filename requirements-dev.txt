@@ -6,5 +6,9 @@
 pytest>=8.0
 pytest-cov>=5.0
 testcontainers[postgres]>=4.7
-respx>=0.21
+# respx patches httpx's transport to intercept the OpenAI SDK; keep it in a
+# range verified against the lockfile's httpx==0.28.1 so an upstream respx
+# release can't silently stop intercepting and send faked LLM/embedding tests
+# to the real network.
+respx>=0.21,<0.24
 responses>=0.25
