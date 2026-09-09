@@ -166,4 +166,33 @@ export class DocumentsService {
     getSelectedIds(): string[] {
         return this.documents().filter(d => d.selected).map(d => d.id);
     }
+
+    /**
+     * LLM-free passage search. Returns ranked chunks, no generated answer —
+     * works even when no language model is configured.
+     */
+    searchChunks(query: string, documentIds?: string[], topK = 10): Observable<SearchResponse> {
+        return this.http.post<SearchResponse>(ApiEndpoints.DOCUMENTS_SEARCH, {
+            query,
+            document_ids: documentIds && documentIds.length ? documentIds : undefined,
+            top_k: topK,
+        });
+    }
+}
+
+export interface SearchResult {
+    id: string;
+    content: string;
+    chunk_index: number | null;
+    page_number: number | null;
+    start_time: number | null;
+    end_time: number | null;
+    document_id: string;
+    document_title: string | null;
+}
+
+export interface SearchResponse {
+    query: string;
+    count: number;
+    results: SearchResult[];
 }

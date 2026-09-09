@@ -35,15 +35,15 @@ powershell -NoProfile -Command "$found = @(11434,1234) | Where-Object { $c = New
 if %errorlevel% neq 0 (
     echo.
     echo =================================================================
-    echo   [!] No LLM server found on port 11434 ^(Ollama^) or 1234 ^(LM Studio^).
+    echo   [!] No LLM server found on port 11434 or 1234 .
     echo.
-    echo   That's fine - MNEMOS runs without one.
+    echo   MNEMOS runs without one.
     echo.
     echo   Working now:     upload, indexing, semantic + keyword search.
     echo   Needs a model:   chat, summaries, the concept graph and wiki.
     echo.
     echo   Those features will explain themselves in the UI and link to
-    echo   Settings. Connect Ollama or LM Studio whenever you want them.
+    echo   Settings. Connect Local or External LLM to enable them.
     echo =================================================================
     echo.
 )

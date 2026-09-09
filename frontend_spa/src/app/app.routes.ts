@@ -16,6 +16,10 @@ export const routes: Routes = [
                 loadComponent: () => import('./features/settings/pages/settings-page.component').then(m => m.SettingsPage)
             },
             {
+                path: AppRoutes.SEARCH,
+                loadComponent: () => import('./features/search/search.component').then(m => m.SearchComponent)
+            },
+            {
                 path: AppRoutes.LIBRARY,
                 loadComponent: () => import('./features/library/library.component').then(m => m.LibraryPageComponent)
             },

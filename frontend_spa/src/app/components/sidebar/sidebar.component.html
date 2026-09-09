@@ -238,6 +238,14 @@
             </svg>
             <span class="truncate">Upload Document</span>
         </button>
+        <button [routerLink]="['/', AppRoutes.SEARCH]" (click)="isSidebarOpen().set(false)"
+            class="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-primary hover:bg-hover rounded-lg transition-colors">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M21 21l-5.2-5.2m2.2-5.3a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z" />
+            </svg>
+            <span class="truncate">Search</span>
+        </button>
         <button [routerLink]="['/', AppRoutes.LIBRARY]" (click)="isSidebarOpen().set(false)"
             class="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-primary hover:bg-hover rounded-lg transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"

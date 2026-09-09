@@ -202,6 +202,40 @@ def delete_document(doc_id):
 
     return "", 200
 
+@bp.route('/search', methods=['POST'])
+def search_chunks():
+    """LLM-free retrieval: return ranked passages for a query.
+
+    Uses the same hybrid vector+FTS engine as chat, but stops at retrieval —
+    no generation. Works with no LLM configured, so it's the search entry point
+    when a provider is dormant. Scope with `document_ids`; omit to search all.
+    """
+    from app.services.rag import RAGService
+
+    data = request.get_json(silent=True) or {}
+    query = (data.get('query') or '').strip()
+    if not query:
+        return jsonify({"error": "query required"}), 400
+
+    document_ids = data.get('document_ids') or None
+    top_k = min(int(data.get('top_k', 10)), 50)
+
+    rag = RAGService(db.session)
+    chunks = rag.search_similar_chunks(query, document_ids=document_ids, top_k=top_k)
+
+    results = [
+        {
+            **c.to_dict(),
+            "chunk_index": c.chunk_index,
+            "document_id": str(c.document_id),
+            "document_title": c.document.title if c.document else None,
+        }
+        # Neighbor chunks are pulled in only to pad LLM context; they aren't hits.
+        for c in chunks if not getattr(c, "_is_context_neighbor", False)
+    ]
+    return jsonify({"query": query, "count": len(results), "results": results})
+
+
 @bp.route('/<string:doc_id>/status', methods=['GET'])
 def get_document_status(doc_id):
     """Polling endpoint for status updates."""

@@ -426,7 +426,9 @@ Notas:
 | `GET` | `/api/wiki/article/{name}` | Artículo de wiki para un concepto |
 | `GET` | `/api/wiki/search?q=...` | Búsqueda de conceptos (prefix + vector) |
 | `POST` | `/api/reasoning/traverse` | Navegación BFS entre conceptos |
-| `GET` | `/api/health` | Health check del sistema |
+| `GET` | `/api/health` | Liveness (db + redis alcanzables) |
+| `GET` | `/api/ready` | Readiness (migraciones al día + sonda de llama.cpp) |
+| `GET` | `/api/settings/llm-availability` | Estado del LLM (`unconfigured` / `unreachable` / `available`) |
 
 Documentación interactiva completa en [`landing-page/api-docs.html`](../landing-page/api-docs.html).
 
@@ -517,8 +519,16 @@ Editar `claude_desktop_config.json`:
 ```
 
 ### Herramientas MCP Disponibles
-1. **`search_documents`**: buscar información en documentos (query + document_ids + top_k)
-2. **`list_documents`**: listar todos los documentos disponibles
+
+Los ~29 tools están organizados por dominio (módulos `tools_*.py`). Los principales:
+
+- **Búsqueda**: `search_documents`, `search_documents_advanced`
+- **Documentos**: `list_documents`, `get_document_details`, `get_document_sections`, `get_document_summary`, `upload_document`, `add_youtube_video`, `delete_document`
+- **Grafo / Wiki**: `search_concepts`, `list_concepts`, `get_concept_article`, `traverse_concepts`
+- **Colecciones**: `list_collections`, `create_collection`, `get_collection_documents`, `add_document_to_collection`, `remove_document_from_collection`
+- **Conversaciones y memoria**: `list_conversations`, `get_conversation`, `search_conversations`, `create_conversation`, `get_user_memories`, `delete_memory`
+- **Ajustes**: `get_system_prompts`, `get_active_settings`, `reprocess_document_hypergraph`
+- **Reportes**: `generate_pdf_report`
 
 ---
 
@@ -1138,7 +1148,9 @@ Notes:
 | `GET` | `/api/wiki/article/{name}` | Wiki article for a concept |
 | `GET` | `/api/wiki/search?q=...` | Concept search (prefix + vector) |
 | `POST` | `/api/reasoning/traverse` | BFS traversal between concepts |
-| `GET` | `/api/health` | System health check |
+| `GET` | `/api/health` | Liveness (db + redis reachable) |
+| `GET` | `/api/ready` | Readiness (migrations current + llama.cpp probe) |
+| `GET` | `/api/settings/llm-availability` | LLM state (`unconfigured` / `unreachable` / `available`) |
 
 Full interactive API docs at [`landing-page/api-docs.html`](../landing-page/api-docs.html).
 
@@ -1229,8 +1241,16 @@ Edit `claude_desktop_config.json`:
 ```
 
 ### Available MCP Tools
-1. **`search_documents`**: search documents (query + document_ids + top_k)
-2. **`list_documents`**: list all available documents
+
+~29 tools organized by domain (`tools_*.py` modules). The main ones:
+
+- **Search**: `search_documents`, `search_documents_advanced`
+- **Documents**: `list_documents`, `get_document_details`, `get_document_sections`, `get_document_summary`, `upload_document`, `add_youtube_video`, `delete_document`
+- **Graph / Wiki**: `search_concepts`, `list_concepts`, `get_concept_article`, `traverse_concepts`
+- **Collections**: `list_collections`, `create_collection`, `get_collection_documents`, `add_document_to_collection`, `remove_document_from_collection`
+- **Conversations & memory**: `list_conversations`, `get_conversation`, `search_conversations`, `create_conversation`, `get_user_memories`, `delete_memory`
+- **Settings**: `get_system_prompts`, `get_active_settings`, `reprocess_document_hypergraph`
+- **Reports**: `generate_pdf_report`
 
 ---
 

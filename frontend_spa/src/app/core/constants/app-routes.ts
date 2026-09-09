@@ -3,6 +3,7 @@ export enum AppRoutes {
     CHAT = '',
     SETTINGS = 'settings',
     LIBRARY = 'library',
+    SEARCH = 'search',
     COLLECTIONS = 'collections',
     REASONING = 'reasoning',
     WIKI = 'wiki',
