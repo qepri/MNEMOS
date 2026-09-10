@@ -228,7 +228,7 @@ def search_chunks():
             **c.to_dict(),
             "chunk_index": c.chunk_index,
             "document_id": str(c.document_id),
-            "document_title": c.document.title if c.document else None,
+            "document_title": (c.document.original_filename or c.document.filename) if c.document else None,
         }
         # Neighbor chunks are pulled in only to pad LLM context; they aren't hits.
         for c in chunks if not getattr(c, "_is_context_neighbor", False)
