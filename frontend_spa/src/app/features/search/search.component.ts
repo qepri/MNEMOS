@@ -1,6 +1,9 @@
 import { Component, signal, inject } from '@angular/core';
 import { DocumentsService, SearchResult } from '@services/documents.service';
 import { ModalService } from '@services/modal.service';
+import { ApiEndpoints } from '@core/constants/api-endpoints';
+import { MessageSource } from '@core/models';
+import { SourceModalComponent } from '@shared/components/source-modal';
 
 /**
  * LLM-free search page. Sends a query to /api/documents/search and lists the
@@ -10,6 +13,7 @@ import { ModalService } from '@services/modal.service';
 @Component({
   selector: 'app-search',
   standalone: true,
+  imports: [SourceModalComponent],
   template: `
 <!-- h-full + inner overflow: the router outlet gives us a fixed-height,
      overflow-hidden box, so the page itself must own its scroll region. -->
@@ -59,12 +63,10 @@ import { ModalService } from '@services/modal.service';
             } @else if (r.start_time != null) {
               <span class="text-[11px] text-secondary">{{ formatTime(r.start_time) }}</span>
             }
-            @if (canOpenPdf(r)) {
-              <button
-                class="text-[11px] text-accent hover:underline"
-                (click)="openInPdf(r)"
-              >View in PDF</button>
-            }
+            <button
+              class="text-[11px] text-accent hover:underline"
+              (click)="openResult(r)"
+            >{{ viewLabel(r) }}</button>
           </div>
         </div>
         <p class="text-sm text-secondary whitespace-pre-wrap">{{ r.content }}</p>
@@ -75,6 +77,14 @@ import { ModalService } from '@services/modal.service';
     }
   </section>
 </div>
+
+<!-- Text-detail fallback for formats with no in-app viewer (EPUB, plain text).
+     The PDF/video/youtube viewers are mounted globally in the layout. -->
+<app-source-modal
+  [isOpen]="isModalOpen()"
+  [source]="selectedSource()"
+  (close)="closeModal()"
+></app-source-modal>
   `
 })
 export class SearchComponent {
@@ -86,6 +96,10 @@ export class SearchComponent {
   results = signal<SearchResult[]>([]);
   loading = signal(false);
   searched = signal(false);
+
+  // Text-detail modal (fallback for EPUB / plain text)
+  isModalOpen = signal(false);
+  selectedSource = signal<MessageSource | null>(null);
 
   onSubmit(event: Event) {
     event.preventDefault();
@@ -108,21 +122,57 @@ export class SearchComponent {
     });
   }
 
-  canOpenPdf(r: SearchResult): boolean {
+  private isPdf(r: SearchResult): boolean {
     return r.file_type === 'pdf' || (r.document_title || '').toLowerCase().endsWith('.pdf');
   }
 
+  viewLabel(r: SearchResult): string {
+    if (this.isPdf(r)) return 'View in PDF';
+    if (r.file_type === 'video' || r.file_type === 'audio') return 'Play';
+    return 'View passage';
+  }
+
   /**
-   * Reuse the same PDF viewer the chat citations use: pass the chunk text as
-   * the search term so pdf.js highlights it, and the page to jump to.
+   * Route each result to the same viewer chat uses for that file type. Only
+   * PDF/video/audio/youtube have real viewers; EPUB and plain text have none,
+   * so they fall back to the text-detail modal (as chat citations do too).
    */
-  openInPdf(r: SearchResult) {
-    const doc: any = {
-      id: r.document_id,
-      original_filename: r.document_title || 'Document',
-      file_type: 'pdf',
-    };
-    this.modalService.openPdfViewer(doc, r.content, r.page_number ?? undefined);
+  openResult(r: SearchResult) {
+    if (this.isPdf(r)) {
+      const doc: any = {
+        id: r.document_id,
+        original_filename: r.document_title || 'Document',
+        file_type: 'pdf',
+      };
+      // Pass the chunk text as the search term so pdf.js highlights it.
+      this.modalService.openPdfViewer(doc, r.content, r.page_number ?? undefined);
+      return;
+    }
+
+    if ((r.file_type === 'video' || r.file_type === 'audio') && r.document_id) {
+      const url = ApiEndpoints.DOCUMENT_CONTENT(r.document_id);
+      this.modalService.openVideoPlayer(url, r.start_time ?? undefined);
+      return;
+    }
+
+    // EPUB / text / anything else without a viewer → readable text modal.
+    this.selectedSource.set({
+      document: r.document_title || 'Untitled',
+      document_id: r.document_id,
+      page_number: r.page_number ?? undefined,
+      start_time: r.start_time ?? undefined,
+      end_time: r.end_time ?? undefined,
+      text: r.content,
+      file_type: r.file_type ?? undefined,
+      score: 0,
+      location: r.page_number != null ? `p.${r.page_number}` : undefined,
+    });
+    this.isModalOpen.set(true);
+  }
+
+  closeModal() {
+    this.isModalOpen.set(false);
+    this.selectedSource.set(null);
   }
 
   formatTime(seconds: number): string {
