@@ -41,6 +41,8 @@ import { ReadingModalComponent } from '@shared/components/reading-modal/reading-
 
     @if (loading()) {
       <p class="text-xs text-secondary mt-3">Searching…</p>
+    } @else if (error()) {
+      <p class="text-xs text-red-400 mt-3" role="alert">{{ error() }}</p>
     } @else if (searched()) {
       <p class="text-xs text-secondary mt-3">
         {{ results().length }} passage{{ results().length !== 1 ? 's' : '' }} for "{{ lastQuery() }}"
@@ -71,7 +73,7 @@ import { ReadingModalComponent } from '@shared/components/reading-modal/reading-
         <p class="text-sm text-secondary whitespace-pre-wrap">{{ r.content }}</p>
       </article>
     }
-    @if (searched() && !loading() && results().length === 0) {
+    @if (searched() && !loading() && !error() && results().length === 0) {
       <p class="text-sm text-secondary">No matching passages found.</p>
     }
   </section>
@@ -97,6 +99,8 @@ export class SearchComponent {
   results = signal<SearchResult[]>([]);
   loading = signal(false);
   searched = signal(false);
+  // Distinct from "0 results": a failed request must not read as an empty library.
+  error = signal<string | null>(null);
 
   // Reading modal (for EPUB / plain text — read around the passage)
   isModalOpen = signal(false);
@@ -111,14 +115,19 @@ export class SearchComponent {
 
     this.loading.set(true);
     this.lastQuery.set(q);
+    this.error.set(null);
     this.documentsService.searchChunks(q, undefined, 20).subscribe({
       next: (res) => {
         this.results.set(res.results);
+        this.error.set(null);
         this.searched.set(true);
         this.loading.set(false);
       },
       error: () => {
+        // Surface the failure distinctly — otherwise a broken backend looks
+        // exactly like a genuinely empty library ("No matching passages found").
         this.results.set([]);
+        this.error.set('Search failed — please try again.');
         this.searched.set(true);
         this.loading.set(false);
       },

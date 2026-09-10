@@ -1346,6 +1346,20 @@
         }
       }
     },
+    "/api/documents/backfill-concepts": {
+      "post": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Backfill concepts from document metadata",
+        "description": "One-shot maintenance endpoint: reads key_concepts from each document's metadata and upserts them into the Concept table. Idempotent — safe to run repeatedly (skips existing).",
+        "responses": {
+          "200": {
+            "description": "Backfill complete"
+          }
+        }
+      }
+    },
     "/api/documents/reprocess-hypergraph": {
       "post": {
         "tags": [

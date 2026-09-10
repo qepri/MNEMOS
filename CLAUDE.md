@@ -197,5 +197,5 @@ The config connects via `docker exec` so the MCP server runs inside the existing
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/008-prebuilt-images/plan.md`
+`specs/009-refactor-ragservice-query/plan.md`
 <!-- SPECKIT END -->

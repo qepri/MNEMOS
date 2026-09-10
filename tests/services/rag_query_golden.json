@@ -1,0 +1,16 @@
+{
+  "docs_selected.sources": [
+    {
+      "document": "paris.pdf",
+      "location": "",
+      "type": "chunk"
+    }
+  ],
+  "docs_selected.system": "You are a helpful assistant that answers questions based ONLY on the provided context.\nIf the information is not in the context, say so.\nAlways cite the sources using the strict format: [Source: filename] when relevant.\nProvide detailed and comprehensive answers. Use markdown (bold, lists, headers) to structure your response.",
+  "docs_selected.user": "Context from Documents and Web:\n=== Document: paris.pdf ===\n\n- : Paris is the capital of France.\n\n\n\n\nCurrent Question: What is the capital of France?\n\nAnswer in detail and comprehensively.",
+  "images.system": "You are a helpful assistant. Answer the user's questions to the best of your ability.\nProvide detailed and comprehensive answers. Use markdown (bold, lists, headers) to structure your response.",
+  "images.user": "Current Question: What is in this image?\n\nAnswer in detail and comprehensively.",
+  "over_budget.user": "Context from Documents and Web:\n=== Document: big.pdf ===\n\n- : Passage number 0 about topic 0: lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum \n\n\n\n\nCurrent Question: Summarize everything.\n\nAnswer in detail and comprehensively.",
+  "vanilla.system": "You are a helpful assistant. Answer the user's questions to the best of your ability.\nProvide detailed and comprehensive answers. Use markdown (bold, lists, headers) to structure your response.",
+  "vanilla.user": "Current Question: Tell me a joke.\n\nAnswer in detail and comprehensively."
+}

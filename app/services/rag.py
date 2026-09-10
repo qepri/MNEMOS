@@ -275,49 +275,108 @@ Output ONLY the queries, one per line. Do not include numbering or bullets."""
         use_graph_rag: bool = False,
         images: List[str] = None
     ) -> Dict:
-        """Executes full RAG flow with optional conversation context."""
+        """Executes full RAG flow with optional conversation context.
+
+        Thin orchestrator: retrieve -> build prompt -> fit to token budget ->
+        generate. Each step is a helper so the flow stays readable and the
+        budget fit is unit-testable. Behaviour is identical to the previous
+        monolithic implementation (locked by the golden test in
+        tests/services/test_rag.py).
+        """
         import time
 
-        search_queries = []
         start_time = time.time()
         logger.info(f"--- START RAG QUERY: '{question}' ---")
 
-        # 1. Search relevant chunks (Standard Retrieval)
+        chunks, graph_sections = self._retrieve(question, document_ids, top_k, use_graph_rag)
+
+        bundle = self._build_prompt(
+            question=question,
+            chunks=chunks,
+            graph_sections=graph_sections,
+            conversation_history=conversation_history,
+            system_prompt=system_prompt,
+            web_search=web_search,
+            images=images,
+            document_ids=document_ids,
+        )
+
+        if not bundle["proceed"]:
+            logger.warning("[RAG] No context found and not in vanilla mode. Aborting.")
+            return {
+                "answer": "No relevant documents or web results found for this query.",
+                "sources": [],
+                "context_warning": None,
+            }
+
+        self._fit_to_budget(bundle)
+
+        answer = self._generate(bundle["system_prompt"], bundle["user_prompt"], images)
+
+        total_time = time.time() - start_time
+        logger.info(f"--- FINISHED RAG QUERY in {total_time:.2f}s ---")
+
+        return {
+            "answer": answer,
+            "sources": bundle["sources"],
+            "context_warning": bundle["context_warning"],
+            "search_queries": bundle["search_queries"] if web_search else [],
+        }
+
+    def _retrieve(self, question, document_ids, top_k, use_graph_rag):
+        """Standard hybrid retrieval + optional graph retrieval."""
+        import time
+
         chunks = []
         t0 = time.time()
-        
-        # Standard Hybrid Search
         if document_ids and len(document_ids) > 0:
             chunks = self.search_similar_chunks(question, document_ids, top_k)
             logger.info(f"[Retrieval] Found {len(chunks)} chunks in {time.time() - t0:.2f}s")
-        
-        # 2. Graph retrieval (Optional)
+
         graph_sections = []
         if use_graph_rag:
             t_graph = time.time()
             logger.info("[Retrieval] Executing Graph-RAG...")
             graph_sections = self._retrieve_via_graph(question, document_ids=document_ids, top_k=3)
             logger.info(f"[Retrieval] Graph found {len(graph_sections)} sections in {time.time() - t_graph:.2f}s")
-            
+
         if not chunks and not graph_sections:
             logger.info("[Retrieval] Skipped (No docs selected and no graph results)")
 
-        # 3. Build RAG context
-        # We now use a hierarchical structure: Document -> Section (Chapter) -> Chunk
+        return chunks, graph_sections
+
+    def _assemble_user_prompt(self, conversation_context, rag_context, question):
+        """Assemble the user prompt from its parts. Single source of truth so
+        the budget-fit rebuild stays byte-identical to the initial build."""
+        parts = []
+        if conversation_context:
+            parts.append(f"Previous Conversation:\n{conversation_context}\n")
+        if rag_context:
+            parts.append(f"Context from Documents and Web:\n{rag_context}\n")
+        parts.append(f"Current Question: {question}\n")
+        parts.append("Answer in detail and comprehensively.")
+        return "\n".join(parts)
+
+    def _build_prompt(self, question, chunks, graph_sections, conversation_history,
+                      system_prompt, web_search, images, document_ids):
+        """Build system+user prompt: hierarchical context, optional web search,
+        conversation history, system-prompt selection and memory injection.
+        Returns a mutable bundle consumed by _fit_to_budget/_generate; sets
+        proceed=False for the no-context / non-vanilla / no-image abort case."""
+        import time
+
         rag_context, sources = self._build_hierarchical_context(chunks, graph_sections)
 
+        search_queries = []
         if web_search:
             from app.services.web_search import WebSearchService
             search_service = WebSearchService()
-            
+
             t_web = time.time()
             logger.info("[Web] Generating search queries...")
-            
-            # Agentic Step: Generate optimized queries
-            # Agentic Step: Generate optimized queries
             search_queries = self._generate_search_queries(question, conversation_history)
             logger.info(f"[Web] Generated queries:\n{json.dumps(search_queries, indent=2)}")
-            
+
             all_web_context = []
             for q in search_queries:
                 logger.info(f"[Web] Executing Search: {q}")
@@ -325,64 +384,45 @@ Output ONLY the queries, one per line. Do not include numbering or bullets."""
                 if web_results["context"]:
                     all_web_context.append(f"Query: {q}\n{web_results['context']}")
                     sources.extend(web_results["sources"])
-            
-            # Append web content
+
             if all_web_context:
                 rag_context += "\n\n=== WEB SEARCH RESULTS ===\n" + "\n\n".join(all_web_context)
-                
-                # Update system prompt hint if no custom one provided
+
                 if not system_prompt:
                     system_prompt = """You are a helpful assistant. Use the provided Document Context and Web Search Results to answer the user's question.
 If the information is not in the context, say so.
 Always cite the sources using the format: [Source: filename] or [Web Source: Title].
 Provide detailed and comprehensive answers."""
-            
+
             logger.info(f"[Web] Finished in {time.time() - t_web:.2f}s. Sources: {len(all_web_context)}")
 
-        # Check if we have ANY context (chunks or web)
+        # Abort only when there is genuinely nothing to work with.
         if not rag_context:
-             # If using vision (images present) OR it's a vanilla chat (no docs requested, no web search), 
-             # we allow proceeding without context.
-             is_vanilla = (not document_ids) and (not web_search)
-             
-             if not images and not is_vanilla:
-                 logger.warning("[RAG] No context found and not in vanilla mode. Aborting.")
-                 return {
-                     "answer": "No relevant documents or web results found for this query.",
-                     "sources": [],
-                     "context_warning": None
-                 }
-        
-        # 3. Build conversation history context (if provided)
+            is_vanilla = (not document_ids) and (not web_search)
+            if not images and not is_vanilla:
+                return {"proceed": False}
+
+        # Conversation history context
         conversation_context = ""
         context_warning = None
-
         if conversation_history and len(conversation_history) > 0:
-            # Format previous messages
             history_lines = []
             for msg in conversation_history:
                 role_label = "User" if msg.role == "user" else "Assistant"
-                # If message has images, mention it? 
-                # (For now we rely on history_msgs being just text here unless we do multimodal history replays, 
-                # which is complex. We'll stick to text-only context for history for now to avoid token explosion)
                 history_lines.append(f"[Previous {role_label}]: {msg.content}")
-
             conversation_context = "\n".join(history_lines)
 
-            # Check if approaching context limit (warning at 80% capacity)
-            if len(conversation_history) >= 8:  # 8 out of 10 default max
+            if len(conversation_history) >= 8:
                 context_warning = f"Conversation history is getting long ({len(conversation_history)} messages). Consider starting a new conversation for better performance."
 
-        # 4. Use custom or default system prompt
+        # System prompt default selection
         if not system_prompt:
             if rag_context:
-                # RAG Mode default prompt
                 system_prompt = """You are a helpful assistant that answers questions based ONLY on the provided context.
 If the information is not in the context, say so.
 Always cite the sources using the strict format: [Source: filename] when relevant.
 Provide detailed and comprehensive answers. Use markdown (bold, lists, headers) to structure your response."""
             else:
-                # Vanilla / Vision Mode default prompt
                 system_prompt = """You are a helpful assistant. Answer the user's questions to the best of your ability.
 Provide detailed and comprehensive answers. Use markdown (bold, lists, headers) to structure your response."""
 
@@ -391,27 +431,46 @@ Provide detailed and comprehensive answers. Use markdown (bold, lists, headers) 
         from app.models.memory import UserMemory
         prefs = self.db.query(UserPreferences).first()
         if prefs and prefs.memory_enabled:
-             memories = self.db.query(UserMemory).all()
-             if memories:
-                 mem_text = "\n".join([f"- {m.content}" for m in memories])
-                 system_prompt += f"\n\nUser Profile / Memories:\n{mem_text}"
-                 logger.info(f"[Memory] Injected {len(memories)} user memories.")
+            memories = self.db.query(UserMemory).all()
+            if memories:
+                mem_text = "\n".join([f"- {m.content}" for m in memories])
+                system_prompt += f"\n\nUser Profile / Memories:\n{mem_text}"
+                logger.info(f"[Memory] Injected {len(memories)} user memories.")
 
-        # 5. Build final user prompt with all context
-        user_prompt_parts = []
+        user_prompt = self._assemble_user_prompt(conversation_context, rag_context, question)
 
-        if conversation_context:
-            user_prompt_parts.append(f"Previous Conversation:\n{conversation_context}\n")
+        ctx_len = len(rag_context) if rag_context else 0
+        hist_len = len(conversation_context) if conversation_context else 0
+        logger.info(f"[Context] Docs/Web: {ctx_len} chars | History: {hist_len} chars | Prompt Total: {len(user_prompt)} chars")
 
-        if rag_context:
-            user_prompt_parts.append(f"Context from Documents and Web:\n{rag_context}\n")
-            
-        user_prompt_parts.append(f"Current Question: {question}\n")
-        user_prompt_parts.append("Answer in detail and comprehensively.")
+        return {
+            "proceed": True,
+            "system_prompt": system_prompt,
+            "user_prompt": user_prompt,
+            "rag_context": rag_context,
+            "sources": sources,
+            "search_queries": search_queries,
+            "context_warning": context_warning,
+            "conversation_context": conversation_context,
+            "question": question,
+            "chunks": chunks,
+            "graph_sections": graph_sections,
+        }
 
-        user_prompt = "\n".join(user_prompt_parts)
+    def _fit_to_budget(self, bundle):
+        """Trim retrieved chunks (lowest-ranked first) until the prompt fits the
+        model context window. Equivalent to the previous pop-one-then-rebuild
+        loop, but assembles the full prompt O(log n) times via binary search
+        instead of once per dropped chunk. Only chunks are dropped — history,
+        system prompt and web context are left intact."""
+        from app.models.user_preferences import UserPreferences
 
-        # Token budget guard: trim lowest-ranked chunks if prompt overflows model context
+        chunks = bundle["chunks"]
+        graph_sections = bundle["graph_sections"]
+        conversation_context = bundle["conversation_context"]
+        question = bundle["question"]
+        system_prompt = bundle["system_prompt"]
+
         try:
             _llm_prefs = self.db.query(UserPreferences).first()
             reserve_tokens = _llm_prefs.llm_max_tokens if _llm_prefs else 4096
@@ -420,57 +479,60 @@ Provide detailed and comprehensive answers. Use markdown (bold, lists, headers) 
         model_name = self.llm.model or ""
         ctx_size = _model_ctx_size(model_name, getattr(self.llm, 'provider', ''))
         sys_tokens = _count_tokens(system_prompt, model_name)
-        prompt_tokens = _count_tokens(user_prompt, model_name)
         budget = ctx_size - reserve_tokens - sys_tokens
-        if prompt_tokens > budget and chunks:
-            dropped = 0
-            # Drop chunks from lowest rank upward until under budget
-            while chunks and prompt_tokens > budget:
-                chunks.pop()
-                dropped += 1
-                rag_context, sources = self._build_hierarchical_context(chunks, graph_sections)
-                user_prompt_parts_new = []
-                if conversation_context:
-                    user_prompt_parts_new.append(f"Previous Conversation:\n{conversation_context}\n")
-                if rag_context:
-                    user_prompt_parts_new.append(f"Context from Documents and Web:\n{rag_context}\n")
-                user_prompt_parts_new.append(f"Current Question: {question}\n")
-                user_prompt_parts_new.append("Answer in detail and comprehensively.")
-                user_prompt = "\n".join(user_prompt_parts_new)
-                prompt_tokens = _count_tokens(user_prompt, model_name)
-            logger.info(f"[Context] Dropped {dropped} chunks to fit token budget ({budget} tokens)")
 
-        # Log Context Stats
-        ctx_len = len(rag_context) if rag_context else 0
-        hist_len = len(conversation_context) if conversation_context else 0
-        logger.info(f"[Context] Docs/Web: {ctx_len} chars | History: {hist_len} chars | Prompt Total: {len(user_prompt)} chars")
+        prompt_tokens = _count_tokens(bundle["user_prompt"], model_name)
+        # Trigger uses the as-built prompt (web context included), matching the
+        # original guard. Once triggered the original always dropped at least
+        # one chunk and rebuilt WITHOUT web context, so keep-counts are searched
+        # over [0, len-1] on the web-excluded rebuild.
+        if not (prompt_tokens > budget and chunks):
+            return
 
-        logger.debug("--- FINAL LLM PROMPT ---")
-        logger.debug(user_prompt)
-        logger.debug("------------------------")
+        def rebuild(keep):
+            rag_context, sources = self._build_hierarchical_context(chunks[:keep], graph_sections)
+            user_prompt = self._assemble_user_prompt(conversation_context, rag_context, question)
+            return user_prompt, rag_context, sources
 
-        # 6. Generate response with LLM
+        # Prompt tokens are monotonic in keep, so binary search lands on the same
+        # boundary the linear pop-loop would have: the largest keep-count in
+        # [0, len-1] whose rebuilt prompt fits the budget.
+        lo, hi = 0, len(chunks) - 1
+        best = 0
+        best_build = rebuild(0)
+        while lo <= hi:
+            mid = (lo + hi) // 2
+            candidate = rebuild(mid)
+            if _count_tokens(candidate[0], model_name) <= budget:
+                best = mid
+                best_build = candidate
+                lo = mid + 1
+            else:
+                hi = mid - 1
+
+        user_prompt, rag_context, sources = best_build
+        dropped = len(chunks) - best
+        del chunks[best:]
+        bundle["chunks"] = chunks
+        bundle["user_prompt"] = user_prompt
+        bundle["rag_context"] = rag_context
+        bundle["sources"] = sources
+        logger.info(f"[Context] Dropped {dropped} chunks to fit token budget ({budget} tokens)")
+
+    def _generate(self, system_prompt, user_prompt, images):
+        """Single LLM generation call."""
+        import time
+
         logger.info("[LLM] Sending request to model...")
         t_llm = time.time()
-        
         response = self.llm.chat(
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
             images=images
         )
-        
-        elapsed_llm = time.time() - t_llm
-        total_time = time.time() - start_time
-        logger.info(f"[LLM] Response received in {elapsed_llm:.2f}s.")
-        logger.info(f"--- FINISHED RAG QUERY in {total_time:.2f}s ---")
+        logger.info(f"[LLM] Response received in {time.time() - t_llm:.2f}s.")
+        return response
 
-        return {
-            "answer": response,
-            "sources": sources,
-            "context_warning": context_warning,
-            "search_queries": search_queries if web_search else []
-        }
-    
     def _build_hierarchical_context(self, chunks, graph_results):
         """Delegates to rag_context; kept as a method for existing callers."""
         from app.services.rag_context import build_hierarchical_context
