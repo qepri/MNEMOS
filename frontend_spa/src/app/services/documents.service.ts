@@ -189,6 +189,7 @@ export interface SearchResult {
     end_time: number | null;
     document_id: string;
     document_title: string | null;
+    file_type: string | null;
 }
 
 export interface SearchResponse {
