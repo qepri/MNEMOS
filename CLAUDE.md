@@ -164,6 +164,16 @@ Tools are split into per-domain modules under `app/mcp_server/`: `tools_graph.py
 
 `_shared.py` imports `MCPServer` from `mcp.server.mcpserver` if available, falling back to `FastMCP` from `mcp.server.fastmcp` for `mcp` SDK 1.x — the `mcp` package renamed the class in 2.0. If tool registration ever breaks after a dependency bump, check this shim first.
 
+## Keeping the API surface in sync (do this whenever you add/change a route)
+
+The REST API is exposed three ways, and they drift silently — nothing fails a build when they disagree. When you add, remove, or change the contract of a route under `app/api/`, update **all** of these in the same change:
+
+1. **MCP tool** — if the capability is useful to an agent, add/adjust the matching `@mcp.tool()` in the domain module under `app/mcp_server/` (`tools_search.py`, `tools_documents.py`, …). MCP tools do **not** auto-derive from Flask routes; they are hand-written wrappers, usually calling the same service the route calls (e.g. `search_passages` mirrors `POST /api/documents/search`, both calling `RAGService.search_similar_chunks`). Not every route needs a tool (health probes, file streaming) — use judgement, but a new user-facing capability normally does.
+2. **`swagger.json`** (project root) — add/edit the path entry. This is a hand-maintained OpenAPI file served at `/api/docs`, not generated from the code, so it only stays correct if you edit it. Validate it parses (`node -e "JSON.parse(require('fs').readFileSync('swagger.json','utf8'))"`).
+3. **`README.md`** — it is bilingual (Spanish then English); the "API — Endpoints / Endpoints Principales" table and, for MCP changes, the "Herramientas MCP / MCP Tools" list appear **twice**. Update both language halves, or they contradict each other.
+
+A route that ships without its MCP tool and swagger entry is considered incomplete.
+
 ### Claude Desktop Integration
 
 Copy `claude_desktop_config.json` to the Claude Desktop config directory:

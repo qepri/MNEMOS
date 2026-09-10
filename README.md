@@ -42,6 +42,7 @@ Funciona **en tu propio equipo** con modelos locales (llama.cpp) o usando APIs e
 ### Búsqueda Avanzada
 | Qué hace | Cómo lo hace |
 |---|---|
+| **Búsqueda sin LLM** | Página **Search** dedicada: escribe y ves los pasajes que coinciden, con botón "View in PDF" que resalta el texto — sin necesidad de modelo de lenguaje |
 | **Búsqueda híbrida** | Combina búsqueda vectorial (sentido semántico) + texto completo (palabras exactas) con RRF |
 | **Embeddings vectoriales** | pgvector con índices HNSW para búsquedas ultrarrápidas incluso con millones de fragmentos |
 | **Re-ranking MMR** | Maximum Marginal Relevance para diversificar resultados y evitar redundancia |
@@ -416,6 +417,7 @@ Notas:
 | Método | Ruta | Propósito |
 |---|---|---|
 | `POST` | `/api/documents/upload` | Subir documento (PDF, audio, video, YouTube, imagen) |
+| `POST` | `/api/documents/search` | Búsqueda de pasajes sin LLM (vector + FTS, sin generación) |
 | `GET` | `/api/documents` | Listar documentos con estado |
 | `GET` | `/api/documents/{id}` | Detalle de un documento |
 | `DELETE` | `/api/documents/{id}` | Eliminar documento y sus datos |
@@ -522,7 +524,7 @@ Editar `claude_desktop_config.json`:
 
 Los ~29 tools están organizados por dominio (módulos `tools_*.py`). Los principales:
 
-- **Búsqueda**: `search_documents`, `search_documents_advanced`
+- **Búsqueda**: `search_documents`, `search_documents_advanced`, `search_passages` (recuperación sin LLM: devuelve pasajes, no una respuesta generada)
 - **Documentos**: `list_documents`, `get_document_details`, `get_document_sections`, `get_document_summary`, `upload_document`, `add_youtube_video`, `delete_document`
 - **Grafo / Wiki**: `search_concepts`, `list_concepts`, `get_concept_article`, `traverse_concepts`
 - **Colecciones**: `list_collections`, `create_collection`, `get_collection_documents`, `add_document_to_collection`, `remove_document_from_collection`
@@ -764,6 +766,7 @@ It runs **on your own hardware** with local models (llama.cpp) or connects to ex
 ### Advanced Search
 | What | How |
 |---|---|
+| **LLM-free Search** | Dedicated **Search** page: type a query and see the matching passages, with a "View in PDF" button that highlights the text — no language model required |
 | **Hybrid Search** | Vector search (meaning) + full-text search (keywords) combined with RRF |
 | **Vector Embeddings** | pgvector with HNSW indexes for fast similarity search |
 | **MMR Re-ranking** | Maximum Marginal Relevance for diverse results |
@@ -1138,6 +1141,7 @@ Notes:
 | Method | Route | Purpose |
 |---|---|---|
 | `POST` | `/api/documents/upload` | Upload a document (PDF, audio, video, YouTube, image) |
+| `POST` | `/api/documents/search` | LLM-free passage search (vector + FTS, no generation) |
 | `GET` | `/api/documents` | List all documents with status |
 | `GET` | `/api/documents/{id}` | Document detail |
 | `DELETE` | `/api/documents/{id}` | Delete document and its data |
@@ -1244,7 +1248,7 @@ Edit `claude_desktop_config.json`:
 
 ~29 tools organized by domain (`tools_*.py` modules). The main ones:
 
-- **Search**: `search_documents`, `search_documents_advanced`
+- **Search**: `search_documents`, `search_documents_advanced`, `search_passages` (LLM-free retrieval: returns passages, not a generated answer)
 - **Documents**: `list_documents`, `get_document_details`, `get_document_sections`, `get_document_summary`, `upload_document`, `add_youtube_video`, `delete_document`
 - **Graph / Wiki**: `search_concepts`, `list_concepts`, `get_concept_article`, `traverse_concepts`
 - **Collections**: `list_collections`, `create_collection`, `get_collection_documents`, `add_document_to_collection`, `remove_document_from_collection`
