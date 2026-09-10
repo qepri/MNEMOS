@@ -147,3 +147,82 @@ def search_documents_advanced(
 
     except Exception as e:
         return f"Error searching documents: {str(e)}" + _version_footer()
+
+
+@mcp.tool()
+def search_passages(
+    query: str,
+    document_ids: list[str] = None,
+    collection_ids: list[str] = None,
+    top_k: int = 10,
+) -> str:
+    """
+    LLM-free passage search: returns ranked excerpts, not a generated answer.
+
+    Uses the same hybrid vector+keyword retrieval engine as
+    search_documents_advanced but stops at retrieval — no summarization, no
+    citations, no LLM. Works even when no language model is configured.
+
+    Use this to find *where* something is said in the library (and read the
+    surrounding text); use search_documents_advanced when you want a
+    synthesized answer across sources.
+
+    Args:
+        query: Search query
+        document_ids: Filter by specific document UUIDs (optional)
+        collection_ids: Filter by collection UUIDs (optional)
+        top_k: Number of passages to return (default 10, max 50)
+
+    Returns:
+        A ranked list of passages, each with document title, page/timestamp,
+        and the excerpt text.
+    """
+    try:
+        with flask_app.app_context():
+            all_doc_ids = set(document_ids or [])
+
+            if collection_ids:
+                for coll_id in collection_ids:
+                    error = _validate_uuid(coll_id, "collection_id")
+                    if error:
+                        return error + _version_footer()
+                    collection = Collection.query.get(coll_id)
+                    if collection:
+                        all_doc_ids.update([str(d.id) for d in collection.documents])
+
+            for doc_id in all_doc_ids:
+                error = _validate_uuid(doc_id, "document_id")
+                if error:
+                    return error + _version_footer()
+
+            top_k = min(int(top_k), 50)
+            rag = RAGService(db.session)
+            chunks = rag.search_similar_chunks(
+                query,
+                document_ids=list(all_doc_ids) if all_doc_ids else None,
+                top_k=top_k,
+            )
+            # Neighbor chunks pad LLM context; they aren't retrieval hits.
+            chunks = [c for c in chunks if not getattr(c, "_is_context_neighbor", False)]
+
+            output = f"# Passages for: {query}\n\n"
+            if not chunks:
+                output += "_No matching passages found._\n"
+                return output + _version_footer()
+
+            output += f"Found {len(chunks)} passage(s).\n\n"
+            for i, c in enumerate(chunks, 1):
+                title = None
+                if c.document:
+                    title = c.document.original_filename or c.document.filename
+                loc = ""
+                if c.page_number is not None:
+                    loc = f" (p.{c.page_number})"
+                elif c.start_time is not None:
+                    loc = f" (@{int(c.start_time)}s)"
+                output += f"## {i}. {title or 'Untitled'}{loc}\n\n{c.content}\n\n"
+
+            return output + _version_footer()
+
+    except Exception as e:
+        return f"Error searching passages: {str(e)}" + _version_footer()
