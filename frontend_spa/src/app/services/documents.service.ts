@@ -178,6 +178,33 @@ export class DocumentsService {
             top_k: topK,
         });
     }
+
+    /**
+     * Fetch a window of chunks around a center index, for reading a passage in
+     * context (formats with no page view). Returns the slice plus whether more
+     * text exists above/below.
+     */
+    getChunkWindow(docId: string, center: number, before = 5, after = 5): Observable<ChunkWindow> {
+        const url = `${ApiEndpoints.DOCUMENTS}/${docId}/chunks?center=${center}&before=${before}&after=${after}`;
+        return this.http.get<ChunkWindow>(url);
+    }
+}
+
+export interface WindowChunk {
+    id: string;
+    chunk_index: number;
+    content: string;
+    page_number: number | null;
+    start_time: number | null;
+    end_time: number | null;
+}
+
+export interface ChunkWindow {
+    document_id: string;
+    document_title: string | null;
+    chunks: WindowChunk[];
+    has_prev: boolean;
+    has_next: boolean;
 }
 
 export interface SearchResult {

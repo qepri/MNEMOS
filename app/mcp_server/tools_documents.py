@@ -394,3 +394,82 @@ def delete_document(document_id: str, confirm: bool = False) -> str:
     except Exception as e:
         db.session.rollback()
         return f"Error deleting document: {str(e)}" + _version_footer()
+
+
+@mcp.tool()
+def get_document_chunks(
+    document_id: str,
+    center: int = 0,
+    before: int = 5,
+    after: int = 5,
+) -> str:
+    """
+    Read a window of a document's text around a given chunk index.
+
+    A document's chunks, in chunk_index order, reconstruct its full text. This
+    returns the `center` chunk plus `before`/`after` neighbours, so you can read
+    the passage in context (and page through the document by moving `center`).
+    Useful for formats with no page view (EPUB, plain text). No LLM involved.
+
+    Args:
+        document_id: UUID of the document
+        center: chunk_index to center the window on
+        before: neighbours to include before center (0-20, default 5)
+        after: neighbours to include after center (0-20, default 5)
+
+    Returns:
+        The chunks in order, each with its index and location, plus whether
+        more text exists before/after the returned window.
+    """
+    try:
+        with flask_app.app_context():
+            error = _validate_uuid(document_id, "document_id")
+            if error:
+                return error + _version_footer()
+
+            from app.models.chunk import Chunk
+            from sqlalchemy import select, func
+
+            doc = Document.query.get(document_id)
+            if not doc:
+                return f"Document {document_id} not found." + _version_footer()
+
+            before = min(max(int(before), 0), 20)
+            after = min(max(int(after), 0), 20)
+            lo, hi = center - before, center + after
+
+            rows = db.session.execute(
+                select(Chunk)
+                .where(Chunk.document_id == document_id)
+                .where(Chunk.chunk_index >= lo)
+                .where(Chunk.chunk_index <= hi)
+                .order_by(Chunk.chunk_index)
+            ).scalars().all()
+
+            min_idx, max_idx = db.session.execute(
+                select(func.min(Chunk.chunk_index), func.max(Chunk.chunk_index))
+                .where(Chunk.document_id == document_id)
+            ).one()
+
+            title = doc.original_filename or doc.filename
+            output = f"# {title}\n\n"
+            if not rows:
+                output += f"_No chunks in range around index {center}._\n"
+                return output + _version_footer()
+
+            if min_idx is not None and lo > min_idx:
+                output += "_(earlier text exists — lower `center` to read it)_\n\n"
+            for c in rows:
+                loc = ""
+                if c.page_number is not None:
+                    loc = f" [p.{c.page_number}]"
+                elif c.start_time is not None:
+                    loc = f" [@{int(c.start_time)}s]"
+                output += f"### chunk {c.chunk_index}{loc}\n\n{c.content}\n\n"
+            if max_idx is not None and hi < max_idx:
+                output += "_(more text follows — raise `center` to read it)_\n"
+
+            return output + _version_footer()
+
+    except Exception as e:
+        return f"Error reading document chunks: {str(e)}" + _version_footer()

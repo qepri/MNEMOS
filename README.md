@@ -418,6 +418,7 @@ Notas:
 |---|---|---|
 | `POST` | `/api/documents/upload` | Subir documento (PDF, audio, video, YouTube, imagen) |
 | `POST` | `/api/documents/search` | Búsqueda de pasajes sin LLM (vector + FTS, sin generación) |
+| `GET` | `/api/documents/{id}/chunks` | Ventana de fragmentos alrededor de un índice (leer en contexto, EPUB/texto) |
 | `GET` | `/api/documents` | Listar documentos con estado |
 | `GET` | `/api/documents/{id}` | Detalle de un documento |
 | `DELETE` | `/api/documents/{id}` | Eliminar documento y sus datos |
@@ -525,7 +526,7 @@ Editar `claude_desktop_config.json`:
 Los ~29 tools están organizados por dominio (módulos `tools_*.py`). Los principales:
 
 - **Búsqueda**: `search_documents`, `search_documents_advanced`, `search_passages` (recuperación sin LLM: devuelve pasajes, no una respuesta generada)
-- **Documentos**: `list_documents`, `get_document_details`, `get_document_sections`, `get_document_summary`, `upload_document`, `add_youtube_video`, `delete_document`
+- **Documentos**: `list_documents`, `get_document_details`, `get_document_sections`, `get_document_summary`, `get_document_chunks` (leer texto en contexto), `upload_document`, `add_youtube_video`, `delete_document`
 - **Grafo / Wiki**: `search_concepts`, `list_concepts`, `get_concept_article`, `traverse_concepts`
 - **Colecciones**: `list_collections`, `create_collection`, `get_collection_documents`, `add_document_to_collection`, `remove_document_from_collection`
 - **Conversaciones y memoria**: `list_conversations`, `get_conversation`, `search_conversations`, `create_conversation`, `get_user_memories`, `delete_memory`
@@ -1142,6 +1143,7 @@ Notes:
 |---|---|---|
 | `POST` | `/api/documents/upload` | Upload a document (PDF, audio, video, YouTube, image) |
 | `POST` | `/api/documents/search` | LLM-free passage search (vector + FTS, no generation) |
+| `GET` | `/api/documents/{id}/chunks` | Window of chunks around an index (read in context, EPUB/text) |
 | `GET` | `/api/documents` | List all documents with status |
 | `GET` | `/api/documents/{id}` | Document detail |
 | `DELETE` | `/api/documents/{id}` | Delete document and its data |
@@ -1249,7 +1251,7 @@ Edit `claude_desktop_config.json`:
 ~29 tools organized by domain (`tools_*.py` modules). The main ones:
 
 - **Search**: `search_documents`, `search_documents_advanced`, `search_passages` (LLM-free retrieval: returns passages, not a generated answer)
-- **Documents**: `list_documents`, `get_document_details`, `get_document_sections`, `get_document_summary`, `upload_document`, `add_youtube_video`, `delete_document`
+- **Documents**: `list_documents`, `get_document_details`, `get_document_sections`, `get_document_summary`, `get_document_chunks` (read text in context), `upload_document`, `add_youtube_video`, `delete_document`
 - **Graph / Wiki**: `search_concepts`, `list_concepts`, `get_concept_article`, `traverse_concepts`
 - **Collections**: `list_collections`, `create_collection`, `get_collection_documents`, `add_document_to_collection`, `remove_document_from_collection`
 - **Conversations & memory**: `list_conversations`, `get_conversation`, `search_conversations`, `create_conversation`, `get_user_memories`, `delete_memory`

@@ -256,6 +256,70 @@ def get_document_status(doc_id):
         "pipeline": (doc.metadata_ or {}).get("pipeline"),
     })
 
+@bp.route('/<string:doc_id>/chunks', methods=['GET'])
+def get_document_chunks(doc_id):
+    """A window of chunks around a center index, for "read around the passage".
+
+    Formats with no in-app viewer (EPUB, plain text) can't be paged like a PDF,
+    but their chunks reconstruct the full document text in order. This returns a
+    slice — `center` chunk plus `before`/`after` neighbours — and reports
+    whether more exist above/below so the UI knows when to stop offering
+    "load more". Pure DB read, no LLM.
+    """
+    from app.models.chunk import Chunk
+    from sqlalchemy import func
+
+    doc = db.session.query(Document).get(doc_id)
+    if not doc:
+        return jsonify({"error": "Document not found"}), 404
+
+    try:
+        center = int(request.args.get('center', 0))
+    except (TypeError, ValueError):
+        return jsonify({"error": "center must be an integer"}), 400
+
+    # Cap the window so a single request can't pull a whole book into memory.
+    before = min(max(int(request.args.get('before', 5)), 0), 20)
+    after = min(max(int(request.args.get('after', 5)), 0), 20)
+
+    lo = center - before
+    hi = center + after
+
+    rows = db.session.execute(
+        select(Chunk)
+        .where(Chunk.document_id == doc_id)
+        .where(Chunk.chunk_index >= lo)
+        .where(Chunk.chunk_index <= hi)
+        .order_by(Chunk.chunk_index)
+    ).scalars().all()
+
+    # Bounds: is there anything outside the window we just returned?
+    min_idx, max_idx = db.session.execute(
+        select(func.min(Chunk.chunk_index), func.max(Chunk.chunk_index))
+        .where(Chunk.document_id == doc_id)
+    ).one()
+
+    results = [
+        {
+            "id": str(c.id),
+            "chunk_index": c.chunk_index,
+            "content": c.content,
+            "page_number": c.page_number,
+            "start_time": c.start_time,
+            "end_time": c.end_time,
+        }
+        for c in rows
+    ]
+
+    return jsonify({
+        "document_id": str(doc_id),
+        "document_title": doc.original_filename or doc.filename,
+        "chunks": results,
+        "has_prev": min_idx is not None and lo > min_idx,
+        "has_next": max_idx is not None and hi < max_idx,
+    })
+
+
 @bp.route('/<string:doc_id>/content', methods=['GET'])
 def get_document_content(doc_id):
     """Serve the document file content."""

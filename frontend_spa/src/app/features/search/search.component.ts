@@ -2,8 +2,7 @@ import { Component, signal, inject } from '@angular/core';
 import { DocumentsService, SearchResult } from '@services/documents.service';
 import { ModalService } from '@services/modal.service';
 import { ApiEndpoints } from '@core/constants/api-endpoints';
-import { MessageSource } from '@core/models';
-import { SourceModalComponent } from '@shared/components/source-modal';
+import { ReadingModalComponent } from '@shared/components/reading-modal/reading-modal.component';
 
 /**
  * LLM-free search page. Sends a query to /api/documents/search and lists the
@@ -13,7 +12,7 @@ import { SourceModalComponent } from '@shared/components/source-modal';
 @Component({
   selector: 'app-search',
   standalone: true,
-  imports: [SourceModalComponent],
+  imports: [ReadingModalComponent],
   template: `
 <!-- h-full + inner overflow: the router outlet gives us a fixed-height,
      overflow-hidden box, so the page itself must own its scroll region. -->
@@ -78,13 +77,15 @@ import { SourceModalComponent } from '@shared/components/source-modal';
   </section>
 </div>
 
-<!-- Text-detail fallback for formats with no in-app viewer (EPUB, plain text).
-     The PDF/video/youtube viewers are mounted globally in the layout. -->
-<app-source-modal
+<!-- "Read around the passage" for formats with no in-app viewer (EPUB, plain
+     text). The PDF/video/youtube viewers are mounted globally in the layout. -->
+<app-reading-modal
   [isOpen]="isModalOpen()"
-  [source]="selectedSource()"
+  [docId]="readingDocId()"
+  [title]="readingTitle()"
+  [centerIndex]="readingCenter()"
   (close)="closeModal()"
-></app-source-modal>
+></app-reading-modal>
   `
 })
 export class SearchComponent {
@@ -97,9 +98,11 @@ export class SearchComponent {
   loading = signal(false);
   searched = signal(false);
 
-  // Text-detail modal (fallback for EPUB / plain text)
+  // Reading modal (for EPUB / plain text — read around the passage)
   isModalOpen = signal(false);
-  selectedSource = signal<MessageSource | null>(null);
+  readingDocId = signal<string | null>(null);
+  readingTitle = signal<string | null>(null);
+  readingCenter = signal<number>(0);
 
   onSubmit(event: Event) {
     event.preventDefault();
@@ -129,13 +132,13 @@ export class SearchComponent {
   viewLabel(r: SearchResult): string {
     if (this.isPdf(r)) return 'View in PDF';
     if (r.file_type === 'video' || r.file_type === 'audio') return 'Play';
-    return 'View passage';
+    return 'Read';
   }
 
   /**
-   * Route each result to the same viewer chat uses for that file type. Only
-   * PDF/video/audio/youtube have real viewers; EPUB and plain text have none,
-   * so they fall back to the text-detail modal (as chat citations do too).
+   * Route each result to the viewer that fits its file type. PDF/video/audio
+   * have real viewers; EPUB and plain text have none, so they open the reading
+   * modal that pages through the document's chunks around this passage.
    */
   openResult(r: SearchResult) {
     if (this.isPdf(r)) {
@@ -155,24 +158,16 @@ export class SearchComponent {
       return;
     }
 
-    // EPUB / text / anything else without a viewer → readable text modal.
-    this.selectedSource.set({
-      document: r.document_title || 'Untitled',
-      document_id: r.document_id,
-      page_number: r.page_number ?? undefined,
-      start_time: r.start_time ?? undefined,
-      end_time: r.end_time ?? undefined,
-      text: r.content,
-      file_type: r.file_type ?? undefined,
-      score: 0,
-      location: r.page_number != null ? `p.${r.page_number}` : undefined,
-    });
+    // EPUB / text / anything else without a viewer → read around the passage.
+    this.readingDocId.set(r.document_id);
+    this.readingTitle.set(r.document_title);
+    this.readingCenter.set(r.chunk_index ?? 0);
     this.isModalOpen.set(true);
   }
 
   closeModal() {
     this.isModalOpen.set(false);
-    this.selectedSource.set(null);
+    this.readingDocId.set(null);
   }
 
   formatTime(seconds: number): string {
