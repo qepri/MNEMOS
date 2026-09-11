@@ -10,11 +10,52 @@
 
 ---
 
+<p align="center">
+  <b>Your private knowledge hub.</b> Drop in PDFs, notes, audio, video and YouTube links — then ask questions across everything you've saved. Runs entirely on your own machine. Query it straight from your AI agent over MCP.
+  <br/><br/>
+  <i>Tu centro de conocimiento privado.</i> Reúne PDFs, notas, audio, vídeo y enlaces de YouTube — y pregúntale a toda tu biblioteca a la vez. Funciona 100% en tu equipo. Consúltalo desde tu agente de IA vía MCP.
+</p>
+
+<p align="center">
+  <a href="#instalación"><img alt="Install: one command" src="https://img.shields.io/badge/install-one%20command-2ea44f?style=for-the-badge"></a>
+  <img alt="100% local and self-hosted" src="https://img.shields.io/badge/100%25-local%20%26%20self--hosted-1f6feb?style=for-the-badge">
+  <img alt="Works without an LLM" src="https://img.shields.io/badge/works-without%20an%20LLM-e8710a?style=for-the-badge">
+  <img alt="MCP: any AI agent" src="https://img.shields.io/badge/MCP-any%20AI%20agent-8A2BE2?style=for-the-badge">
+</p>
+
+<p align="center">
+  <a href="#what-is-mnemos">English</a> &nbsp;·&nbsp; <a href="#qué-es-mnemos">Español</a> &nbsp;·&nbsp; <a href="#instalación">Instalar / Install</a> &nbsp;·&nbsp; <a href="#mcp-server-model-context-protocol">MCP</a>
+</p>
+
+### See it in action
+
+<!--
+  ADD SCREENSHOTS HERE. Drop PNGs into docs/screenshots/ (see docs/screenshots/README.md),
+  then uncomment the <img> tags below. Aim for real UI shots — they convert far better than
+  any feature list. Suggested three: Search results, Chat with citations, the concept Graph.
+-->
+<!--
+<p align="center">
+  <img src="docs/screenshots/search.png"  alt="Search results across your library" width="32%">
+  <img src="docs/screenshots/chat.png"    alt="Chat with source citations"          width="32%">
+  <img src="docs/screenshots/graph.png"   alt="Interactive concept graph"           width="32%">
+</p>
+-->
+> 📸 _Screenshots coming — drop them in `docs/screenshots/` and uncomment the block above. / Capturas en camino: colócalas en `docs/screenshots/`._
+
+---
+
 ## ¿Qué es MNEMOS?
 
-MNEMOS es un sistema **GraphRAG** + **Wiki** que convierte documentos (PDF, audio, video, YouTube, imágenes) en un **hipergrafo de conocimiento** interconectado. Va más allá de la búsqueda de texto tradicional al integrar un **Motor de Razonamiento** y **Extracción de Hipergrafos** para comprender y conectar relaciones complejas entre conceptos, proporcionando una interfaz conversacional inteligente para consultar y analizar profundamente la información utilizando modelos de lenguaje grandes (LLMs).
+**MNEMOS es tu biblioteca de conocimiento personal, auto-alojada.** Sube PDFs, notas, audio, vídeo, imágenes o enlaces de YouTube a un solo lugar y hazle preguntas a todo tu material a la vez — con respuestas citadas a la fuente exacta. Cada persona ejecuta **su propia copia**: tus documentos, la base de datos y las búsquedas **nunca salen de tu equipo**.
 
-Funciona **en tu propio equipo** con modelos locales (llama.cpp) o usando APIs externas (OpenAI, Anthropic, Groq) si prefieres más potencia sin consumir recursos locales.
+Por debajo es un sistema **GraphRAG + Wiki**: no solo busca texto, sino que extrae conceptos y sus relaciones en un **hipergrafo de conocimiento** navegable, con un motor de razonamiento que descubre conexiones entre documentos distintos. Funciona con modelos **locales** (llama.cpp, LM Studio) o **APIs cloud** (OpenAI, Anthropic, Groq) — o **sin ningún LLM** para solo indexar y buscar.
+
+**¿Por qué MNEMOS?**
+- 🔒 **Solo tuyo** — instalas tu propia copia; tus datos nunca salen de tu máquina y, una vez instalado, funciona sin conexión.
+- 🧩 **Un lugar para todo** — PDFs, notas, audio, vídeo, YouTube e imágenes, todo buscable en conjunto.
+- 🤖 **Con o sin modelo** — indexar y buscar no necesitan LLM; añade uno para chat, resúmenes y la wiki de conceptos.
+- 🔌 **Pregúntale desde tu agente de IA** — expón tu biblioteca como herramientas MCP para cualquier cliente compatible (Claude Desktop, OpenCode y otros; ver [Servidor MCP](#servidor-mcp-model-context-protocol)).
 
 ---
 
@@ -58,7 +99,7 @@ Funciona **en tu propio equipo** con modelos locales (llama.cpp) o usando APIs e
 ### Interfaz y APIs
 - **Frontend moderno**: Angular 21 SPA con TailwindCSS, diseño responsivo, gráficos de conocimiento en vivo (Cytoscape.js)
 - **API REST completa**: Endpoints para documentos, chat, wiki, razonamiento, configuración
-- **MCP Server**: Model Context Protocol para integración con Claude Desktop y OpenCode
+- **MCP Server**: Model Context Protocol — integra MNEMOS con cualquier agente compatible (Claude Desktop, OpenCode, Cursor, etc.)
 - **Sistema de conversaciones**: Gestión de historial con contexto persistente
 
 ---
@@ -105,7 +146,7 @@ Funciona **en tu propio equipo** con modelos locales (llama.cpp) o usando APIs e
 | `db` | PostgreSQL 16 + pgvector | `127.0.0.1:5433` | Base de datos + búsqueda vectorial |
 | `redis` | Redis 7 | `127.0.0.1:6380` | Cola de tareas + caché + sesiones |
 | `adminer` | Adminer | `127.0.0.1:8080` (opt-in) | `docker-compose --profile tools up -d adminer` |
-| `mcp` | Python MCP | — | Servidor MCP para Claude Desktop / OpenCode |
+| `mcp` | Python MCP | — | Servidor MCP para cualquier agente compatible (Claude Desktop, OpenCode…) |
 
 Solo `frontend` y `app` son accesibles desde la red local a propósito (uso desde móvil); el resto está limitado a `127.0.0.1`. No hay autenticación todavía — no exponer este stack a internet.
 
@@ -502,11 +543,15 @@ El sistema extrae hechos sobre el usuario y los recuerda entre conversaciones.
 
 ## Servidor MCP (Model Context Protocol)
 
-El servidor MCP permite integrar MNEMOS con Claude Desktop y OpenCode.
+MNEMOS expone tu biblioteca como herramientas MCP, así que **cualquier agente compatible con MCP** puede buscarla y consultarla — Claude Desktop, OpenCode, Cursor o tu propio cliente. Todos apuntan al mismo comando de servidor:
 
-### Configurar Claude Desktop
+```
+docker exec -i dev-mcp-1 python -m app.mcp_server.server
+```
 
-Editar `claude_desktop_config.json`:
+### Ejemplo: Claude Desktop
+
+Es solo un cliente concreto — cualquier cliente MCP se configura igual, usando el comando de arriba en su propio formato. Para Claude Desktop, edita `claude_desktop_config.json`:
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 
@@ -737,9 +782,15 @@ flask run --debug
 
 ## What is MNEMOS?
 
-MNEMOS is a **GraphRAG** + **Wiki** system that turns documents (PDF, audio, video, YouTube, images) into an interconnected **knowledge hypergraph**. It goes beyond traditional text search by integrating a **Reasoning Engine** and **Hypergraph Extraction** to understand and connect complex relationships between concepts, providing an intelligent conversational interface to query and deeply analyze information using Large Language Models (LLMs).
+**MNEMOS is your own self-hosted knowledge library.** Drop PDFs, notes, audio, video, images or YouTube links into one place and ask questions across all of it at once — with answers cited back to the exact source. Everyone runs **their own copy**: your documents, database and searches **never leave your machine**.
 
-It runs **on your own hardware** with local models (llama.cpp) or connects to external APIs (OpenAI, Anthropic, Groq) when you want more power without using local resources.
+Under the hood it's a **GraphRAG + Wiki** system: it doesn't just search text, it extracts concepts and their relationships into a browsable **knowledge hypergraph**, with a reasoning engine that surfaces connections across different documents. It works with **local** models (llama.cpp, LM Studio), **cloud** APIs (OpenAI, Anthropic, Groq), or **no LLM at all** for indexing and search.
+
+**Why MNEMOS?**
+- 🔒 **Yours alone** — self-host your own copy; your data never leaves your machine and, once installed, it works offline.
+- 🧩 **One place for everything** — PDFs, notes, audio, video, YouTube and images, all searchable together.
+- 🤖 **With or without a model** — indexing and search need no LLM; add one for chat, summaries and the concept wiki.
+- 🔌 **Ask it from your AI agent** — expose your library as MCP tools for any compatible client (Claude Desktop, OpenCode, and others; see [MCP Server](#mcp-server-model-context-protocol)).
 
 ---
 
@@ -783,7 +834,7 @@ It runs **on your own hardware** with local models (llama.cpp) or connects to ex
 ### Interface & APIs
 - **Modern frontend**: Angular 21 SPA with TailwindCSS, responsive design, live Cytoscape.js graphs
 - **Full REST API**: Endpoints for documents, chat, wiki, reasoning, settings
-- **MCP Server**: Model Context Protocol for Claude Desktop and OpenCode integration
+- **MCP Server**: Model Context Protocol — integrate MNEMOS with any compatible agent (Claude Desktop, OpenCode, Cursor, etc.)
 - **Conversation system**: History management with persistent context
 
 ---
@@ -830,7 +881,7 @@ It runs **on your own hardware** with local models (llama.cpp) or connects to ex
 | `db` | PostgreSQL 16 + pgvector | `127.0.0.1:5433` | Database + vector search |
 | `redis` | Redis 7 | `127.0.0.1:6380` | Task queue + cache + sessions |
 | `adminer` | Adminer | `127.0.0.1:8080` (opt-in) | `docker-compose --profile tools up -d adminer` |
-| `mcp` | Python MCP | — | MCP server for Claude Desktop / OpenCode |
+| `mcp` | Python MCP | — | MCP server for any compatible agent (Claude Desktop, OpenCode…) |
 
 Only `frontend` and `app` are deliberately reachable from the LAN (mobile access); everything else is bound to `127.0.0.1`. There is no authentication yet — do not expose this stack to the internet.
 
@@ -1227,11 +1278,15 @@ The system extracts facts about the user and remembers them across conversations
 
 ## MCP Server (Model Context Protocol)
 
-The MCP server integrates MNEMOS with Claude Desktop and OpenCode.
+MNEMOS exposes your library as MCP tools, so **any MCP-compatible agent** can search and query it — Claude Desktop, OpenCode, Cursor, or your own client. Every client points at the same server command:
 
-### Claude Desktop Setup
+```
+docker exec -i dev-mcp-1 python -m app.mcp_server.server
+```
 
-Edit `claude_desktop_config.json`:
+### Example: Claude Desktop
+
+This is just one concrete client — any MCP client is configured the same way, using the command above in its own config format. For Claude Desktop, edit `claude_desktop_config.json`:
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 
