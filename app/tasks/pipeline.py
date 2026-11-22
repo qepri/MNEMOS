@@ -317,6 +317,16 @@ def stage_embed_and_save(doc, text_chunks: list, language: str, embedder=None) -
     return total
 
 
+def is_text_only(doc) -> bool:
+    """A verbatim source - a law, a regulation, a contract - that no LLM may summarize or rewrite.
+
+    Set at upload with `text_only=true`. Such a document is extracted, chunked and embedded exactly like any other
+    (all LLM-free), but the summary and concept stages are skipped and backfill never picks it up: a generated
+    summary sitting next to a legal text gets read as the text, and a paraphrase of a law is worse than none.
+    """
+    return bool((doc.metadata_ or {}).get('text_only'))
+
+
 def stage_summarize(doc, summary_fn) -> None:
     """Generate the document summary. Non-blocking, like stage_hypergraph.
 
@@ -328,6 +338,9 @@ def stage_summarize(doc, summary_fn) -> None:
     The recorded outcome is what the UI reads to tell "no summary because no
     LLM" from "summary generated" - so it must reflect what actually happened.
     """
+    if is_text_only(doc):
+        record_stage(doc, 'summarize', 'skipped', reason='text_only')
+        return
     if doc.summary:
         logger.info("Summary already exists, skipping.")
         record_stage(doc, 'summarize', 'skipped', reason='already present')
@@ -353,6 +366,9 @@ def stage_summarize(doc, summary_fn) -> None:
 def stage_hypergraph(doc) -> None:
     """Extract concepts/edges. Non-blocking: failure must not fail the task."""
     set_progress(doc, 90)
+    if is_text_only(doc):
+        record_stage(doc, 'hypergraph', 'skipped', reason='text_only')
+        return
     try:
         from app.services.hypergraph_extractor import HypergraphExtractor
         HypergraphExtractor.process_document(doc.id)

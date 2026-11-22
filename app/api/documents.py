@@ -140,6 +140,9 @@ def upload_document():
         logger.error("No file or URL provided in upload request")
         return jsonify({"error": "No file or URL provided"}), 400
     
+    if str(request.form.get('text_only', '')).lower() in ('1', 'true', 'yes', 'on'):
+        doc.metadata_ = {**(doc.metadata_ or {}), 'text_only': True}
+
     db.session.add(doc)
     db.session.commit()
     logger.info(f"Document created with ID: {doc.id}")
@@ -483,7 +486,10 @@ def _llm_backfill_candidates():
     """
     from app.models.knowledge_graph import HyperEdge
 
-    completed = db.session.query(Document).filter(Document.status == 'completed').all()
+    from app.tasks.pipeline import is_text_only
+
+    completed = [d for d in db.session.query(Document).filter(Document.status == 'completed').all()
+                 if not is_text_only(d)]
     with_edges = {
         row[0] for row in db.session.query(HyperEdge.source_document_id)
         .filter(HyperEdge.source_document_id.isnot(None)).distinct().all()

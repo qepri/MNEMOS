@@ -116,6 +116,10 @@ def generate_summary_task(self, document_id: str):
         try:
              # Set status to processing so UI shows bar
              doc = db.session.get(Document, UUID(document_id))
+             from app.tasks import pipeline
+             if doc and pipeline.is_text_only(doc):
+                 pipeline.record_stage(doc, 'summarize', 'skipped', reason='text_only')
+                 return "Skipped: text_only"
              if doc:
                  doc.status = 'processing'
                  doc.processing_progress = 50 
@@ -163,6 +167,11 @@ def reprocess_hypergraph_task(self, document_id: str):
     with app.app_context():
         try:
             logger.info(f"Starting generic hypergraph reprocessing for {document_id}")
+            from app.tasks import pipeline
+            doc = db.session.get(Document, UUID(document_id))
+            if doc and pipeline.is_text_only(doc):
+                pipeline.record_stage(doc, 'hypergraph', 'skipped', reason='text_only')
+                return "Skipped: text_only"
             from app.services.hypergraph_extractor import HypergraphExtractor
             
             # Simple wrapper
