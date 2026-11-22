@@ -428,6 +428,27 @@ Notas:
 
 ---
 
+### macOS nativo, sin contenedores
+
+En una Mac con Apple Silicon, MNEMOS corre directamente en el sistema, sin Docker ni Podman: los mismos procesos de
+`docker-compose` (la app con gunicorn y el worker de Celery, con su Redis), con PostgreSQL + pgvector y Ollama
+instalados en la Mac.
+
+**Requisitos**: Python 3.11, PostgreSQL con pgvector, Redis (`brew install redis`), ffmpeg y cairo
+(`brew install ffmpeg cairo`), y Ollama con el modelo de embeddings (`ollama pull bge-m3`).
+
+```bash
+cp .env.macos.example .env.macos       # y escribe tu DATABASE_URL
+scripts/macos-native.sh install        # crea .venv-macos con las dependencias fijadas (versión CPU)
+scripts/macos-native.sh up             # Redis si hace falta, migraciones, app y worker → http://127.0.0.1:8300
+scripts/macos-native.sh status         # qué corre y si el API responde
+scripts/macos-native.sh down           # detiene todo lo que levantó
+```
+
+`requirements.lock.txt` se compiló en un entorno con CUDA; el script quita las líneas `nvidia-*`, `cuda-*` y
+`triton`, que no existen en macOS, igual que el `Dockerfile` hace para la imagen de CPU. En macOS, el torch de PyPI
+ya es la versión CPU/MPS.
+
 ## Variables de Entorno Clave
 
 | Variable | Valores | Propósito |

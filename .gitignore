@@ -225,3 +225,7 @@ landing/assets/favicon.svg
 .claude/settings.json
 
 backups/
+
+# macOS native run (scripts/macos-native.sh): local config with secrets and the venv
+.env.macos
+.venv-macos/
